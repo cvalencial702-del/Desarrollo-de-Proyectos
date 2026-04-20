@@ -1580,6 +1580,8 @@ tr:hover td { background: #F0F7FF; }
   </div>
 </div>
 
+<!-- Supabase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
 function lockErr(msg){var e=document.getElementById("lock-err");if(e)e.textContent=msg;}
 // ===== DATA =====
@@ -1594,6 +1596,265 @@ const BASE_DATA = [{"proyecto": "775-07 / CONTRATO NO. 8000008048", "evaluador":
 
 // ===== SESSION STATE =====
 let sessions = { socio: null, seg: null, ats: null };
+
+// ===== SUPABASE CONFIGURATION =====
+var SUPABASE_URL = localStorage.getItem('supabase_url') || 'https://ixlmuhlusmbikditybne.supabase.co';
+var SUPABASE_KEY = localStorage.getItem('supabase_key') || '';
+// Pre-save URL so user only needs to enter the API key
+if(!localStorage.getItem('supabase_url')) localStorage.setItem('supabase_url', 'https://ixlmuhlusmbikditybne.supabase.co');
+var supa = null;
+var supaEnabled = false;
+var supaSaving = false;
+
+function initSupabase() {
+  if(!SUPABASE_URL || !SUPABASE_KEY) return false;
+  try {
+    if(typeof window.supabase === 'undefined') return false;
+    supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    supaEnabled = true;
+    _updateSupaBadge();
+    return true;
+  } catch(e) { console.error('Supabase init error:', e); return false; }
+}
+
+function configSupabase() {
+  // If already connected, offer to disconnect
+  if(supaEnabled) {
+    if(confirm('Ya estas conectado a Supabase.\n\nURL: ' + SUPABASE_URL + '\n\nDeseas desconectar?')) {
+      disconnectSupabase();
+    }
+    return;
+  }
+  var msg = 'Configuracion de Supabase\n\n' +
+            'URL del proyecto: ' + SUPABASE_URL + '\n\n' +
+            'Ingresa la API Key (anon public):\n' +
+            '(La encuentras en Supabase \u2192 Project Settings \u2192 API \u2192 "anon public")';
+  var key = prompt(msg, SUPABASE_KEY);
+  if(key === null) return;
+  if(!key.trim()) { alert('La API Key es obligatoria.'); return; }
+  SUPABASE_KEY = key.trim();
+  localStorage.setItem('supabase_url', SUPABASE_URL);
+  localStorage.setItem('supabase_key', SUPABASE_KEY);
+  if(initSupabase()) {
+    alert('\u2705 Supabase conectado correctamente.\n\n' +
+          'Proyecto: ' + SUPABASE_URL + '\n\n' +
+          'Proximos pasos:\n' +
+          '1. Crea las tablas en Supabase (click \u21EA Subir te dira el schema)\n' +
+          '2. Usa \u21EA Subir para sincronizar datos locales\n' +
+          '3. Usa \u21E9 Bajar para cargar datos de la nube');
+  } else {
+    alert('\u274c Error al conectar.\n\nVerifica:\n- Que la API Key sea correcta\n- Que el proyecto este activo\n- Conexion a internet');
+  }
+}
+
+function disconnectSupabase() {
+  if(!confirm('Desconectar Supabase? Los datos locales se mantendran.')) return;
+  localStorage.removeItem('supabase_url');
+  localStorage.removeItem('supabase_key');
+  SUPABASE_URL = ''; SUPABASE_KEY = ''; supa = null; supaEnabled = false;
+  _updateSupaBadge();
+  alert('Supabase desconectado.');
+}
+
+function _updateSupaBadge() {
+  var badge = document.getElementById('supa-badge');
+  if(!badge) return;
+  if(supaEnabled) {
+    badge.textContent = '\u25CF Supabase';
+    badge.style.background = 'rgba(5,150,105,0.15)';
+    badge.style.color = '#6EE7B7';
+    badge.title = 'Conectado a Supabase - Click para desconectar';
+  } else {
+    badge.textContent = '\u25CB Supabase';
+    badge.style.background = 'rgba(255,255,255,0.08)';
+    badge.style.color = 'rgba(255,255,255,0.5)';
+    badge.title = 'Click para configurar Supabase';
+  }
+}
+
+// Generic upsert helper
+async function supaUpsert(table, record, keyField) {
+  if(!supaEnabled || !supa) return { error: 'Not connected' };
+  supaSaving = true;
+  _showSupaStatus('Guardando en Supabase...');
+  try {
+    var res = await supa.from(table).upsert(record, { onConflict: keyField }).select();
+    supaSaving = false;
+    if(res.error) {
+      _showSupaStatus('\u274c Error: ' + res.error.message, true);
+      return { error: res.error.message };
+    }
+    _showSupaStatus('\u2705 Guardado en Supabase', false, 2000);
+    return { data: res.data };
+  } catch(e) {
+    supaSaving = false;
+    _showSupaStatus('\u274c Error: ' + e.message, true);
+    return { error: e.message };
+  }
+}
+
+async function supaDelete(table, keyField, keyValue) {
+  if(!supaEnabled || !supa) return { error: 'Not connected' };
+  _showSupaStatus('Eliminando en Supabase...');
+  try {
+    var res = await supa.from(table).delete().eq(keyField, keyValue);
+    if(res.error) {
+      _showSupaStatus('\u274c Error: ' + res.error.message, true);
+      return { error: res.error.message };
+    }
+    _showSupaStatus('\u2705 Eliminado en Supabase', false, 2000);
+    return { ok: true };
+  } catch(e) {
+    _showSupaStatus('\u274c Error: ' + e.message, true);
+    return { error: e.message };
+  }
+}
+
+// Bulk sync all current data to Supabase
+async function syncAllToSupabase() {
+  if(!supaEnabled) { configSupabase(); return; }
+  if(!confirm('Sincronizar TODOS los datos locales a Supabase?\n\n\u2022 ' + staffData.length + ' personas\n\u2022 ' + (typeof projectsData !== "undefined" ? projectsData.length : 0) + ' proyectos\n\u2022 ATS e indicadores\n\nEsto sobrescribira los datos remotos.')) return;
+  var ok = 0, err = 0;
+  _showSupaStatus('Sincronizando personal...');
+  for(var i=0; i<staffData.length; i++) {
+    var p = staffData[i];
+    if(!p.nombres || !p.nombres.trim()) continue;
+    var res = await supa.from('staff').upsert(p, { onConflict: 'no' });
+    if(res.error) err++; else ok++;
+  }
+  if(typeof projectsData !== "undefined") {
+    _showSupaStatus('Sincronizando proyectos...');
+    for(var j=0; j<projectsData.length; j++) {
+      var pr = projectsData[j];
+      if(!pr.id) continue;
+      var res2 = await supa.from('projects').upsert(pr, { onConflict: 'id' });
+      if(res2.error) err++; else ok++;
+    }
+  }
+  if(typeof atsHistorial !== "undefined" && atsHistorial.length) {
+    _showSupaStatus('Sincronizando ATS...');
+    for(var k=0; k<atsHistorial.length; k++) {
+      var a = atsHistorial[k];
+      var res3 = await supa.from('ats_records').upsert(a, { onConflict: 'id' });
+      if(res3.error) err++; else ok++;
+    }
+  }
+  _showSupaStatus('\u2705 Sincronizado: ' + ok + ' registros' + (err ? ' ('+err+' errores)' : ''), false, 4000);
+  alert('Sincronizacion completa.\n\nExitosos: ' + ok + '\nErrores: ' + err);
+}
+
+// Load all data from Supabase (overrides local)
+async function loadFromSupabase() {
+  if(!supaEnabled) { configSupabase(); return; }
+  if(!confirm('Cargar datos desde Supabase?\n\nEsto sobrescribira los datos locales actuales.')) return;
+  _showSupaStatus('Cargando personal...');
+  try {
+    var r1 = await supa.from('staff').select('*');
+    if(!r1.error && r1.data && r1.data.length) {
+      staffData = r1.data;
+      if(typeof STAFF_DATA !== 'undefined') {
+        STAFF_DATA.length = 0;
+        r1.data.forEach(function(x){ STAFF_DATA.push(x); });
+      }
+    }
+    _showSupaStatus('Cargando proyectos...');
+    var r2 = await supa.from('projects').select('*');
+    if(!r2.error && r2.data && r2.data.length) {
+      projectsData = r2.data;
+    }
+    _showSupaStatus('Cargando ATS...');
+    var r3 = await supa.from('ats_records').select('*');
+    if(!r3.error && r3.data) { atsHistorial = r3.data; }
+
+    if(typeof renderTableSocio === 'function') renderTableSocio();
+    if(typeof renderChartsSocio === 'function') renderChartsSocio();
+    if(typeof renderTableSeg === 'function') renderTableSeg();
+    if(typeof renderChartsSeg === 'function') renderChartsSeg();
+    if(typeof _renderAtsHistorial === 'function') _renderAtsHistorial();
+    _showSupaStatus('\u2705 Datos cargados', false, 3000);
+    alert('Datos cargados exitosamente desde Supabase.');
+  } catch(e) {
+    _showSupaStatus('\u274c Error: ' + e.message, true);
+    alert('Error al cargar: ' + e.message);
+  }
+}
+
+function _showSupaStatus(msg, isError, hideAfter) {
+  var el = document.getElementById('supa-status');
+  if(!el) return;
+  el.textContent = msg;
+  el.style.color = isError ? '#FCA5A5' : '#6EE7B7';
+  el.style.opacity = '1';
+  if(hideAfter) setTimeout(function(){ el.style.opacity='0'; }, hideAfter);
+}
+
+
+function mostrarSchemaSQL() {
+  var sql = '-- === ESQUEMA SUPABASE para Dashboard Auditoria Ambiental ===\n\n' +
+            '-- Tabla: personal (Sociodemografico)\n' +
+            'CREATE TABLE IF NOT EXISTS staff (\n' +
+            '  no TEXT PRIMARY KEY,\n' +
+            '  cc TEXT, nombres TEXT, apellidos TEXT,\n' +
+            '  estado TEXT, eps TEXT, sangre TEXT, cargo TEXT,\n' +
+            '  area TEXT, vinculacion TEXT, turno TEXT,\n' +
+            '  fecha_nacimiento TEXT, edad NUMERIC,\n' +
+            '  sexo TEXT, civil TEXT, convive_pareja TEXT,\n' +
+            '  personas_cargo INT, escolaridad TEXT,\n' +
+            '  alergia TEXT, prescripcion TEXT,\n' +
+            '  fecha_ingreso TEXT, anos_org NUMERIC, fecha_retiro TEXT,\n' +
+            '  tel_emergencia TEXT, avisar TEXT,\n' +
+            '  lugar TEXT, direccion TEXT, estrato TEXT,\n' +
+            '  transporte TEXT, centro_medico TEXT,\n' +
+            '  updated_at TIMESTAMPTZ DEFAULT NOW()\n' +
+            ');\n\n' +
+            '-- Tabla: proyectos\n' +
+            'CREATE TABLE IF NOT EXISTS projects (\n' +
+            '  id TEXT PRIMARY KEY,\n' +
+            '  cliente TEXT, objeto TEXT, duracion INT,\n' +
+            '  inicio TEXT, fin TEXT, otrosi TEXT, obs TEXT,\n' +
+            '  updated_at TIMESTAMPTZ DEFAULT NOW()\n' +
+            ');\n\n' +
+            '-- Tabla: registros ATS\n' +
+            'CREATE TABLE IF NOT EXISTS ats_records (\n' +
+            '  id BIGINT PRIMARY KEY,\n' +
+            '  fname TEXT, proyecto TEXT, persona TEXT,\n' +
+            '  cc TEXT, cargo TEXT, fecha TEXT,\n' +
+            '  data_url TEXT,\n' +
+            '  created_at TIMESTAMPTZ DEFAULT NOW()\n' +
+            ');\n\n' +
+            '-- Permitir acceso publico (ajusta segun tu politica de seguridad)\n' +
+            'ALTER TABLE staff       ENABLE ROW LEVEL SECURITY;\n' +
+            'ALTER TABLE projects    ENABLE ROW LEVEL SECURITY;\n' +
+            'ALTER TABLE ats_records ENABLE ROW LEVEL SECURITY;\n\n' +
+            'CREATE POLICY "Allow all" ON staff       FOR ALL USING (true) WITH CHECK (true);\n' +
+            'CREATE POLICY "Allow all" ON projects    FOR ALL USING (true) WITH CHECK (true);\n' +
+            'CREATE POLICY "Allow all" ON ats_records FOR ALL USING (true) WITH CHECK (true);';
+
+  // Create modal to display SQL with copy button
+  var modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:9999;display:flex;align-items:center;justify-content:center;padding:40px';
+  modal.innerHTML =
+    '<div style="background:white;border-radius:12px;max-width:800px;width:100%;max-height:90vh;display:flex;flex-direction:column;overflow:hidden">' +
+      '<div style="background:var(--navy);color:white;padding:16px 22px;display:flex;align-items:center;justify-content:space-between">' +
+        '<div><div style="font-size:14px;font-weight:800">Esquema SQL para Supabase</div>' +
+        '<div style="font-size:11px;opacity:0.7;margin-top:2px">Copia y ejecuta este SQL en Supabase \u2192 SQL Editor</div></div>' +
+        '<button onclick="this.closest(\'div[style*=fixed]\').remove()" style="background:none;border:none;color:white;font-size:20px;cursor:pointer;padding:0 6px">\u2715</button>' +
+      '</div>' +
+      '<div style="flex:1;overflow:auto;padding:0">' +
+        '<pre id="supa-sql-content" style="background:#1E293B;color:#E0E7FF;padding:20px;margin:0;font-size:11px;line-height:1.5;font-family:monospace;white-space:pre-wrap;word-break:break-word">' + sql + '</pre>' +
+      '</div>' +
+      '<div style="padding:12px 20px;background:var(--off);display:flex;justify-content:flex-end;gap:10px;border-top:1px solid var(--gray4)">' +
+        '<button onclick="navigator.clipboard.writeText(document.getElementById(\'supa-sql-content\').textContent).then(function(){alert(\'SQL copiado al portapapeles\');})" style="padding:8px 18px;border-radius:7px;background:var(--navy);color:white;border:none;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">\ud83d\udccb Copiar SQL</button>' +
+        '<a href="https://supabase.com/dashboard/project/ixlmuhlusmbikditybne/sql/new" target="_blank" style="padding:8px 18px;border-radius:7px;background:var(--gold);color:var(--navy);text-decoration:none;font-size:12px;font-weight:600;font-family:inherit;display:inline-block">Abrir SQL Editor \u2197</a>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(modal);
+}
+
+// Auto-init on load
+setTimeout(initSupabase, 500);
+
+
 let sessionTimers = {};
 let currentDeleteFn = null;
 let currentLockModule = null;
@@ -1864,7 +2125,7 @@ function renderTableSocio() {
       '<td style="font-size:11px;text-align:center">' + anos + '</td>' +
       '<td style="text-align:center"><span style="padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;' + actBg + '">' + actTxt + '</span></td>' +
       '<td style="text-align:center"><button class="btn-edit" onclick="showFicha(\'' + sid + '\')">Ficha</button></td>' +
-      (canEdit ? '<td style="white-space:nowrap"><button class="btn-edit" onclick="openEditPersona(\'' + sid + '\')">Ed</button> <button class="btn-danger" onclick="deleteRecord(\'socio\',\'' + sid + '\')">X</button></td>' : '<td style="display:none"></td>') +
+      (canEdit ? '<td style="white-space:nowrap"><button class="btn-edit" onclick="toggleEstadoActivo(\'' + sid + '\')" title="Cambiar Activo/Inactivo" style="background:' + (s.estado==='ACTIVO'?'rgba(5,150,105,0.1);color:#059669;border-color:rgba(5,150,105,0.2)':'rgba(107,114,128,0.1);color:#6B7280;border-color:rgba(107,114,128,0.2)') + ';margin-right:3px">' + (s.estado==='ACTIVO'?'→ Inact':'→ Activ') + '</button><button class="btn-edit" onclick="openEditPersona(\'' + sid + '\')" title="Editar datos">Ed</button> <button class="btn-danger" onclick="deleteRecord(\'socio\',\'' + sid + '\')">X</button></td>' : '<td style="display:none"></td>') +
     '</tr>';
   }).join('');
 }
@@ -2919,8 +3180,9 @@ function _atsGuardarRegistro(fname, dataUrl, projCod, projKey, personKey) {
   } else {
     atsHistorial.push(entry);
   }
+  if(supaEnabled) supaUpsert('ats_records', entry, 'id');
   _renderAtsHistorial();
-  alert('\u2705 Registro guardado en el historial.');
+  alert('\u2705 Registro guardado en el historial' + (supaEnabled ? ' y Supabase' : '') + '.');
 }
 
 function _atsRedescargar(id) {
@@ -4196,20 +4458,46 @@ function buildRecordFromForm(prefix) {
     fecha_nacimiento: fn, edad: edad, sexo: fg('sexo'), civil: fg('civil'),
     personas_cargo: parseInt(fg('pcargo'))||0, escolaridad: fg('escolaridad'),
     alergia: fg('alergia'), fecha_ingreso: fi, anos_org: anos, fecha_retiro: fg('fretiro'),
-    tel_emergencia: contactos.tel, avisar: contactos.avisar, lugar: fg('lugar'),
+    tel_emergencia: getContactos(prefix).tel, avisar: getContactos(prefix).avisar, lugar: fg('lugar'),
     direccion: fg('direccion'), estrato: fg('estrato'), transporte: fg('transporte'),
     centro_medico: fg('centro')
   };
 }
 function addSocioRecord() {
-  if (!isUnlocked('socio')) return alert('Sesion expirada. Ingresa la clave nuevamente.');
+  if (!isUnlocked('socio')) return alert('Sesion expirada. Ingresa la clave en la topbar nuevamente.');
   var r = buildRecordFromForm('s');
-  if (!r.nombres || !r.apellidos) return alert('Por favor ingresa nombre y apellidos.');
+  // Validate required fields
+  if (!r.nombres) { alert('Por favor ingresa el nombre.'); var el=document.getElementById('s-nombres'); if(el) el.focus(); return; }
+  if (!r.apellidos) { alert('Por favor ingresa los apellidos.'); var el2=document.getElementById('s-apellidos'); if(el2) el2.focus(); return; }
+  if (!r.cc) { alert('Por favor ingresa el numero de cedula.'); var el3=document.getElementById('s-cc'); if(el3) el3.focus(); return; }
+  if (!r.cargo) { alert('Por favor ingresa el cargo.'); var el4=document.getElementById('s-cargo'); if(el4) el4.focus(); return; }
+  // Check for duplicate CC
+  var dup = staffData.find(function(s){ return String(s.cc).trim() === String(r.cc).trim(); });
+  if (dup) {
+    if (!confirm('Ya existe un registro con cedula ' + r.cc + ' (' + dup.nombres + ' ' + dup.apellidos + '). Deseas agregarlo de todas formas?')) return;
+  }
+  // Confirmation
+  if (!confirm('Agregar nuevo registro?\n\n' + r.nombres + ' ' + r.apellidos + '\nCC: ' + r.cc + '\nCargo: ' + r.cargo + '\nEstado: ' + r.estado)) return;
+
+  // Assign sequential number based on highest existing
+  var maxNo = staffData.reduce(function(m,s){ var n=parseFloat(s.no); return !isNaN(n) && n>m ? n : m; }, 0);
+  r.no = String(Math.floor(maxNo)+1)+'.0';
+
   staffData.unshift(r);
-  renderTableSocio(); renderChartsSocio(); 
+  // Also add to STAFF_DATA source so it persists across re-renders
+  if (typeof STAFF_DATA !== 'undefined') STAFF_DATA.push(r);
+
+  renderTableSocio(); renderChartsSocio();
+
+  // Clear all form fields
   var fields = ['nombres','apellidos','cc','cargo','eps','fnacimiento','edad','alergia','fingreso','anosorg','fretiro','lugar','direccion','centro','pcargo'];
   setContactos('s','','');
   fields.forEach(function(f){ var el=document.getElementById('s-'+f); if(el) el.value=''; });
+  // Reset selects to default
+  ['s-area','s-vinculacion','s-estado','s-turno','s-sexo','s-civil','s-sangre','s-escolaridad','s-estrato','s-transporte'].forEach(function(id){
+    var el = document.getElementById(id); if(el && el.options.length) el.selectedIndex = 0;
+  });
+  alert('\u2705 Registro agregado correctamente.\n\nTotal de registros: ' + staffData.length);
 }
 
 function addProjectRecord() {
@@ -4224,6 +4512,7 @@ function addProjectRecord() {
   };
   if (!r.id || !r.cliente) return alert('Ingresa N° de proyecto y cliente.');
   projectsData.unshift(r);
+  if(supaEnabled) supaUpsert('projects', r, 'id');
   renderTableSeg(); renderChartsSeg(); renderClienteBars();
   ['p-id','p-cliente','p-objeto','p-duracion','p-inicio'].forEach(id => document.getElementById(id).value = '');
 }
@@ -4237,9 +4526,11 @@ function deleteRecord(type, id) {
 function closeDeleteModal() { document.getElementById('delete-modal').classList.remove('open'); }
 function confirmDelete() {
   if (pendingDeleteType === 'socio') {
+    if(supaEnabled) supaDelete('staff', 'no', pendingDeleteId);
     staffData = staffData.filter(s => s.no !== pendingDeleteId);
     renderTableSocio(); renderChartsSocio(); 
   } else {
+    if(supaEnabled) supaDelete('projects', 'id', pendingDeleteId);
     projectsData = projectsData.filter(p => p.id !== pendingDeleteId);
     renderTableSeg(); renderChartsSeg(); renderClienteBars();
   }
@@ -4383,16 +4674,66 @@ async function exportPDF() {
 
 // ===== EDIT MODAL =====
 var editingNo = null;
+
+// ===== EDIT PERSONA (alias + quick toggle) =====
+function openEditPersona(no) {
+  // Normalize type: staffData 'no' is string in JSON
+  return openEditModal(no);
+}
+
+function toggleEstadoActivo(no) {
+  if (!isUnlocked('socio')) { showLockModal('socio'); return; }
+  var idx = staffData.findIndex(function(s){ return String(s.no) === String(no); });
+  if (idx < 0) return;
+  var current = staffData[idx].estado || 'INACTIVO';
+  var nuevo   = current === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO';
+  // Quick update with confirmation
+  if (!confirm('Cambiar estado de ' + (staffData[idx].nombres||'') + ' ' + (staffData[idx].apellidos||'') + ' a ' + nuevo + '?')) return;
+  staffData[idx].estado = nuevo;
+  // If setting to INACTIVO without retiro date, set today
+  if (nuevo === 'INACTIVO' && !staffData[idx].fecha_retiro) {
+    var t = new Date();
+    staffData[idx].fecha_retiro = t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0');
+  }
+  if (nuevo === 'ACTIVO') {
+    staffData[idx].fecha_retiro = '';
+  }
+  renderTableSocio();
+  renderChartsSocio();
+}
+
 function openEditModal(no) {
   if (!isUnlocked('socio')) { showLockModal('socio'); return; }
-  var r = staffData.find(function(s){ return s.no === no; });
+  var r = staffData.find(function(s){ return String(s.no) === String(no); });
   if (!r) return;
   editingNo = no;
   document.getElementById('edit-modal-title').textContent = 'Editar: ' + r.nombres + ' ' + r.apellidos;
   function sv(id, val) { var el=document.getElementById(id); if(el){ if(el.tagName==='SELECT'){ var opts=Array.from(el.options); var found=opts.find(function(o){return o.value===val||o.text===val;}); if(found) el.value=found.value; } else el.value=val||''; } }
   sv('e-nombres', r.nombres); sv('e-apellidos', r.apellidos); sv('e-cc', r.cc);
   sv('e-cargo', r.cargo); sv('e-area', r.area); sv('e-vinculacion', r.vinculacion);
-  sv('e-estado', r.estado); sv('e-turno', r.turno); sv('e-eps', r.eps);
+  sv('e-estado', r.estado);
+  // Sync Estado toggle buttons
+  setTimeout(function(){
+    var estadoEl = document.getElementById('e-estado');
+    if(estadoEl){
+      var parent = estadoEl.previousElementSibling;
+      if(parent){
+        var btns = parent.querySelectorAll('button');
+        btns.forEach(function(b, i){
+          var isActive = (i===0 && r.estado==='ACTIVO') || (i===1 && r.estado==='INACTIVO');
+          if(isActive){
+            b.style.background = i===0 ? '#059669' : '#6B7280';
+            b.style.color = 'white';
+            b.style.borderColor = i===0 ? '#059669' : '#6B7280';
+          } else {
+            b.style.background = '#F5F7FA';
+            b.style.color = '#6B7280';
+            b.style.borderColor = 'var(--gray3)';
+          }
+        });
+      }
+    }
+  }, 50); sv('e-turno', r.turno); sv('e-eps', r.eps);
   sv('e-sexo', r.sexo); sv('e-fnacimiento', r.fecha_nacimiento); sv('e-edad', r.edad);
   sv('e-civil', r.civil); sv('e-sangre', r.sangre); sv('e-pcargo', r.personas_cargo);
   sv('e-escolaridad', r.escolaridad); sv('e-alergia', r.alergia);
@@ -4416,10 +4757,12 @@ function editCalcTiempo() {
 }
 function closeEditModal() { document.getElementById('edit-modal').style.display = 'none'; editingNo = null; }
 function saveEdit() {
-  var idx = staffData.findIndex(function(s){ return s.no === editingNo; });
+  var idx = staffData.findIndex(function(s){ return String(s.no) === String(editingNo); });
   if (idx < 0) return;
   function gev(id){ var el=document.getElementById(id); return el?el.value.trim():''; }
-  staffData[idx] = {
+  // Merge with existing to preserve any fields not in form
+  var existing = staffData[idx] || {};
+  staffData[idx] = Object.assign({}, existing, {
     no: editingNo,
     cc: gev('e-cc'), nombres: gev('e-nombres').toUpperCase(), apellidos: gev('e-apellidos').toUpperCase(),
     estado: gev('e-estado'), eps: gev('e-eps'), sangre: gev('e-sangre'), cargo: gev('e-cargo').toUpperCase(),
@@ -4432,7 +4775,8 @@ function saveEdit() {
     tel_emergencia: getContactos('e').tel, avisar: getContactos('e').avisar,
     lugar: gev('e-lugar'), direccion: gev('e-direccion'), estrato: gev('e-estrato'),
     transporte: gev('e-transporte'), centro_medico: gev('e-centro')
-  };
+  });
+  if(supaEnabled) supaUpsert('staff', staffData[idx], 'no');
   closeEditModal();
   renderTableSocio(); renderChartsSocio(); 
 }
@@ -4577,7 +4921,14 @@ window.addEventListener('DOMContentLoaded', function() {
       <div class="form-group"><label class="form-label">Vinculacion</label><select class="form-input" id="e-vinculacion"><option>DIRECTO</option><option>CONSULTOR</option><option>CONSULTOR PERMANENTE</option></select></div>
     </div>
     <div class="form-row-3">
-      <div class="form-group"><label class="form-label">Estado</label><select class="form-input" id="e-estado"><option>ACTIVO</option><option>INACTIVO</option></select></div>
+      <div class="form-group">
+        <label class="form-label" style="display:flex;align-items:center;gap:6px">Estado <span style="color:var(--danger);font-weight:700">*</span></label>
+        <div style="display:flex;gap:6px;margin-bottom:4px">
+          <button type="button" onclick="document.getElementById('e-estado').value='ACTIVO';this.parentElement.querySelectorAll('button').forEach(function(b){b.style.background=b===this?'#059669':'#F5F7FA';b.style.color=b===this?'white':'#6B7280';}.bind(this));" style="flex:1;padding:8px 12px;border:1.5px solid #059669;border-radius:7px;background:#059669;color:white;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">● ACTIVO</button>
+          <button type="button" onclick="document.getElementById('e-estado').value='INACTIVO';this.parentElement.querySelectorAll('button').forEach(function(b){b.style.background=b===this?'#6B7280':'#F5F7FA';b.style.color=b===this?'white':'#6B7280';}.bind(this));" style="flex:1;padding:8px 12px;border:1.5px solid var(--gray3);border-radius:7px;background:#F5F7FA;color:#6B7280;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">○ INACTIVO</button>
+        </div>
+        <select class="form-input" id="e-estado" style="display:none"><option>ACTIVO</option><option>INACTIVO</option></select>
+      </div>
       <div class="form-group"><label class="form-label">Turno</label><select class="form-input" id="e-turno"><option>DIURNO</option><option>NOCTURNO</option><option>ROTATIVO</option></select></div>
       <div class="form-group"><label class="form-label">EPS</label><input class="form-input" id="e-eps"></div>
     </div>
