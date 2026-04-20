@@ -642,6 +642,17 @@ tr:hover td { background: #F0F7FF; }
       <button class="btn-sm btn-outline" onclick="exportPDF()">⬇ PDF</button>
       <button class="btn-sm btn-outline" onclick="showLockModal('socio')" id="btn-unlock-socio" style="display:none">🔓 Gestión</button>
       <button class="btn-sm btn-outline" onclick="showLockModal('seg')" id="btn-unlock-seg" style="display:none">🔓 Gestión</button>
+      <button class="btn-sm btn-outline" onclick="atsOpenLock()" id="btn-unlock-ats" style="display:none;background:rgba(255,199,44,0.15);color:#FFC72C;border-color:rgba(255,199,44,0.3)">🆔 Ingresar CC</button>
+
+      <!-- ═══ SUPABASE CONTROLS ═══ -->
+      <div style="display:flex;align-items:center;gap:5px;padding-left:10px;margin-left:6px;border-left:1px solid rgba(255,255,255,0.12)">
+        <button id="supa-badge" onclick="configSupabase()" title="Click para configurar Supabase" style="padding:5px 10px;border-radius:6px;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.5);border:none;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;letter-spacing:0.3px">○ Supabase</button>
+        <button onclick="mostrarSchemaSQL()" title="Ver SQL para crear tablas" style="padding:5px 10px;border-radius:6px;background:rgba(255,199,44,0.15);color:#FFC72C;border:1px solid rgba(255,199,44,0.25);font-size:10px;font-weight:600;cursor:pointer;font-family:inherit">SQL</button>
+        <button id="btn-supa-sync" onclick="syncAllToSupabase()" title="Subir todos los datos locales a Supabase" style="padding:5px 10px;border-radius:6px;background:rgba(0,163,224,0.12);color:#7DD3FC;border:1px solid rgba(0,163,224,0.25);font-size:10px;font-weight:600;cursor:pointer;font-family:inherit">⇪ Subir</button>
+        <button id="btn-supa-load" onclick="loadFromSupabase()" title="Cargar datos desde Supabase" style="padding:5px 10px;border-radius:6px;background:rgba(0,163,224,0.12);color:#7DD3FC;border:1px solid rgba(0,163,224,0.25);font-size:10px;font-weight:600;cursor:pointer;font-family:inherit">⇩ Bajar</button>
+        <span id="supa-status" style="font-size:10px;color:rgba(255,255,255,0.7);opacity:0;transition:opacity 0.3s;min-width:0;white-space:nowrap;margin-left:4px"></span>
+      </div>
+
       <button class="btn-sm btn-accent" onclick="logout()">🔒 Salir</button>
     </div>
   </nav>
