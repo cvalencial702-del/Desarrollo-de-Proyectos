@@ -1653,32 +1653,136 @@ function initSupabase() {
 }
 
 function configSupabase() {
-  // If already connected, offer to disconnect
   if(supaEnabled) {
     if(confirm('Ya estas conectado a Supabase.\n\nURL: ' + SUPABASE_URL + '\n\nDeseas desconectar?')) {
       disconnectSupabase();
     }
     return;
   }
-  var msg = 'Configuracion de Supabase\n\n' +
-            'URL del proyecto: ' + SUPABASE_URL + '\n\n' +
-            'Ingresa la API Key (anon public):\n' +
-            '(La encuentras en Supabase \u2192 Project Settings \u2192 API \u2192 "anon public")';
-  var key = prompt(msg, SUPABASE_KEY);
-  if(key === null) return;
-  if(!key.trim()) { alert('La API Key es obligatoria.'); return; }
-  SUPABASE_KEY = key.trim();
-  localStorage.setItem('supabase_url', SUPABASE_URL);
-  localStorage.setItem('supabase_key', SUPABASE_KEY);
-  if(initSupabase()) {
-    alert('\u2705 Supabase conectado correctamente.\n\n' +
-          'Proyecto: ' + SUPABASE_URL + '\n\n' +
-          'Proximos pasos:\n' +
-          '1. Crea las tablas en Supabase (click \u21EA Subir te dira el schema)\n' +
-          '2. Usa \u21EA Subir para sincronizar datos locales\n' +
-          '3. Usa \u21E9 Bajar para cargar datos de la nube');
-  } else {
-    alert('\u274c Error al conectar.\n\nVerifica:\n- Que la API Key sea correcta\n- Que el proyecto este activo\n- Conexion a internet');
+  _showSupaConfigModal();
+}
+
+function _showSupaConfigModal() {
+  // Remove existing if any
+  var existing = document.getElementById('supa-config-modal');
+  if(existing) existing.remove();
+
+  var modal = document.createElement('div');
+  modal.id = 'supa-config-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;font-family:Inter,sans-serif';
+  modal.innerHTML =
+    '<div style="background:white;border-radius:14px;max-width:560px;width:100%;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.5)">' +
+      '<div style="background:linear-gradient(135deg,#002E5D,#003F7D);color:white;padding:20px 24px">' +
+        '<div style="display:flex;align-items:center;gap:10px">' +
+          '<div style="width:40px;height:40px;border-radius:10px;background:rgba(255,199,44,0.2);display:flex;align-items:center;justify-content:center;font-size:20px">\ud83d\udd11</div>' +
+          '<div>' +
+            '<div style="font-size:16px;font-weight:800;letter-spacing:-0.2px">Configurar Supabase</div>' +
+            '<div style="font-size:11px;opacity:0.7;margin-top:2px">Guarda tus datos en la nube con sincronizacion automatica</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+
+      '<div style="padding:24px">' +
+
+        '<div style="margin-bottom:20px">' +
+          '<label style="display:block;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px">URL del proyecto</label>' +
+          '<input id="supa-form-url" type="text" value="' + SUPABASE_URL + '" ' +
+            'style="width:100%;padding:11px 14px;border:1.5px solid #E5E7EB;border-radius:8px;font-family:monospace;font-size:12px;outline:none;box-sizing:border-box;background:#F9FAFB;color:#111827">' +
+          '<div style="font-size:10px;color:#9CA3AF;margin-top:4px">Pre-llenada para tu proyecto</div>' +
+        '</div>' +
+
+        '<div style="margin-bottom:20px">' +
+          '<label style="display:block;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px">API Key (anon public)</label>' +
+          '<textarea id="supa-form-key" placeholder="eyJhbGciOi..." rows="3" ' +
+            'style="width:100%;padding:11px 14px;border:1.5px solid #E5E7EB;border-radius:8px;font-family:monospace;font-size:11px;outline:none;box-sizing:border-box;resize:vertical;line-height:1.4"' +
+            'onfocus="this.style.borderColor=\'#00A3E0\'" onblur="this.style.borderColor=\'#E5E7EB\'">' + SUPABASE_KEY + '</textarea>' +
+          '<div style="font-size:10px;color:#9CA3AF;margin-top:4px">Pega aqui la llave <strong>anon / public</strong> de Supabase</div>' +
+        '</div>' +
+
+        '<div style="background:#EFF8FF;border-left:3px solid #00A3E0;border-radius:0 8px 8px 0;padding:12px 14px;margin-bottom:20px">' +
+          '<div style="font-size:11px;font-weight:700;color:#002E5D;margin-bottom:4px">\u2139 \u00bfDonde encuentro la API Key?</div>' +
+          '<div style="font-size:11px;color:#374151;line-height:1.5">1. Ve a <a href="https://supabase.com/dashboard/project/ixlmuhlusmbikditybne/settings/api" target="_blank" style="color:#00A3E0;font-weight:600">Settings \u2192 API</a><br>' +
+          '2. Copia la llave <strong>anon / public</strong> (empieza con <code style="background:#E5E7EB;padding:1px 4px;border-radius:3px">eyJ...</code>)<br>' +
+          '3. Pegala arriba y haz clic en Conectar</div>' +
+        '</div>' +
+
+        '<div id="supa-form-err" style="color:#E53935;font-size:12px;min-height:18px;margin-bottom:8px"></div>' +
+
+        '<div style="display:flex;gap:10px;justify-content:flex-end">' +
+          '<button onclick="document.getElementById(\'supa-config-modal\').remove()" style="padding:10px 20px;border-radius:8px;background:white;color:#6B7280;border:1.5px solid #E5E7EB;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Cancelar</button>' +
+          '<button id="supa-form-save" onclick="_saveSupaConfig()" style="padding:10px 24px;border-radius:8px;background:#002E5D;color:white;border:none;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Conectar \u2192</button>' +
+        '</div>' +
+
+      '</div>' +
+    '</div>';
+
+  document.body.appendChild(modal);
+  setTimeout(function(){
+    var keyInput = document.getElementById('supa-form-key');
+    if(keyInput) keyInput.focus();
+  }, 50);
+}
+
+async function _saveSupaConfig() {
+  var url = (document.getElementById('supa-form-url')||{}).value||'';
+  var key = (document.getElementById('supa-form-key')||{}).value||'';
+  var err = document.getElementById('supa-form-err');
+  var btn = document.getElementById('supa-form-save');
+
+  url = url.trim(); key = key.trim();
+  if(err) err.textContent = '';
+
+  if(!url) { if(err) err.textContent = 'La URL es obligatoria.'; return; }
+  if(!key) { if(err) err.textContent = 'La API Key es obligatoria.'; return; }
+  if(key.length < 30) { if(err) err.textContent = 'La API Key parece muy corta. Verifica que copiaste la clave completa.'; return; }
+
+  if(btn) { btn.textContent = 'Probando...'; btn.disabled = true; }
+
+  // Save and test
+  SUPABASE_URL = url; SUPABASE_KEY = key;
+  localStorage.setItem('supabase_url', url);
+  localStorage.setItem('supabase_key', key);
+
+  if(!initSupabase()) {
+    if(err) err.textContent = 'Error al inicializar. Verifica la URL.';
+    if(btn) { btn.textContent = 'Conectar \u2192'; btn.disabled = false; }
+    return;
+  }
+
+  // Test connection
+  try {
+    var res = await supa.from('staff').select('no', { count: 'exact', head: true });
+    if(res.error) {
+      var msg = res.error.message;
+      if(msg.indexOf('does not exist') >= 0 || msg.indexOf('42P01') >= 0 || msg.indexOf('PGRST') >= 0) {
+        // Connected OK but tables missing
+        _supaLog('\u2705 Conectado. Tablas no existen aun.');
+        document.getElementById('supa-config-modal').remove();
+        _updateSupaBadge();
+        if(confirm('\u2705 Conexion exitosa con Supabase!\n\nLas tablas aun no existen en tu proyecto. \u00bfDeseas ver el SQL para crearlas ahora?')) {
+          mostrarSchemaSQL();
+        }
+        return;
+      }
+      if(err) err.textContent = 'Error: ' + msg;
+      if(btn) { btn.textContent = 'Conectar \u2192'; btn.disabled = false; }
+      _supaLog('\u274c Error: ' + msg, true);
+      return;
+    }
+    // All good
+    _supaLog('\u2705 Conectado. ' + (res.count||0) + ' registros en staff');
+    document.getElementById('supa-config-modal').remove();
+    _updateSupaBadge();
+    alert('\u2705 Supabase conectado correctamente!\n\n' +
+          'Registros en staff: ' + (res.count||0) + '\n\n' +
+          'Ahora puedes:\n' +
+          '\u2022 Click \u21EA Subir: sincronizar datos locales\n' +
+          '\u2022 Click \u21E9 Bajar: cargar datos de la nube\n' +
+          '\u2022 Los cambios se guardan automaticamente');
+  } catch(e) {
+    if(err) err.textContent = 'Error de conexion: ' + e.message;
+    if(btn) { btn.textContent = 'Conectar \u2192'; btn.disabled = false; }
+    _supaLog('\u274c ' + e.message, true);
   }
 }
 
