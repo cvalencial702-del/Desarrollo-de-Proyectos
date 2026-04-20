@@ -1824,14 +1824,16 @@ async function supaUpsert(table, record, keyField) {
   if(!supaEnabled || !supa) return { error: 'Not connected' };
   supaSaving = true;
   _showSupaStatus('Guardando en Supabase...');
-  // Sanitize: remove keys with special chars that dont exist in schema
   var clean = {};
   Object.keys(record).forEach(function(k){
-    // Skip accented/invalid keys
     if(/^[a-z0-9_]+$/i.test(k)) {
       clean[k] = record[k];
     }
   });
+  // Mark this write so realtime doesnt echo back
+  var skipKey = table + ':' + clean[keyField];
+  _supaSkipNext[skipKey] = true;
+  setTimeout(function(){ delete _supaSkipNext[skipKey]; }, 3000); // auto-cleanup
   try {
     var res = await supa.from(table).upsert(clean, { onConflict: keyField }).select();
     supaSaving = false;
@@ -1851,6 +1853,9 @@ async function supaUpsert(table, record, keyField) {
 async function supaDelete(table, keyField, keyValue) {
   if(!supaEnabled || !supa) return { error: 'Not connected' };
   _showSupaStatus('Eliminando en Supabase...');
+  var skipKey = table + ':' + keyValue;
+  _supaSkipNext[skipKey] = true;
+  setTimeout(function(){ delete _supaSkipNext[skipKey]; }, 3000);
   try {
     var res = await supa.from(table).delete().eq(keyField, keyValue);
     if(res.error) {
@@ -2067,6 +2072,139 @@ function mostrarSchemaSQL() {
 }
 
 // Auto-init on load
+
+// ═══════════════════════════════════════════════════════════
+// REALTIME: sincronizacion en vivo entre todos los usuarios
+// ═══════════════════════════════════════════════════════════
+var _supaChannels = [];
+var _supaSkipNext = {}; // avoid echo of our own writes
+
+
+async function _autoLoadOnStart() {
+  try {
+    _supaLog('⇩ Cargando datos remotos...');
+    var r1 = await supa.from('staff').select('*');
+    if(!r1.error && r1.data && r1.data.length) {
+      staffData = r1.data;
+      if(typeof STAFF_DATA !== 'undefined') {
+        STAFF_DATA.length = 0;
+        r1.data.forEach(function(x){ STAFF_DATA.push(x); });
+      }
+    }
+    var r2 = await supa.from('projects').select('*');
+    if(!r2.error && r2.data && r2.data.length) projectsData = r2.data;
+    var r3 = await supa.from('ats_records').select('*');
+    if(!r3.error && r3.data && r3.data.length) atsHistorial = r3.data;
+
+    if(typeof renderTableSocio === 'function') renderTableSocio();
+    if(typeof renderChartsSocio === 'function') renderChartsSocio();
+    if(typeof renderTableSeg === 'function') renderTableSeg();
+    if(typeof renderChartsSeg === 'function') renderChartsSeg();
+    if(typeof _renderAtsHistorial === 'function') _renderAtsHistorial();
+    _supaLog('✅ Datos remotos cargados');
+  } catch(e) {
+    _supaLog('⚠ Error auto-load: ' + e.message, true);
+  }
+}
+
+function subscribeRealtime() {
+  if(!supaEnabled || !supa) return;
+  // Clean existing channels
+  _supaChannels.forEach(function(ch){ try { supa.removeChannel(ch); } catch(e){} });
+  _supaChannels = [];
+
+  // ── Staff table ────────────────────────────────────────
+  var chStaff = supa
+    .channel('realtime-staff')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'staff' }, function(payload){
+      _onRemoteChange('staff', payload);
+    })
+    .subscribe(function(status){
+      if(status === 'SUBSCRIBED') _supaLog('✅ Realtime activo: staff');
+    });
+  _supaChannels.push(chStaff);
+
+  // ── Projects table ─────────────────────────────────────
+  var chProj = supa
+    .channel('realtime-projects')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, function(payload){
+      _onRemoteChange('projects', payload);
+    })
+    .subscribe(function(status){
+      if(status === 'SUBSCRIBED') _supaLog('✅ Realtime activo: projects');
+    });
+  _supaChannels.push(chProj);
+
+  // ── ATS records ────────────────────────────────────────
+  var chAts = supa
+    .channel('realtime-ats')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'ats_records' }, function(payload){
+      _onRemoteChange('ats_records', payload);
+    })
+    .subscribe(function(status){
+      if(status === 'SUBSCRIBED') _supaLog('✅ Realtime activo: ats_records');
+    });
+  _supaChannels.push(chAts);
+}
+
+function _onRemoteChange(table, payload) {
+  var event = payload.eventType || payload.event;
+  var row   = payload.new || payload.old || {};
+  var key   = table === 'staff' ? row.no : (table === 'projects' ? row.id : row.id);
+
+  // Skip echo of our own writes
+  var skipKey = table + ':' + key;
+  if(_supaSkipNext[skipKey]) {
+    delete _supaSkipNext[skipKey];
+    return;
+  }
+
+  _supaLog('↓ ' + event + ' ' + table + ' (' + key + ')');
+
+  try {
+    if(table === 'staff') {
+      if(event === 'DELETE') {
+        staffData = staffData.filter(function(s){ return String(s.no) !== String(key); });
+      } else {
+        var idx = staffData.findIndex(function(s){ return String(s.no) === String(key); });
+        if(idx >= 0) staffData[idx] = row;
+        else staffData.unshift(row);
+      }
+      if(typeof renderTableSocio === 'function') renderTableSocio();
+      if(typeof renderChartsSocio === 'function') renderChartsSocio();
+    } else if(table === 'projects') {
+      if(event === 'DELETE') {
+        projectsData = projectsData.filter(function(p){ return String(p.id) !== String(key); });
+      } else {
+        var idx2 = projectsData.findIndex(function(p){ return String(p.id) === String(key); });
+        if(idx2 >= 0) projectsData[idx2] = row;
+        else projectsData.unshift(row);
+      }
+      if(typeof renderTableSeg === 'function') renderTableSeg();
+      if(typeof renderChartsSeg === 'function') renderChartsSeg();
+      if(typeof renderClienteBars === 'function') renderClienteBars();
+    } else if(table === 'ats_records') {
+      if(typeof atsHistorial !== 'undefined') {
+        if(event === 'DELETE') {
+          atsHistorial = atsHistorial.filter(function(a){ return String(a.id) !== String(key); });
+        } else {
+          var idx3 = atsHistorial.findIndex(function(a){ return String(a.id) === String(key); });
+          if(idx3 >= 0) atsHistorial[idx3] = row;
+          else atsHistorial.push(row);
+        }
+        if(typeof _renderAtsHistorial === 'function') _renderAtsHistorial();
+      }
+    }
+  } catch(e) {
+    _supaLog('❌ Error procesando cambio remoto: ' + e.message, true);
+  }
+}
+
+function unsubscribeRealtime() {
+  _supaChannels.forEach(function(ch){ try { supa.removeChannel(ch); } catch(e){} });
+  _supaChannels = [];
+}
+
 setTimeout(function(){
   initSupabase();
   if(supaEnabled) {
