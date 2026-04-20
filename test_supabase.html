@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Test Supabase</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+body { font-family: system-ui, -apple-system, sans-serif; max-width: 800px; margin: 30px auto; padding: 20px; background: #f5f5f5; }
+h1 { color: #002E5D; }
+.card { background: white; padding: 20px; border-radius: 10px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+button { padding: 10px 20px; margin: 5px; font-size: 14px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; }
+.btn-primary { background: #002E5D; color: white; }
+.btn-success { background: #059669; color: white; }
+.btn-warn { background: #D97706; color: white; }
+.btn-danger { background: #DC2626; color: white; }
+pre { background: #1E293B; color: #6EE7B7; padding: 15px; border-radius: 8px; max-height: 300px; overflow-y: auto; font-size: 12px; line-height: 1.5; }
+.error { color: #FCA5A5; }
+.label { font-size: 11px; font-weight: 700; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; display: block; }
+.value { font-family: monospace; font-size: 11px; background: #F3F4F6; padding: 8px; border-radius: 5px; word-break: break-all; }
+.status { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+.s-ok { background: #D1FAE5; color: #059669; }
+.s-err { background: #FEE2E2; color: #DC2626; }
+.s-pending { background: #FEF3C7; color: #D97706; }
+</style>
+</head>
+<body>
+
+<h1>🧪 Test de Conexión Supabase</h1>
+<p>Esta página de prueba aísla solamente la conexión con Supabase. Si funciona aquí pero no en el dashboard, hay un conflicto en el dashboard.</p>
+
+<div class="card">
+  <span class="label">URL</span>
+  <div class="value">https://ixlmuhlusmbikditybne.supabase.co</div>
+  <br>
+  <span class="label">API Key (primeros 50 caracteres)</span>
+  <div class="value">eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB...</div>
+</div>
+
+<div class="card">
+  <h3>Estado: <span id="status" class="status s-pending">Cargando...</span></h3>
+  <button class="btn-primary" onclick="testConnection()">1️⃣ Probar conexión</button>
+  <button class="btn-success" onclick="testInsert()">2️⃣ Insertar registro de prueba</button>
+  <button class="btn-warn" onclick="testRealtime()">3️⃣ Activar Realtime</button>
+  <button class="btn-danger" onclick="document.getElementById('log').innerHTML=''">Limpiar log</button>
+</div>
+
+<div class="card">
+  <h3>Log de actividad</h3>
+  <pre id="log">Esperando interacción...</pre>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://ixlmuhlusmbikditybne.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml4bG11aGx1c21iaWtkaXR5Ym5lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2NjY3OTksImV4cCI6MjA5MjI0Mjc5OX0.mshlJEZ7U-PERXx7g-ztvHAxGEA5bICaa5sh87TNP1s';
+
+let supa = null;
+
+function log(msg, isError) {
+  const time = new Date().toLocaleTimeString('es-CO');
+  const el = document.getElementById('log');
+  const cls = isError ? 'error' : '';
+  el.innerHTML = `<span class="${cls}">[${time}] ${msg}</span>\n` + el.innerHTML;
+}
+
+function setStatus(text, type) {
+  const s = document.getElementById('status');
+  s.textContent = text;
+  s.className = 'status s-' + type;
+}
+
+// Init
+window.addEventListener('load', () => {
+  log('🔄 Cargando SDK Supabase...');
+  setTimeout(() => {
+    if (typeof window.supabase === 'undefined') {
+      log('❌ SDK no se cargó. Verifica conexión a internet.', true);
+      setStatus('SDK no cargó', 'err');
+      return;
+    }
+    log('✅ SDK cargado correctamente');
+    try {
+      supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      log('✅ Cliente Supabase creado');
+      setStatus('Listo para probar', 'ok');
+    } catch (e) {
+      log('❌ Error al crear cliente: ' + e.message, true);
+      setStatus('Error', 'err');
+    }
+  }, 500);
+});
+
+async function testConnection() {
+  if (!supa) { log('❌ Cliente no inicializado', true); return; }
+  log('🔄 Probando lectura de tabla staff...');
+  try {
+    const { data, error, count } = await supa.from('staff').select('*', { count: 'exact', head: true });
+    if (error) {
+      log('❌ Error: ' + error.message, true);
+      log('   Detalles: ' + JSON.stringify(error), true);
+      setStatus('Error: ' + error.code, 'err');
+      if (error.message.includes('does not exist') || error.code === '42P01') {
+        log('⚠️  La tabla staff NO existe. Debes ejecutar el SQL primero.', true);
+      }
+    } else {
+      log('✅ Conexión OK. Registros en staff: ' + count);
+      setStatus('Conectado ✓', 'ok');
+    }
+  } catch (e) {
+    log('❌ Excepción: ' + e.message, true);
+    setStatus('Excepción', 'err');
+  }
+}
+
+async function testInsert() {
+  if (!supa) { log('❌ Cliente no inicializado', true); return; }
+  const testRecord = {
+    no: 'TEST_' + Date.now(),
+    cc: '999999',
+    nombres: 'TEST',
+    apellidos: 'PRUEBA',
+    estado: 'ACTIVO',
+    cargo: 'TEST'
+  };
+  log('🔄 Insertando: ' + JSON.stringify(testRecord));
+  try {
+    const { data, error } = await supa.from('staff').upsert(testRecord, { onConflict: 'no' }).select();
+    if (error) {
+      log('❌ Error al insertar: ' + error.message, true);
+      log('   Code: ' + error.code, true);
+      log('   Details: ' + (error.details || 'none'), true);
+      log('   Hint: ' + (error.hint || 'none'), true);
+    } else {
+      log('✅ Insertado correctamente. Datos: ' + JSON.stringify(data));
+      log('👉 Ve a Supabase Editor para verificar: https://supabase.com/dashboard/project/ixlmuhlusmbikditybne/editor');
+    }
+  } catch (e) {
+    log('❌ Excepción: ' + e.message, true);
+  }
+}
+
+function testRealtime() {
+  if (!supa) { log('❌ Cliente no inicializado', true); return; }
+  log('🔄 Suscribiendo a cambios en tiempo real en staff...');
+  const channel = supa
+    .channel('test-staff')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'staff' }, (payload) => {
+      log('📡 EVENTO REALTIME: ' + payload.eventType + ' en staff');
+      log('   Datos: ' + JSON.stringify(payload.new || payload.old));
+    })
+    .subscribe((status) => {
+      log('🔌 Estado de suscripción: ' + status);
+      if (status === 'SUBSCRIBED') {
+        log('✅ Realtime activo. Haz cambios en Supabase Editor para ver eventos aquí.');
+        setStatus('Realtime ON', 'ok');
+      } else if (status === 'CHANNEL_ERROR') {
+        log('❌ Realtime NO activado. Ve a Database → Publications y activa supabase_realtime para staff.', true);
+        setStatus('Realtime OFF', 'err');
+      }
+    });
+}
+</script>
+</body>
+</html>
