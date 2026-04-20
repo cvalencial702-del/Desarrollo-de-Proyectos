@@ -597,6 +597,8 @@ tr:hover td { background: #F0F7FF; }
 }
 
 </style>
+<!-- Supabase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body>
 
@@ -1615,8 +1617,7 @@ tr:hover td { background: #F0F7FF; }
   </div>
 </div>
 
-<!-- Supabase SDK -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
 <script>
 function lockErr(msg){var e=document.getElementById("lock-err");if(e)e.textContent=msg;}
 // ===== DATA =====
@@ -3764,6 +3765,7 @@ function addProjectRecord() {
   };
   if (!r.id || !r.cliente) return alert('Ingresa N de proyecto y cliente.');
   projectsData.unshift(r);
+  if(typeof supaEnabled !== 'undefined' && supaEnabled) supaUpsert('projects', r, 'id');
   renderTableSeg(); renderChartsSeg();
   ['p-id','p-cliente','p-objeto','p-duracion','p-inicio','p-otrosi','p-obs'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
   var fins2 = document.querySelectorAll('.p-fin-row:not(:first-child)');
@@ -4865,6 +4867,7 @@ function addSocioRecord() {
   ['s-area','s-vinculacion','s-estado','s-turno','s-sexo','s-civil','s-sangre','s-escolaridad','s-estrato','s-transporte'].forEach(function(id){
     var el = document.getElementById(id); if(el && el.options.length) el.selectedIndex = 0;
   });
+  if(typeof supaEnabled !== 'undefined' && supaEnabled) supaUpsert('staff', r, 'no');
   alert('\u2705 Registro agregado correctamente.\n\nTotal de registros: ' + staffData.length);
 }
 
@@ -5067,6 +5070,7 @@ function toggleEstadoActivo(no) {
     staffData[idx].fecha_retiro = '';
   }
   renderTableSocio();
+  if(typeof supaEnabled !== 'undefined' && supaEnabled) supaUpsert('staff', staffData[idx], 'no');
   renderChartsSocio();
 }
 
