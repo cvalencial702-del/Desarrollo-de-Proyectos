@@ -649,11 +649,12 @@ tr:hover td { background: #F0F7FF; }
       <!-- ═══ SUPABASE CONTROLS ═══ -->
       <div style="display:flex;align-items:center;gap:5px;padding-left:10px;margin-left:6px;border-left:1px solid rgba(255,255,255,0.12)">
         <button id="supa-badge" onclick="configSupabase()" oncontextmenu="event.preventDefault();toggleSupaPanel();return false;" title="Click: configurar | Click derecho: diagnostico" style="padding:5px 10px;border-radius:6px;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.5);border:none;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;letter-spacing:0.3px">○ Supabase</button>
-        <button onclick="toggleSupaPanel()" title="Abrir panel de diagnostico" style="padding:5px 10px;border-radius:6px;background:rgba(125,211,252,0.12);color:#7DD3FC;border:1px solid rgba(125,211,252,0.25);font-size:10px;font-weight:600;cursor:pointer;font-family:inherit">?</button>
-        <button onclick="mostrarSchemaSQL()" title="Ver SQL para crear tablas" style="padding:5px 10px;border-radius:6px;background:rgba(255,199,44,0.15);color:#FFC72C;border:1px solid rgba(255,199,44,0.25);font-size:10px;font-weight:600;cursor:pointer;font-family:inherit">SQL</button>
-        <button id="btn-supa-sync" onclick="syncAllToSupabase()" title="Subir todos los datos locales a Supabase" style="padding:5px 10px;border-radius:6px;background:rgba(0,163,224,0.12);color:#7DD3FC;border:1px solid rgba(0,163,224,0.25);font-size:10px;font-weight:600;cursor:pointer;font-family:inherit">⇪ Subir</button>
-        <button id="btn-supa-load" onclick="loadFromSupabase()" title="Cargar datos desde Supabase" style="padding:5px 10px;border-radius:6px;background:rgba(0,163,224,0.12);color:#7DD3FC;border:1px solid rgba(0,163,224,0.25);font-size:10px;font-weight:600;cursor:pointer;font-family:inherit">⇩ Bajar</button>
-        <span id="supa-status" style="font-size:10px;color:rgba(255,255,255,0.7);opacity:0;transition:opacity 0.3s;min-width:0;white-space:nowrap;margin-left:4px"></span>
+        <!-- Pestañas de utilidad ocultas (? / SQL / Subir / Bajar). Click derecho en el badge sigue abriendo diagnóstico. -->
+        <button onclick="toggleSupaPanel()" title="Abrir panel de diagnostico" style="display:none">?</button>
+        <button onclick="mostrarSchemaSQL()" title="Ver SQL para crear tablas" style="display:none">SQL</button>
+        <button id="btn-supa-sync" onclick="syncAllToSupabase()" title="Subir todos los datos locales a Supabase" style="display:none">⇪ Subir</button>
+        <button id="btn-supa-load" onclick="loadFromSupabase()" title="Cargar datos desde Supabase" style="display:none">⇩ Bajar</button>
+        <span id="supa-status" style="display:none"></span>
       </div>
 
       <button class="btn-sm btn-accent" onclick="logout()">🔒 Salir</button>
@@ -1429,7 +1430,15 @@ tr:hover td { background: #F0F7FF; }
               <div class="ats-field-label">Tipo de sangre</div>
               <div class="ats-field-value" id="ats-sangre" style="font-size:15px;font-weight:800;color:var(--danger)">—</div>
             </div>
-            <div class="ats-field-group" style="grid-column:span 2">
+            <div class="ats-field-group">
+              <div class="ats-field-label">EPS</div>
+              <div class="ats-field-value" id="ats-eps">—</div>
+            </div>
+            <div class="ats-field-group">
+              <div class="ats-field-label">ARL</div>
+              <div class="ats-field-value" id="ats-arl" style="font-weight:700;color:var(--navy)">BOLIVAR</div>
+            </div>
+            <div class="ats-field-group" style="grid-column:span 3">
               <div class="ats-field-label">Alergias / Prescripciones medicas</div>
               <div class="ats-field-value" id="ats-alergia" style="color:var(--warn)">—</div>
             </div>
@@ -1463,8 +1472,10 @@ tr:hover td { background: #F0F7FF; }
                 <div class="ats-field-value" id="ats-proj-cliente">—</div>
               </div>
               <div class="ats-field-group">
-                <div class="ats-field-label">Duracion del contrato</div>
-                <div class="ats-field-value" id="ats-proj-duracion">—</div>
+                <div class="ats-field-label">Fecha de ejecucion</div>
+                <input id="ats-fecha-ej" type="date"
+                  style="width:100%;padding:9px 12px;border:1px solid var(--gray3);border-radius:7px;font-family:inherit;font-size:12px;outline:none"
+                  onfocus="this.style.borderColor='var(--sky)'" onblur="this.style.borderColor='var(--gray3)'">
               </div>
               <div class="ats-field-group" style="grid-column:span 2">
                 <div class="ats-field-label">Objeto del contrato</div>
@@ -1472,18 +1483,19 @@ tr:hover td { background: #F0F7FF; }
               </div>
             </div>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start">
             <div class="ats-field-group">
-              <div class="ats-field-label">Lugar de ejecucion</div>
-              <input id="ats-lugar" type="text" placeholder="Ciudad / Municipio"
-                style="width:100%;padding:9px 12px;border:1px solid var(--gray3);border-radius:7px;font-family:inherit;font-size:12px;outline:none"
-                onfocus="this.style.borderColor='var(--sky)'" onblur="this.style.borderColor='var(--gray3)'">
-            </div>
-            <div class="ats-field-group">
-              <div class="ats-field-label">Fecha de ejecucion</div>
-              <input id="ats-fecha-ej" type="date"
-                style="width:100%;padding:9px 12px;border:1px solid var(--gray3);border-radius:7px;font-family:inherit;font-size:12px;outline:none"
-                onfocus="this.style.borderColor='var(--sky)'" onblur="this.style.borderColor='var(--gray3)'">
+              <div class="ats-field-label">Ciudad / Municipio / Locación</div>
+              <div style="display:flex;gap:6px">
+                <input id="ats-lugar" type="text" placeholder="Ej: Popayán, Cauca"
+                  style="flex:1;padding:9px 12px;border:1px solid var(--gray3);border-radius:7px;font-family:inherit;font-size:12px;outline:none"
+                  onfocus="this.style.borderColor='var(--sky)'" onblur="this.style.borderColor='var(--gray3)'">
+                <button type="button" onclick="atsLocalizarCentros()" title="Buscar centros de atención cercanos en Google Maps"
+                  style="padding:9px 12px;border-radius:7px;background:var(--sky);color:white;border:none;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px">
+                  📍 Centros
+                </button>
+              </div>
+              <div style="font-size:10px;color:var(--gray2);margin-top:4px">Click en "📍 Centros" para localizar hospitales y clínicas cercanas</div>
             </div>
             <div class="ats-field-group">
               <div class="ats-field-label">Jefe inmediato / Supervisor</div>
@@ -1491,6 +1503,30 @@ tr:hover td { background: #F0F7FF; }
                 style="width:100%;padding:9px 12px;border:1px solid var(--gray3);border-radius:7px;font-family:inherit;font-size:12px;outline:none"
                 onfocus="this.style.borderColor='var(--sky)'" onblur="this.style.borderColor='var(--gray3)'">
             </div>
+          </div>
+        </div>
+
+        <!-- RECUADRO 2.5: EPP UTILIZADO -->
+        <div class="chart-card" style="margin-bottom:20px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;padding-bottom:14px;border-bottom:2px solid var(--gray4)">
+            <div style="width:32px;height:32px;border-radius:8px;background:rgba(255,199,44,0.15);display:flex;align-items:center;justify-content:center;font-size:16px">🦺</div>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:var(--navy)">Equipo de Protección Personal (EPP)</div>
+              <div style="font-size:11px;color:var(--gray2)">Selecciona los EPP requeridos para esta actividad</div>
+            </div>
+          </div>
+          <div id="ats-epp-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:12px">
+            <!-- Los checkboxes EPP se generan dinamicamente por JS -->
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;padding-top:12px;border-top:1px dashed var(--gray3)">
+            <input id="ats-epp-otro-input" type="text" placeholder="Agregar otro EPP (ej: arnés, careta de soldar)"
+              style="flex:1;padding:9px 12px;border:1px solid var(--gray3);border-radius:7px;font-family:inherit;font-size:12px;outline:none"
+              onkeydown="if(event.key==='Enter'){event.preventDefault();atsAgregarEPPOtro();}"
+              onfocus="this.style.borderColor='var(--sky)'" onblur="this.style.borderColor='var(--gray3)'">
+            <button type="button" onclick="atsAgregarEPPOtro()"
+              style="padding:9px 16px;border-radius:7px;background:var(--navy);color:white;border:none;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">
+              + Agregar
+            </button>
           </div>
         </div>
 
@@ -3204,6 +3240,8 @@ function atsValidarCC() {
   document.getElementById('ats-cc').textContent       = person.cc;
   document.getElementById('ats-cargo').textContent    = person.cargo || '—';
   document.getElementById('ats-sangre').textContent   = person.sangre || '—';
+  document.getElementById('ats-eps').textContent      = person.eps || '—';
+  // ARL es fija (BOLIVAR), ya esta en el HTML
   document.getElementById('ats-alergia').textContent  = [person.alergia, person.prescripcion].filter(function(x){ return x && x !== 'NO'; }).join(' · ') || 'Sin alergias conocidas';
   document.getElementById('ats-session-name').textContent = nombre;
   document.getElementById('ats-decl-nombre').textContent  = nombre;
@@ -3214,6 +3252,9 @@ function atsValidarCC() {
   var yyyy = today.getFullYear();
   var fechaEl = document.getElementById('ats-fecha-ej');
   if(fechaEl) fechaEl.value = yyyy+'-'+mm+'-'+dd;
+  // Renderizar checkboxes EPP (limpia custom y estado al entrar)
+  atsEPPCustom = [];
+  atsRenderEPP();
 }
 
 
@@ -3267,7 +3308,7 @@ function atsBuscarProyecto(val) {
   var err = document.getElementById('ats-proj-err');
   var st  = document.getElementById('ats-proj-status');
   if(!v) {
-    ['ats-proj-cliente','ats-proj-duracion','ats-proj-objeto'].forEach(function(id){
+    ['ats-proj-cliente','ats-proj-objeto'].forEach(function(id){
       var el = document.getElementById(id); if(el) el.textContent = '—';
     });
     if(err) err.textContent = '';
@@ -3280,18 +3321,103 @@ function atsBuscarProyecto(val) {
   });
   if(proj) {
     document.getElementById('ats-proj-cliente').textContent  = proj.cliente  || '—';
-    document.getElementById('ats-proj-duracion').textContent = (proj.duracion ? proj.duracion + ' dias' : '—');
     document.getElementById('ats-proj-objeto').textContent   = proj.objeto   || '—';
     if(err) err.textContent = '';
     if(st)  st.textContent  = '✓';
     st.style.color = '#059669';
   } else {
-    ['ats-proj-cliente','ats-proj-duracion','ats-proj-objeto'].forEach(function(id){
+    ['ats-proj-cliente','ats-proj-objeto'].forEach(function(id){
       var el = document.getElementById(id); if(el) el.textContent = '—';
     });
     if(err) err.textContent = 'Codigo no encontrado en Relacion de Proyectos.';
     if(st)  { st.textContent = '✗'; st.style.color = '#E53935'; }
   }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  EPP — Equipo de Protección Personal
+// ═══════════════════════════════════════════════════════════════
+var ATS_EPP_BASE = [
+  { id:'casco',      label:'Casco',               icon:'⛑️' },
+  { id:'gafas',      label:'Gafas',               icon:'🥽' },
+  { id:'guantes',    label:'Guantes',             icon:'🧤' },
+  { id:'camisa',     label:'Camisa manga larga',  icon:'👕' },
+  { id:'pantalon',   label:'Pantalón',            icon:'👖' },
+  { id:'botas',      label:'Botas de seguridad',  icon:'🥾' },
+  { id:'ignifugo',   label:'Traje ignífugo',      icon:'🔥' },
+  { id:'chaleco',    label:'Chaleco reflectivo',  icon:'🦺' },
+  { id:'tapaoidos',  label:'Tapa oídos',          icon:'🎧' }
+];
+var atsEPPCustom = []; // {id, label} agregados por el usuario
+
+function atsRenderEPP() {
+  var grid = document.getElementById('ats-epp-grid');
+  if(!grid) return;
+  var all = ATS_EPP_BASE.concat(atsEPPCustom);
+  grid.innerHTML = all.map(function(e){
+    var isCustom = atsEPPCustom.some(function(c){ return c.id === e.id; });
+    return '<label style="display:flex;align-items:center;gap:8px;padding:9px 11px;border:1.5px solid var(--gray3);border-radius:8px;cursor:pointer;background:white;transition:all 0.15s" ' +
+      'onmouseover="this.style.borderColor=\'var(--sky)\'" onmouseout="this.style.borderColor=\'var(--gray3)\'">' +
+      '<input type="checkbox" id="epp-'+e.id+'" data-epp-id="'+e.id+'" data-epp-label="'+e.label+'" style="width:16px;height:16px;accent-color:var(--sky);cursor:pointer">' +
+      '<span style="font-size:13px">'+e.icon+'</span>' +
+      '<span style="font-size:11px;font-weight:600;color:var(--navy);flex:1">'+e.label+'</span>' +
+      (isCustom ? '<button type="button" onclick="event.preventDefault();atsRemoveEPPOtro(\''+e.id+'\')" title="Quitar" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:14px;padding:0;line-height:1">×</button>' : '') +
+      '</label>';
+  }).join('');
+}
+
+function atsAgregarEPPOtro() {
+  var inp = document.getElementById('ats-epp-otro-input');
+  if(!inp) return;
+  var val = inp.value.trim();
+  if(!val) return;
+  // Evitar duplicados
+  var existe = ATS_EPP_BASE.concat(atsEPPCustom).some(function(e){
+    return e.label.toLowerCase() === val.toLowerCase();
+  });
+  if(existe) { inp.value = ''; return; }
+  var id = 'otro-' + Date.now();
+  atsEPPCustom.push({ id:id, label:val, icon:'➕' });
+  inp.value = '';
+  atsRenderEPP();
+  // Auto-marcar el recién agregado
+  setTimeout(function(){
+    var cb = document.getElementById('epp-'+id);
+    if(cb) cb.checked = true;
+  }, 10);
+}
+
+function atsRemoveEPPOtro(id) {
+  atsEPPCustom = atsEPPCustom.filter(function(e){ return e.id !== id; });
+  atsRenderEPP();
+}
+
+function atsGetEPPSeleccionados() {
+  var sel = [];
+  var all = ATS_EPP_BASE.concat(atsEPPCustom);
+  all.forEach(function(e){
+    var cb = document.getElementById('epp-'+e.id);
+    if(cb && cb.checked) sel.push(e.label);
+  });
+  return sel;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Localizador de centros de atención (Google Maps)
+// ═══════════════════════════════════════════════════════════════
+function atsLocalizarCentros() {
+  var lugar = (document.getElementById('ats-lugar')||{}).value||'';
+  lugar = lugar.trim();
+  if(!lugar) {
+    alert('Primero ingresa la Ciudad / Municipio / Locación del proyecto.');
+    var inp = document.getElementById('ats-lugar');
+    if(inp) inp.focus();
+    return;
+  }
+  // Buscar hospitales, clínicas y centros de urgencias cerca del lugar
+  var query = encodeURIComponent('hospital clinica urgencias cerca de ' + lugar + ', Colombia');
+  var url = 'https://www.google.com/maps/search/' + query;
+  window.open(url, '_blank', 'noopener');
 }
 
 function atsAddActividad() {
@@ -3361,7 +3487,10 @@ function _buildATSHTML(isPreview) {
   var compromisos = (document.getElementById('ats-compromisos')||{}).value||'';
   var projInput   = (document.getElementById('ats-proj-input')||{}).value||'';
   var projCliente = (document.getElementById('ats-proj-cliente')||{}).textContent||'—';
-  var projDuracion= (document.getElementById('ats-proj-duracion')||{}).textContent||'—';
+  var epsVal      = (document.getElementById('ats-eps')||{}).textContent||'—';
+  var arlVal      = (document.getElementById('ats-arl')||{}).textContent||'BOLIVAR';
+  var eppList     = (typeof atsGetEPPSeleccionados === 'function') ? atsGetEPPSeleccionados() : [];
+  var eppTxt      = eppList.length ? eppList.join(' · ') : 'No se registraron EPP';
   var projObjeto  = (document.getElementById('ats-proj-objeto')||{}).textContent||'—';
   var nombre   = (atsUser.apellidos||'').toUpperCase()+', '+(atsUser.nombres||'');
   var alergiaTxt = [atsUser.alergia, atsUser.prescripcion].filter(function(x){return x&&x!=='NO';}).join(' · ')||'Sin alergias conocidas';
@@ -3431,6 +3560,12 @@ function _buildATSHTML(isPreview) {
           '<td style="padding:5px 6px"><div style="'+LBL+'">Alergias / Prescripciones</div></td>'+
           '<td style="padding:5px 6px"><div style="font-size:11px;font-weight:600;color:#D97706">'+alergiaTxt+'</div></td>'+
         '</tr>'+
+        '<tr>'+
+          '<td style="padding:5px 6px"><div style="'+LBL+'">EPS</div></td>'+
+          '<td style="padding:5px 6px"><div style="'+VAL+'">'+epsVal+'</div></td>'+
+          '<td style="padding:5px 6px"><div style="'+LBL+'">ARL</div></td>'+
+          '<td style="padding:5px 6px"><div style="'+VAL+';color:#002E5D;font-weight:800">'+arlVal+'</div></td>'+
+        '</tr>'+
       '</table>'+
     '</div>'+
   '</div>'+
@@ -3448,22 +3583,36 @@ function _buildATSHTML(isPreview) {
           '<td style="padding:5px 6px"><div style="font-size:10px;font-weight:600;color:#374151;line-height:1.4">'+projCliente+'</div></td>'+
         '</tr>'+
         '<tr>'+
-          '<td style="padding:5px 6px"><div style="'+LBL+'">Duración del contrato</div></td>'+
-          '<td style="padding:5px 6px"><div style="'+VAL+'">'+projDuracion+'</div></td>'+
           '<td style="padding:5px 6px"><div style="'+LBL+'">Fecha de ejecución</div></td>'+
           '<td style="padding:5px 6px"><div style="'+VAL+'">'+fechaEjFmt+'</div></td>'+
+          '<td style="padding:5px 6px"><div style="'+LBL+'">Jefe inmediato / Supervisor</div></td>'+
+          '<td style="padding:5px 6px"><div style="'+VAL+'">'+(jefe||'—')+'</div></td>'+
         '</tr>'+
         '<tr>'+
           '<td style="padding:5px 6px"><div style="'+LBL+'">Objeto del contrato</div></td>'+
           '<td colspan="3" style="padding:5px 6px"><div style="font-size:10px;color:#374151;line-height:1.5;text-align:justify">'+projObjeto+'</div></td>'+
         '</tr>'+
         '<tr>'+
-          '<td style="padding:5px 6px"><div style="'+LBL+'">Lugar de ejecución</div></td>'+
-          '<td style="padding:5px 6px"><div style="'+VAL+'">'+(lugar||'—')+'</div></td>'+
-          '<td style="padding:5px 6px"><div style="'+LBL+'">Jefe inmediato / Supervisor</div></td>'+
-          '<td style="padding:5px 6px"><div style="'+VAL+'">'+(jefe||'—')+'</div></td>'+
+          '<td style="padding:5px 6px"><div style="'+LBL+'">Ciudad / Municipio / Locación</div></td>'+
+          '<td colspan="3" style="padding:5px 6px"><div style="'+VAL+'">'+(lugar||'—')+'</div></td>'+
         '</tr>'+
       '</table>'+
+    '</div>'+
+  '</div>'+
+
+  // ─── SECCIÓN 2.5: EPP — Equipo de Protección Personal ───────
+  '<div style="border-bottom:1px solid #E5E7EB">'+
+    '<div style="'+SEC_HDR+'"><span style="color:#FFC72C;font-size:12px">&#9679;</span> Equipo de Protección Personal (EPP)</div>'+
+    '<div style="padding:10px 14px">'+
+      (eppList.length ?
+        '<div style="display:flex;flex-wrap:wrap;gap:6px">'+
+          eppList.map(function(item){
+            return '<span style="display:inline-block;padding:5px 11px;background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;border-radius:14px;font-size:10px;font-weight:700">'+item+'</span>';
+          }).join('')+
+        '</div>'
+        :
+        '<div style="font-size:11px;color:#9CA3AF;font-style:italic;padding:4px 0">No se registraron elementos de protección personal.</div>'
+      )+
     '</div>'+
   '</div>'+
 
@@ -3601,6 +3750,13 @@ function atsDescargarPDF() {
 var atsHistorial = [];
 
 function _atsGuardarRegistro(fname, dataUrl, projCod, projKey, personKey) {
+  // Snapshot de EPP seleccionados y datos clave (para auditoria futura)
+  var eppSel = (typeof atsGetEPPSeleccionados === 'function') ? atsGetEPPSeleccionados() : [];
+  var lugarEj = (document.getElementById('ats-lugar')||{}).value || '';
+  var fechaEj = (document.getElementById('ats-fecha-ej')||{}).value || '';
+  var epsVal  = (document.getElementById('ats-eps')||{}).textContent || '';
+  var arlVal  = (document.getElementById('ats-arl')||{}).textContent || 'BOLIVAR';
+
   var entry = {
     id:       Date.now(),
     fname:    fname,
@@ -3609,7 +3765,12 @@ function _atsGuardarRegistro(fname, dataUrl, projCod, projKey, personKey) {
     cc:       atsUser ? atsUser.cc : '—',
     cargo:    atsUser ? atsUser.cargo : '—',
     fecha:    new Date().toLocaleDateString('es-CO',{year:'numeric',month:'2-digit',day:'2-digit'}),
-    dataUrl:  dataUrl
+    epp:      eppSel.join(' · '),      // texto plano separado por puntos
+    lugar:    lugarEj,
+    fecha_ej: fechaEj,
+    eps:      epsVal,
+    arl:      arlVal,
+    data_url: dataUrl                  // nombre de columna snake_case (coincide con Supabase)
   };
   // Check for duplicate (same project + person)
   var dupIdx = atsHistorial.findIndex(function(h){ return h.proyecto===projCod && h.cc===entry.cc; });
@@ -3634,18 +3795,20 @@ function _atsRedescargar(id) {
     var pw=doc.internal.pageSize.getWidth(), ph=doc.internal.pageSize.getHeight();
     var mg=8, iw=pw-mg*2;
     var img = new Image();
+    // Compatibilidad: data_url (Supabase / nuevo) o dataUrl (legacy)
+    var imgData = entry.data_url || entry.dataUrl;
     img.onload = function(){
       var ih=(img.height/img.width)*iw, pageH=ph-mg*2;
-      if(ih<=pageH){ doc.addImage(entry.dataUrl,'JPEG',mg,mg,iw,ih); }
+      if(ih<=pageH){ doc.addImage(imgData,'JPEG',mg,mg,iw,ih); }
       else {
         for(var pg=0;pg<Math.ceil(ih/pageH);pg++){
           if(pg>0) doc.addPage();
-          doc.addImage(entry.dataUrl,'JPEG',mg,mg-pg*pageH,iw,ih);
+          doc.addImage(imgData,'JPEG',mg,mg-pg*pageH,iw,ih);
         }
       }
       doc.save(entry.fname);
     };
-    img.src = entry.dataUrl;
+    img.src = imgData;
   } catch(e){ alert('Error: '+e.message); }
 }
 
