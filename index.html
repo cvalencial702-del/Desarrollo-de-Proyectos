@@ -1633,10 +1633,12 @@ const BASE_DATA = [{"proyecto": "775-07 / CONTRATO NO. 8000008048", "evaluador":
 let sessions = { socio: null, seg: null, ats: null };
 
 // ===== SUPABASE CONFIGURATION =====
-var SUPABASE_URL = localStorage.getItem('supabase_url') || 'https://ixlmuhlusmbikditybne.supabase.co';
-var SUPABASE_KEY = localStorage.getItem('supabase_key') || '';
-// Pre-save URL so user only needs to enter the API key
-if(!localStorage.getItem('supabase_url')) localStorage.setItem('supabase_url', 'https://ixlmuhlusmbikditybne.supabase.co');
+// ═══ CREDENCIALES SUPABASE HARDCODED ═══
+var SUPABASE_URL = 'https://ixlmuhlusmbikditybne.supabase.co';
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml4bG11aGx1c21iaWtkaXR5Ym5lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2NjY3OTksImV4cCI6MjA5MjI0Mjc5OX0.mshlJEZ7U-PERXx7g-ztvHAxGEA5bICaa5sh87TNP1s';
+// Save to localStorage for consistency
+localStorage.setItem('supabase_url', SUPABASE_URL);
+localStorage.setItem('supabase_key', SUPABASE_KEY);
 var supa = null;
 var supaEnabled = false;
 var supaSaving = false;
@@ -1822,8 +1824,16 @@ async function supaUpsert(table, record, keyField) {
   if(!supaEnabled || !supa) return { error: 'Not connected' };
   supaSaving = true;
   _showSupaStatus('Guardando en Supabase...');
+  // Sanitize: remove keys with special chars that dont exist in schema
+  var clean = {};
+  Object.keys(record).forEach(function(k){
+    // Skip accented/invalid keys
+    if(/^[a-z0-9_]+$/i.test(k)) {
+      clean[k] = record[k];
+    }
+  });
   try {
-    var res = await supa.from(table).upsert(record, { onConflict: keyField }).select();
+    var res = await supa.from(table).upsert(clean, { onConflict: keyField }).select();
     supaSaving = false;
     if(res.error) {
       _showSupaStatus('\u274c Error: ' + res.error.message, true);
@@ -4728,7 +4738,7 @@ function addProjectRecord() {
     objeto: document.getElementById('p-objeto').value.trim(),
     duracion: parseInt(document.getElementById('p-duracion').value) || 0,
     inicio: document.getElementById('p-inicio').value,
-    fin: '', otrosí: '', obs: ''
+    fin: '', otrosi: '', obs: ''
   };
   if (!r.id || !r.cliente) return alert('Ingresa N° de proyecto y cliente.');
   projectsData.unshift(r);
@@ -4838,7 +4848,7 @@ function loadSegFile(event) {
           duracion: parseInt(obj['DURACIÓN EN DIAS'] || obj['DURACION EN DIAS']) || 0,
           inicio: formatDate(obj['FECHA DE INCIO'] || obj['FECHA DE INICIO']),
           fin: formatDate(obj['FECHA DE  TERMINACIÓN'] || obj['FECHA DE TERMINACION']),
-          otrosí: String(obj['OTRO  SI  (FECHA)'] || obj['OTRO SI (FECHA)']||'').trim(),
+          otrosi: String(obj['OTRO  SI  (FECHA)'] || obj['OTRO SI (FECHA)']||'').trim(),
           obs: String(obj['OBSERVACIONES']||'').trim().slice(0,100),
         };
       }).filter(r => r.id);
