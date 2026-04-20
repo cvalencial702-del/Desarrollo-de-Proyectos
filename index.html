@@ -2084,6 +2084,8 @@ var _supaSkipNext = {}; // avoid echo of our own writes
 async function _autoLoadOnStart() {
   try {
     _supaLog('⇩ Cargando datos remotos...');
+
+    // Staff: reemplazar siempre si hay datos (>=1 registro)
     var r1 = await supa.from('staff').select('*');
     if(!r1.error && r1.data && r1.data.length) {
       staffData = r1.data;
@@ -2091,18 +2093,32 @@ async function _autoLoadOnStart() {
         STAFF_DATA.length = 0;
         r1.data.forEach(function(x){ STAFF_DATA.push(x); });
       }
+      _supaLog('  staff: ' + r1.data.length + ' registros');
     }
-    var r2 = await supa.from('projects').select('*');
-    if(!r2.error && r2.data && r2.data.length) projectsData = r2.data;
-    var r3 = await supa.from('ats_records').select('*');
-    if(!r3.error && r3.data && r3.data.length) atsHistorial = r3.data;
 
+    // Projects: idem
+    var r2 = await supa.from('projects').select('*');
+    if(!r2.error && r2.data && r2.data.length) {
+      projectsData = r2.data;
+      _supaLog('  projects: ' + r2.data.length + ' registros');
+    }
+
+    // ATS: siempre asignar (incluso vacio, para limpiar referencias locales)
+    var r3 = await supa.from('ats_records').select('*');
+    if(!r3.error && r3.data) {
+      if(typeof atsHistorial !== 'undefined') atsHistorial = r3.data;
+      else window.atsHistorial = r3.data;
+      _supaLog('  ats_records: ' + r3.data.length + ' registros');
+    }
+
+    // Re-render de todos los modulos
     if(typeof renderTableSocio === 'function') renderTableSocio();
     if(typeof renderChartsSocio === 'function') renderChartsSocio();
     if(typeof renderTableSeg === 'function') renderTableSeg();
     if(typeof renderChartsSeg === 'function') renderChartsSeg();
+    if(typeof renderClienteBars === 'function') renderClienteBars();
     if(typeof _renderAtsHistorial === 'function') _renderAtsHistorial();
-    _supaLog('✅ Datos remotos cargados');
+    _supaLog('✅ Datos remotos cargados y render actualizado');
   } catch(e) {
     _supaLog('⚠ Error auto-load: ' + e.message, true);
   }
@@ -2206,27 +2222,82 @@ function unsubscribeRealtime() {
   _supaChannels = [];
 }
 
-setTimeout(function(){
+// ═══════════════════════════════════════════════════════════════
+//  AUTO-INIT SUPABASE (corregido)
+//  - Conecta al cargar la pagina
+//  - Si hay datos en Supabase: los usa (REEMPLAZA los hardcoded)
+//  - Si Supabase esta vacio: hace seed con los datos hardcoded
+//  - Activa realtime para sincronizacion entre dispositivos
+// ═══════════════════════════════════════════════════════════════
+setTimeout(async function(){
   initSupabase();
-  if(supaEnabled) {
-    _supaLog('Inicializando Supabase: ' + SUPABASE_URL);
-    // Silent test
-    supa.from('staff').select('no', { count: 'exact', head: true }).then(function(res){
-      if(res.error) {
-        _supaLog('\u26A0 Error inicial: ' + res.error.message, true);
-      } else {
-        _supaLog('\u2705 Conexion verificada. ' + (res.count || 0) + ' registros remotos');
-      }
-    });
-  } else {
-    _supaLog('Supabase no configurado. Click en boton circular para configurar.');
+  if(!supaEnabled){
+    _supaLog('Supabase no configurado. Usando datos locales.');
+    return;
   }
-}, 500);
+  _supaLog('Inicializando Supabase: ' + SUPABASE_URL);
+
+  try {
+    // 1. Verificar conexion contando registros en staff
+    var probe = await supa.from('staff').select('no', { count: 'exact', head: true });
+    if(probe.error){
+      var msg = probe.error.message || '';
+      if(msg.indexOf('does not exist')>=0 || msg.indexOf('42P01')>=0){
+        _supaLog('\u26A0 Las tablas no existen. Click en SQL para crearlas.', true);
+      } else {
+        _supaLog('\u26A0 Error de conexion: ' + msg, true);
+      }
+      return;
+    }
+
+    var remoteCount = probe.count || 0;
+    _supaLog('\u2705 Conexion OK. ' + remoteCount + ' registros remotos en staff');
+
+    if(remoteCount === 0){
+      // ── SEED inicial: subir los datos hardcoded a Supabase ──
+      _supaLog('Primera vez detectada. Subiendo datos iniciales a Supabase...');
+      var seedOk = 0, seedErr = 0;
+
+      // Subir staff (filtrando filas vacias)
+      var staffSeed = STAFF_DATA.filter(function(s){
+        return s.no && String(s.no).trim() && s.nombres && s.nombres.trim();
+      });
+      if(staffSeed.length){
+        var rs = await supa.from('staff').upsert(staffSeed, { onConflict: 'no' });
+        if(rs.error){ seedErr++; _supaLog('Error seed staff: '+rs.error.message, true); }
+        else { seedOk += staffSeed.length; }
+      }
+
+      // Subir projects
+      var projSeed = PROJECTS_DATA.filter(function(p){ return p.id && String(p.id).trim(); });
+      if(projSeed.length){
+        var rp = await supa.from('projects').upsert(projSeed, { onConflict: 'id' });
+        if(rp.error){ seedErr++; _supaLog('Error seed projects: '+rp.error.message, true); }
+        else { seedOk += projSeed.length; }
+      }
+
+      _supaLog('\u2705 Seed completo: ' + seedOk + ' registros subidos' + (seedErr ? ' ('+seedErr+' errores)' : ''));
+    } else {
+      // ── Cargar datos existentes desde Supabase (REEMPLAZA los hardcoded) ──
+      await _autoLoadOnStart();
+    }
+
+    // 2. Activar realtime para sincronizacion entre dispositivos
+    subscribeRealtime();
+
+  } catch(e){
+    _supaLog('\u274c Error en init: ' + e.message, true);
+  }
+}, 600);
 
 
 let sessionTimers = {};
 let currentDeleteFn = null;
 let currentLockModule = null;
+// NOTA: staffData y projectsData arrancan con los datos hardcoded como
+// FALLBACK inicial (render inmediato). Apenas Supabase responda (~600ms),
+// _autoLoadOnStart() reemplaza estos arrays con los datos remotos o hace
+// seed si la BD esta vacia. Esto evita pantalla en blanco mientras conecta.
 let staffData = [...STAFF_DATA];
 let projectsData = [...PROJECTS_DATA];
 let charts = {};
