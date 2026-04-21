@@ -2158,6 +2158,7 @@ async function _autoLoadOnStart() {
     if(typeof renderChartsSeg === 'function') renderChartsSeg();
     if(typeof renderClienteBars === 'function') renderClienteBars();
     if(typeof _renderAtsHistorial === 'function') _renderAtsHistorial();
+    if(typeof renderAGT === 'function') { try { renderAGT(); } catch(e){} }
     _supaLog('✅ Datos remotos cargados y render actualizado');
   } catch(e) {
     _supaLog('⚠ Error auto-load: ' + e.message, true);
@@ -2859,12 +2860,15 @@ function trimRapidoAnual() {
 }
 
 function trimRapidoPendientes() {
-  // Show projects with incomplete indicators
-  var data = BASE_DATA.filter(function(b){
-    return b.indicadores.some(function(i){ return i.resultado === null; });
+  // Show projects with incomplete indicators (incluyendo los de projectsData que aun no tienen AGT)
+  var data = _mergedBaseAGT().filter(function(b){
+    return b._pendiente || (b.indicadores && b.indicadores.some(function(i){ return i.resultado === null; }));
   });
   if(!data.length){ alert('No hay proyectos con indicadores pendientes.'); return; }
   var list = data.map(function(b){
+    if(b._pendiente) {
+      return b.proyecto.slice(0,30) + ' (sin evaluación técnica)';
+    }
     var pend = b.indicadores.filter(function(i){ return i.resultado===null; }).length;
     return b.proyecto.slice(0,30) + ' (' + pend + ' ind. pendientes)';
   });
@@ -4123,6 +4127,8 @@ function addProjectRecord() {
   if(typeof renderClienteBars === 'function') renderClienteBars();
   if(typeof _buildYearFilterButtons === 'function') _buildYearFilterButtons();
   if(typeof _buildAgtYearButtons === 'function') _buildAgtYearButtons();
+  // Refrescar AGT para que el proyecto nuevo aparezca alli tambien
+  if(typeof renderAGT === 'function') { try { renderAGT(); } catch(e){} }
 
   // Feedback visible del exito
   var btn = document.querySelector('button.btn-main[onclick*="addProjectRecord"]');
@@ -4735,9 +4741,46 @@ function _getProjTrim(b) {
   return 0;
 }
 
+// Combina BASE_DATA (evaluaciones AGT historicas) con los proyectos de projectsData
+// que aun no tienen registro en BASE_DATA. Los nuevos se muestran como "pendiente"
+// (sin indicadores evaluados) para que aparezcan en el AGT automaticamente.
+function _mergedBaseAGT() {
+  // Indice rapido de los codigos ya presentes en BASE_DATA (normalizados)
+  var normalizar = function(s){ return String(s||'').toUpperCase().replace(/\s+/g,'').split('/')[0].trim(); };
+  var codigosExistentes = {};
+  (BASE_DATA||[]).forEach(function(b){
+    var k = normalizar(b.proyecto);
+    if(k) codigosExistentes[k] = true;
+  });
+
+  // Proyectos de projectsData que no estan aun en BASE_DATA
+  var pendientes = [];
+  (typeof projectsData !== 'undefined' ? projectsData : []).forEach(function(p){
+    if(!p.id) return;
+    var k = normalizar(p.id);
+    if(codigosExistentes[k]) return; // ya tiene evaluacion AGT
+    // Construir registro AGT "pendiente" usando datos del proyecto
+    pendientes.push({
+      proyecto:  p.id,
+      evaluador: '',                     // sin asignar aun
+      cargo:     '',
+      fecha:     p.inicio || p.fin || '',// usar inicio como fecha de referencia
+      analisis:  'Proyecto registrado en Seguimiento. Pendiente de evaluación técnica.',
+      obs_ind:   '',
+      cliente:   p.cliente || '',
+      objeto:    p.objeto  || '',
+      indicadores: [],                   // sin indicadores aun
+      _pendiente: true                   // marcador para distinguir en UI
+    });
+    codigosExistentes[k] = true;
+  });
+
+  return (BASE_DATA||[]).concat(pendientes);
+}
+
 function _filteredAGT(searchFilter) {
   searchFilter = (searchFilter || '').toLowerCase();
-  return BASE_DATA.filter(function(b) {
+  return _mergedBaseAGT().filter(function(b) {
     var year  = _getProjYear(b);
     var trim  = _getProjTrim(b);
     var matchY = !agtYearFilter || year === agtYearFilter;
@@ -4818,10 +4861,11 @@ function _renderAGTCharts(data) {
   });
   yearsSet.add(String(new Date().getFullYear()));
   var years = Array.from(yearsSet).filter(function(y){ return /^\d{4}$/.test(y); }).sort();
+  var mergedAGT = _mergedBaseAGT();
   var pctByYear = years.map(function(y){
-    var yData = BASE_DATA.filter(function(b){ return _getProjYear(b) === y; });
+    var yData = mergedAGT.filter(function(b){ return _getProjYear(b) === y; });
     if(!yData.length) return null;
-    var allI = []; yData.forEach(function(b){ allI = allI.concat(b.indicadores.filter(function(i){ return i.resultado!==null; })); });
+    var allI = []; yData.forEach(function(b){ allI = allI.concat((b.indicadores||[]).filter(function(i){ return i.resultado!==null; })); });
     return allI.length ? Math.round(allI.filter(function(i){return i.cumple;}).length/allI.length*100) : null;
   });
   if(charts['chart-agt-anual']) charts['chart-agt-anual'].destroy();
@@ -4963,31 +5007,40 @@ function renderIndTable(searchFilter) {
   var tbody = document.getElementById('tbody-ind');
   if (!tbody) return;
   var sub = document.getElementById('agt-tabla-sub');
-  if (sub) sub.textContent = 'Mostrando ' + data.length + ' de ' + BASE_DATA.length + ' proyectos evaluados';
+  if (sub) sub.textContent = 'Mostrando ' + data.length + ' de ' + _mergedBaseAGT().length + ' proyectos';
 
   tbody.innerHTML = data.map(function(b) {
     var r = projectsData.find(function(p){ return p.id === b.proyecto || b.proyecto.indexOf(p.id.split('/')[0].trim()) >= 0; });
-    var total = b.indicadores.length;
-    var ok = b.indicadores.filter(function(i){ return i.cumple; }).length;
+    var total = (b.indicadores||[]).length;
+    var ok = (b.indicadores||[]).filter(function(i){ return i.cumple; }).length;
     var pct = total ? Math.round(ok/total*100) : 0;
     var color = pct>=80 ? 'var(--success)' : pct>=60 ? 'var(--warn)' : 'var(--danger)';
     var sid = b.proyecto.replace(/'/g,'');
     var year = _getProjYear(b);
     var trim = _getProjTrim(b);
-    var estadoBadge = pct>=80
-      ? '<span style="background:rgba(5,150,105,0.1);color:var(--success);padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700">Cumple</span>'
-      : pct>=60
-      ? '<span style="background:rgba(217,119,6,0.1);color:var(--warn);padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700">Seguim.</span>'
-      : '<span style="background:rgba(220,38,38,0.08);color:var(--danger);padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700">Critico</span>';
-    return '<tr>' +
+    // Proyecto nuevo sin evaluación técnica aún
+    var estadoBadge;
+    if (b._pendiente) {
+      estadoBadge = '<span style="background:rgba(59,130,246,0.1);color:#2563EB;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700">⏳ Pendiente</span>';
+    } else if (pct>=80) {
+      estadoBadge = '<span style="background:rgba(5,150,105,0.1);color:var(--success);padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700">Cumple</span>';
+    } else if (pct>=60) {
+      estadoBadge = '<span style="background:rgba(217,119,6,0.1);color:var(--warn);padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700">Seguim.</span>';
+    } else {
+      estadoBadge = '<span style="background:rgba(220,38,38,0.08);color:var(--danger);padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700">Critico</span>';
+    }
+    // Fila con tinte azul suave si es pendiente
+    var rowStyle = b._pendiente ? ' style="background:rgba(59,130,246,0.04)"' : '';
+    var evaluadorTxt = b._pendiente ? '<span style="color:#2563EB;font-style:italic;font-size:10px">Sin asignar</span>' : (b.evaluador||'-').split(' ').slice(0,3).join(' ');
+    return '<tr'+rowStyle+'>' +
       '<td style="font-family:monospace;font-size:11px">' + b.proyecto.slice(0,28) + '</td>' +
-      '<td style="font-size:11px">' + (r ? r.cliente.slice(0,22) : '-') + '</td>' +
+      '<td style="font-size:11px">' + (r ? r.cliente.slice(0,22) : (b.cliente||'-').slice(0,22)) + '</td>' +
       '<td style="font-size:11px;text-align:center">' + (year||'-') + '</td>' +
       '<td style="font-size:11px;text-align:center">' + (trim ? 'T'+trim : '-') + '</td>' +
-      '<td style="font-size:11px">' + (b.evaluador||'-').split(' ').slice(0,3).join(' ') + '</td>' +
+      '<td style="font-size:11px">' + evaluadorTxt + '</td>' +
       '<td style="font-family:monospace;text-align:center">' + total + '</td>' +
-      '<td style="font-weight:700;color:'+color+';text-align:center">' + ok + '/' + total + '</td>' +
-      '<td style="text-align:center"><div style="background:var(--gray4);border-radius:3px;height:7px;width:72px;display:inline-block;overflow:hidden"><div style="background:'+color+';height:100%;width:'+pct+'%"></div></div> <span style="font-size:10px;color:'+color+'">'+pct+'%</span></td>' +
+      '<td style="font-weight:700;color:'+color+';text-align:center">' + (b._pendiente ? '—' : ok + '/' + total) + '</td>' +
+      '<td style="text-align:center"><div style="background:var(--gray4);border-radius:3px;height:7px;width:72px;display:inline-block;overflow:hidden"><div style="background:'+color+';height:100%;width:'+pct+'%"></div></div> <span style="font-size:10px;color:'+color+'">'+(b._pendiente ? '—' : pct+'%')+'</span></td>' +
       '<td>' + estadoBadge + '</td>' +
       '<td style="white-space:nowrap">'+
         '<button class="btn-edit" onclick="event.stopPropagation();irAProyecto(\''+sid+'\')" style="font-size:10px">Ver proyecto</button>'+
