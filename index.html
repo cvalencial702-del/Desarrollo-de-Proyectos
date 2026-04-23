@@ -836,7 +836,7 @@ tr:hover td { background: #F0F7FF; }
             <div class="form-section">Ingreso y tiempo en la empresa</div>
             <div class="form-row-3">
               <div class="form-group"><label class="form-label">Fecha de ingreso</label><input class="form-input" id="s-fingreso" type="date" onchange="calcTiempoAuto()"></div>
-              <div class="form-group"><label class="form-label">Tiempo en empresa (auto)</label><input class="form-input auto-field" id="s-anosorg" placeholder="Se calcula solo" readonly></div>
+              <div class="form-group"><label class="form-label">Años en la empresa (auto)</label><input class="form-input auto-field" id="s-anosorg" placeholder="Se calcula solo" readonly></div>
               <div class="form-group"><label class="form-label">Fecha de retiro</label><input class="form-input" id="s-fretiro" type="date"></div>
             </div>
             <div class="form-section">Emergencias y contacto</div>
@@ -879,7 +879,7 @@ tr:hover td { background: #F0F7FF; }
           <button class="tab-btn"        id="tab-inactivo" onclick="setTab('INACTIVO')">Inactivos</button>
         </div>
         <div class="filter-row">
-          <input class="search-input" id="search-socio" placeholder="Buscar por nombre, cargo, area..." oninput="filterSocioTable()">
+          <input class="search-input" id="search-socio" placeholder="Buscar por nombre, cédula, cargo, área, EPS..." oninput="filterSocioTable()">
           <select class="form-input" id="filter-area" onchange="filterSocioTable()" style="max-width:160px">
             <option value="">Todas las areas</option>
             <option>TECNICA</option>
@@ -890,7 +890,7 @@ tr:hover td { background: #F0F7FF; }
           <table id="table-socio">
             <thead><tr>
               <th>Nombre</th><th>Cargo</th><th>Area</th><th>Sexo</th>
-              <th>Edad</th><th>Anos</th><th>Estado</th><th>Ficha</th>
+              <th>Edad</th><th>Años</th><th>Estado</th><th>Ficha</th>
               <th id="th-actions" style="display:none">Editar/Borrar</th>
             </tr></thead>
             <tbody id="tbody-socio"></tbody>
@@ -1950,10 +1950,18 @@ async function loadFromSupabase() {
   try {
     var r1 = await supa.from('staff').select('*');
     if(!r1.error && r1.data && r1.data.length) {
-      staffData = r1.data;
+      // ✅ FIX: filtrar corruptos y actualizar referencia global
+      var cleanLoad = r1.data.filter(function(s){
+        return s.nombres && String(s.nombres).trim() &&
+               s.no && String(s.no).trim() &&
+               (s.edad === undefined || s.edad === null || Number(s.edad) < 110) &&
+               (s.anos_org === undefined || s.anos_org === null || Number(s.anos_org) < 80);
+      });
+      staffData = cleanLoad;
+      window._staffDataGlobal = cleanLoad;
       if(typeof STAFF_DATA !== 'undefined') {
         STAFF_DATA.length = 0;
-        r1.data.forEach(function(x){ STAFF_DATA.push(x); });
+        cleanLoad.forEach(function(x){ STAFF_DATA.push(x); });
       }
     }
     _showSupaStatus('Cargando proyectos...');
@@ -2126,12 +2134,20 @@ async function _autoLoadOnStart() {
     // Staff: reemplazar siempre si hay datos (>=1 registro)
     var r1 = await supa.from('staff').select('*');
     if(!r1.error && r1.data && r1.data.length) {
-      staffData = r1.data;
+      // ✅ FIX: filtrar corruptos al cargar de Supabase
+      var cleanStaff = r1.data.filter(function(s){
+        return s.nombres && String(s.nombres).trim() &&
+               s.no && String(s.no).trim() &&
+               (s.edad === undefined || s.edad === null || Number(s.edad) < 110) &&
+               (s.anos_org === undefined || s.anos_org === null || Number(s.anos_org) < 80);
+      });
+      staffData = cleanStaff;
+      window._staffDataGlobal = cleanStaff;
       if(typeof STAFF_DATA !== 'undefined') {
         STAFF_DATA.length = 0;
-        r1.data.forEach(function(x){ STAFF_DATA.push(x); });
+        cleanStaff.forEach(function(x){ STAFF_DATA.push(x); });
       }
-      _supaLog('  staff: ' + r1.data.length + ' registros');
+      _supaLog('  staff: ' + cleanStaff.length + ' registros validos (de ' + r1.data.length + ')');
     }
 
     // Projects: idem
@@ -2339,7 +2355,15 @@ let currentLockModule = null;
 // FALLBACK inicial (render inmediato). Apenas Supabase responda (~600ms),
 // _autoLoadOnStart() reemplaza estos arrays con los datos remotos o hace
 // seed si la BD esta vacia. Esto evita pantalla en blanco mientras conecta.
-let staffData = [...STAFF_DATA];
+// ✅ FIX: Filtrar filas vacías/corruptas al inicio (edad>110, anos_org>80, sin nombre)
+let staffData = STAFF_DATA.filter(function(s){
+  return s.nombres && String(s.nombres).trim() &&
+         s.no && String(s.no).trim() &&
+         (s.edad === undefined || s.edad === null || Number(s.edad) < 110) &&
+         (s.anos_org === undefined || s.anos_org === null || Number(s.anos_org) < 80);
+});
+// Exponer globalmente para que renderChartsSocio pueda acceder sin riesgo de scope
+window._staffDataGlobal = staffData;
 let projectsData = [...PROJECTS_DATA];
 let charts = {};
 
@@ -2574,12 +2598,21 @@ function renderTableSocio() {
   var q      = ((document.getElementById('search-socio')||{}).value||'').toLowerCase().trim();
   var area   = (document.getElementById('filter-area')||{}).value || '';
 
+  // ✅ FIX: filtrar filas corruptas (sin nombre, sin cédula, edad absurda)
   var data = staffData.filter(function(s){
-    if (!s.nombres || !s.nombres.trim()) return false;
+    if (!s.nombres || !String(s.nombres).trim()) return false;
+    if (!s.no || !String(s.no).trim()) return false;
+    if (s.edad !== undefined && s.edad !== null && Number(s.edad) >= 110) return false;
+    if (s.anos_org !== undefined && s.anos_org !== null && Number(s.anos_org) >= 80) return false;
     if (currentSocioTab !== 'TODOS' && s.estado !== currentSocioTab) return false;
     if (area && s.area !== area) return false;
     if (q) {
-      var hay = (s.nombres+' '+s.apellidos+' '+s.cargo+' '+(s.area||'')).toLowerCase();
+      // ✅ FIX: búsqueda ampliada — nombre, apellidos, cargo, área, cédula, vinculación, EPS, lugar
+      var hay = [
+        s.nombres || '', s.apellidos || '', s.cargo || '',
+        s.area || '', s.cc || '', s.vinculacion || '',
+        s.eps || '', s.lugar || ''
+      ].join(' ').toLowerCase();
       if (!hay.includes(q)) return false;
     }
     return true;
@@ -2598,7 +2631,17 @@ function renderTableSocio() {
     var actTxt = s.estado || '-';
     var nombre = (s.apellidos ? s.apellidos + ', ' : '') + (s.nombres || '');
     var edad   = s.edad ? Math.round(s.edad) : '-';
-    var anos   = s.anos_org ? s.anos_org.toFixed(1) : '-';
+    // ✅ FIX: calcular años dinámicamente desde fecha_ingreso si anos_org es 0/vacío/null
+    var _anosVal = (s.anos_org !== null && s.anos_org !== undefined && s.anos_org !== '') ? parseFloat(s.anos_org) : NaN;
+    if (isNaN(_anosVal) || _anosVal === 0) {
+      if (s.fecha_ingreso) {
+        var _dIng = new Date(s.fecha_ingreso);
+        if (!isNaN(_dIng.getTime())) {
+          _anosVal = (new Date() - _dIng) / (365.25 * 24 * 3600 * 1000);
+        }
+      }
+    }
+    var anos   = (!isNaN(_anosVal) && _anosVal > 0) ? _anosVal.toFixed(1) : '-';
     var sid    = String(s.no);
     return '<tr>' +
       '<td style="font-size:12px;font-weight:600">' + nombre + '</td>' +
@@ -2615,8 +2658,15 @@ function renderTableSocio() {
 }
 
 function renderChartsSocio() {
-  // Filter out blank/garbage rows (no nombre, or absurd ages)
-  staffData = STAFF_DATA.filter(function(s){ return s.nombres && s.nombres.trim() && s.edad < 110 && s.anos_org < 60; });
+  // ✅ FIX: NO sobreescribir staffData global (perdería datos de Supabase)
+  // Usar variable con nombre diferente para el scope local
+  var _srcData = window._staffDataGlobal || (typeof staffData !== 'undefined' ? staffData : null) || STAFF_DATA;
+  var staffData = _srcData.filter(function(s){
+    return s.nombres && String(s.nombres).trim() &&
+           s.no && String(s.no).trim() &&
+           (s.edad === undefined || s.edad === null || Number(s.edad) < 110) &&
+           (s.anos_org === undefined || s.anos_org === null || Number(s.anos_org) < 80);
+  });
 
   const active = staffData.filter(s => s.estado === 'ACTIVO');
   const count = (arr, key) => arr.reduce((a, r) => { a[r[key]] = (a[r[key]] || 0) + 1; return a; }, {});
@@ -2626,7 +2676,17 @@ function renderChartsSocio() {
   const totalActivo = active.length;
   const totalInact  = totalAll - totalActivo;
   const edadProm  = active.length ? (active.reduce((s,r)=>s+r.edad,0)/active.length).toFixed(1) : 0;
-  const anosProm  = active.length ? (active.reduce((s,r)=>s+r.anos_org,0)/active.length).toFixed(1) : 0;
+  // ✅ FIX: calcular años con parseFloat y fallback a fecha_ingreso cuando anos_org es 0/null/string
+  function _getAnos(r) {
+    var v = parseFloat(r.anos_org);
+    if (!isNaN(v) && v > 0) return v;
+    if (r.fecha_ingreso) {
+      var d = new Date(r.fecha_ingreso);
+      if (!isNaN(d.getTime())) return (new Date() - d) / (365.25 * 24 * 3600 * 1000);
+    }
+    return 0;
+  }
+  const anosProm  = active.length ? (active.reduce((s,r)=>s+_getAnos(r),0)/active.length).toFixed(1) : 0;
   const postgPct  = active.length ? Math.round(active.filter(r=>r.escolaridad==='POSTGRADO'||r.escolaridad==='MAESTRIA').length/active.length*100) : 0;
 
   var el;
@@ -2687,10 +2747,10 @@ function renderChartsSocio() {
   const area = count(active, 'area');
   mkChart('chart-area', 'pie', Object.keys(area), Object.values(area), ['#2DA67A','#FF6B35'], { plugins: { legend: { display: true, position: 'bottom', labels: { font: { size: 11 }, padding: 12 } } } });
 
-  // Tiempo org
+  // Tiempo org — ✅ FIX: usar _getAnos para manejar null/string/0 con fallback a fecha_ingreso
   const timeGroups = { '< 2 años': 0, '2-5 años': 0, '5-10 años': 0, '10-20 años': 0, '20+ años': 0 };
   active.forEach(r => {
-    const y = r.anos_org;
+    const y = _getAnos(r);
     if (y < 2) timeGroups['< 2 años']++;
     else if (y < 5) timeGroups['2-5 años']++;
     else if (y < 10) timeGroups['5-10 años']++;
@@ -4280,6 +4340,12 @@ function _openFichaModal(id, r, focusIndicadores) {
   document.getElementById('fp-cargo-eval').value   = saved ? (saved.cargo||'')     : (baseRec ? baseRec.cargo     : '');
   document.getElementById('fp-fecha-eval').value   = saved ? (saved.fecha||'')     : (baseRec ? baseRec.fecha     : '');
 
+  // ✅ FIX: Conectar campos de texto al autoSave
+  ['fp-evaluador','fp-cargo-eval','fp-fecha-eval','fp-analisis','fp-tipo-proceso'].forEach(function(fid){
+    var el = document.getElementById(fid);
+    if (el) { el.oninput = _scheduleAutoSave; el.onchange = _scheduleAutoSave; }
+  });
+
   // ?? Analisis ??
   var analisisVal = saved ? (saved.analisis||'') : (baseRec ? baseRec.analisis : '');
   document.getElementById('fp-analisis').value = analisisVal || '';
@@ -4438,6 +4504,33 @@ function addIndicadorRow() {
   _buildIndicadorRows(currentFichaProjId, saved, baseRec);
 }
 
+// ✅ FIX: Guardado automático con debounce — se dispara 800ms después del último cambio
+var _autoSaveTimer = null;
+function _scheduleAutoSave() {
+  if (_autoSaveTimer) clearTimeout(_autoSaveTimer);
+  _autoSaveTimer = setTimeout(function() {
+    saveFichaState();
+    // Guardar en Supabase si está conectado
+    if (typeof supaEnabled !== 'undefined' && supaEnabled && currentFichaProjId) {
+      var saved = fichaEditData[currentFichaProjId];
+      if (saved) {
+        var record = Object.assign({}, saved, { id: currentFichaProjId });
+        if (typeof supaUpsert === 'function') {
+          supaUpsert('ficha_proyectos', record, 'id').catch(function(){});
+        }
+      }
+    }
+    // Indicador visual de guardado
+    var badge = document.getElementById('autosave-badge');
+    if (badge) {
+      badge.textContent = '✔ Guardado';
+      badge.style.color = '#1A6B50';
+      badge.style.opacity = '1';
+      setTimeout(function(){ badge.style.opacity = '0'; }, 2000);
+    }
+  }, 800);
+}
+
 function recalcInd(i) {
   var vA  = parseFloat(document.getElementById('ind-varA-' + i).value);
   var vB  = parseFloat(document.getElementById('ind-varB-' + i).value);
@@ -4455,6 +4548,7 @@ function recalcInd(i) {
     resEl.textContent = '-'; resEl.style.color = '#999'; resEl.style.borderLeft = '';
     stEl.textContent = '-'; stEl.style.color = '#999';
     rowEl.style.background = '';
+    _scheduleAutoSave(); // ✅ FIX: guardar aunque esté incompleto
     return;
   }
   var res = vA / vB;
@@ -4467,6 +4561,7 @@ function recalcInd(i) {
   stEl.textContent = cumple ? 'CUMPLE' : 'NO CUMPLE';
   stEl.style.color = cumple ? '#1A6B50' : '#E53935';
   rowEl.style.background = cumple ? 'rgba(45,166,122,0.08)' : 'rgba(229,57,53,0.06)';
+  _scheduleAutoSave(); // ✅ FIX: guardado automático al cambiar valores
 }
 
 // ?? Auto analysis ????????????????????????????????????????????????
@@ -4637,7 +4732,7 @@ function downloadFichaProyecto() {
   el.querySelectorAll('.no-print').forEach(function(np){ np.style.display='none'; });
 
   html2canvas(el, {scale:2, backgroundColor:'#ffffff', useCORS:true,
-                   windowWidth:900, scrollX:0, scrollY:0}).then(function(canvas) {
+                   windowWidth:1100, scrollX:0, scrollY:0}).then(function(canvas) {
 
     // Restore all
     replacements.forEach(function(item) {
@@ -4647,25 +4742,37 @@ function downloadFichaProyecto() {
     el.querySelectorAll('.no-print').forEach(function(np){ np.style.display=''; });
 
     try {
-      var {jsPDF} = window.jspdf;
-      var doc = new jsPDF({orientation:'p', unit:'mm', format:'a4'});
-      var pw = doc.internal.pageSize.getWidth();
-      var ph = doc.internal.pageSize.getHeight();
+      var _jsPDF = window.jspdf && window.jspdf.jsPDF;
+      if (!_jsPDF) throw new Error('jsPDF no disponible');
+      var doc = new _jsPDF({orientation:'p', unit:'mm', format:'a4'});
+      var pw = doc.internal.pageSize.getWidth();   // 210mm
+      var ph = doc.internal.pageSize.getHeight();  // 297mm
       var margin = 8;
       var iw = pw - margin * 2;
-      var ih = (canvas.height / canvas.width) * iw;
       var pageH = ph - margin * 2;
 
-      if (ih <= pageH) {
-        doc.addImage(canvas.toDataURL('image/jpeg',0.93), 'JPEG', margin, margin, iw, ih);
-      } else {
-        var totalPages = Math.ceil(ih / pageH);
-        for (var pg = 0; pg < totalPages; pg++) {
-          if (pg > 0) doc.addPage();
-          doc.addImage(canvas.toDataURL('image/jpeg',0.93), 'JPEG',
-            margin, margin - pg * pageH, iw, ih);
-        }
+      // Escala: pixeles canvas -> mm en el PDF
+      var scale = iw / canvas.width;
+      var pageHpx = Math.floor(pageH / scale);     // alto de pagina en pixeles canvas
+
+      var totalPages = Math.ceil(canvas.height / pageHpx);
+
+      for (var pg = 0; pg < totalPages; pg++) {
+        if (pg > 0) doc.addPage();
+
+        // Recortar slice del canvas para esta pagina (sin desbordamiento)
+        var srcY  = pg * pageHpx;
+        var srcH  = Math.min(pageHpx, canvas.height - srcY);
+
+        var slice  = document.createElement('canvas');
+        slice.width  = canvas.width;
+        slice.height = srcH;
+        slice.getContext('2d').drawImage(canvas, 0, srcY, canvas.width, srcH, 0, 0, canvas.width, srcH);
+
+        var sliceH = srcH * scale;
+        doc.addImage(slice.toDataURL('image/jpeg', 0.93), 'JPEG', margin, margin, iw, sliceH);
       }
+
       var pid = (currentFichaProjId || 'proyecto').replace(/[\/\s]+/g,'_');
       doc.save('Registro_' + pid + '.pdf');
     } catch(e) { alert('Error PDF: ' + e.message); }
@@ -4723,22 +4830,26 @@ function _buildAgtYearButtons() {
 }
 
 function _getProjYear(b) {
-  // Try to get year from BASE_DATA fecha or from projectsData
+  // ✅ FIX: usar fecha de FIN del proyecto (cierre real), luego inicio, luego fecha evaluación
+  var r = (typeof projectsData !== 'undefined' ? projectsData : []).find(function(p){
+    return p.id === b.proyecto || b.proyecto.indexOf(p.id.split('/')[0].trim()) >= 0;
+  });
+  if (r && r.fin   && r.fin.length   >= 4) return r.fin.slice(0,4);
+  if (r && r.inicio && r.inicio.length >= 4) return r.inicio.slice(0,4);
   if (b.fecha && b.fecha.length >= 4) return b.fecha.slice(0,4);
-  var r = projectsData.find(function(p){ return p.id === b.proyecto || b.proyecto.indexOf(p.id.split('/')[0].trim()) >= 0; });
-  return r && r.inicio ? r.inicio.slice(0,4) : '';
+  return '';
 }
 function _getProjTrim(b) {
-  var r = projectsData.find(function(p){ return p.id === b.proyecto || b.proyecto.indexOf(p.id.split('/')[0].trim()) >= 0; });
-  if (r && r.inicio) {
-    var m = parseInt(r.inicio.slice(5,7));
-    return m<=3?1:m<=6?2:m<=9?3:4;
-  }
-  if (b.fecha && b.fecha.length >= 7) {
-    var m2 = parseInt(b.fecha.slice(5,7));
-    return m2<=3?1:m2<=6?2:m2<=9?3:4;
-  }
-  return 0;
+  // ✅ FIX: trimestre basado en mes de FIN del proyecto
+  var r = (typeof projectsData !== 'undefined' ? projectsData : []).find(function(p){
+    return p.id === b.proyecto || b.proyecto.indexOf(p.id.split('/')[0].trim()) >= 0;
+  });
+  var dateStr = (r && r.fin   && r.fin.length   >= 7) ? r.fin   :
+                (r && r.inicio && r.inicio.length >= 7) ? r.inicio :
+                (b.fecha && b.fecha.length >= 7)        ? b.fecha  : '';
+  if (!dateStr) return 0;
+  var m = parseInt(dateStr.slice(5,7));
+  return m<=3?1:m<=6?2:m<=9?3:4;
 }
 
 // Combina BASE_DATA (evaluaciones AGT historicas) con los proyectos de projectsData
@@ -5191,21 +5302,29 @@ function generarReportePDF() {
   document.body.appendChild(container);
   var el = container.querySelector('#agt-report-print');
 
-  html2canvas(el, {scale:2, backgroundColor:'#ffffff', useCORS:true, windowWidth:900}).then(function(canvas) {
+  html2canvas(el, {scale:2, backgroundColor:'#ffffff', useCORS:true, windowWidth:1100}).then(function(canvas) {
     document.body.removeChild(container);
     try {
-      var {jsPDF} = window.jspdf;
-      var doc = new jsPDF({orientation:'p', unit:'mm', format:'a4'});
+      var _jsPDF2 = window.jspdf && window.jspdf.jsPDF;
+      if (!_jsPDF2) throw new Error('jsPDF no disponible');
+      var doc = new _jsPDF2({orientation:'p', unit:'mm', format:'a4'});
       var pw = doc.internal.pageSize.getWidth();
       var ph = doc.internal.pageSize.getHeight();
       var mg = 8;
       var iw = pw - mg*2;
-      var ih = (canvas.height/canvas.width)*iw;
       var pageH = ph - mg*2;
-      var totalPg = Math.ceil(ih/pageH);
+      var scale2 = iw / canvas.width;
+      var pageHpx2 = Math.floor(pageH / scale2);
+      var totalPg = Math.ceil(canvas.height / pageHpx2);
       for(var pg=0;pg<totalPg;pg++){
         if(pg>0) doc.addPage();
-        doc.addImage(canvas.toDataURL('image/jpeg',0.93),'JPEG',mg,mg-(pg*pageH),iw,ih);
+        var srcY2  = pg * pageHpx2;
+        var srcH2  = Math.min(pageHpx2, canvas.height - srcY2);
+        var slice2  = document.createElement('canvas');
+        slice2.width  = canvas.width;
+        slice2.height = srcH2;
+        slice2.getContext('2d').drawImage(canvas, 0, srcY2, canvas.width, srcH2, 0, 0, canvas.width, srcH2);
+        doc.addImage(slice2.toDataURL('image/jpeg',0.93),'JPEG',mg,mg,iw,srcH2*scale2);
       }
       var pfx = agtYearFilter ? ('_'+agtYearFilter+(agtTrimFilter?'_T'+agtTrimFilter:'')) : '';
       doc.save('Analisis_Gerencial'+pfx+'_'+new Date().toISOString().slice(0,10)+'.pdf');
@@ -5427,6 +5546,7 @@ function loadSocioFile(event) {
         };
       });
       staffData = newData;
+      window._staffDataGlobal = newData; // ✅ FIX
       renderChartsSocio();  renderTableSocio();
       alert(`Archivo cargado. ${newData.length} registros importados.`);
     } catch(err) { alert('Error leyendo el archivo: ' + err.message); }
@@ -5658,7 +5778,7 @@ function showFicha(no) {
       '<div class="ficha-grid">' +
         field('Sexo', r.sexo) +
         field('Fecha de nacimiento', r.fecha_nacimiento) +
-        field('Edad', r.edad + ' anos') +
+        field('Edad', r.edad + ' años') +
         field('Estado civil', r.civil) +
         field('Tipo de sangre', r.sangre) +
         field('Personas a cargo', r.personas_cargo) +
@@ -5668,7 +5788,7 @@ function showFicha(no) {
         field('EPS', r.eps) +
         field('Escolaridad', r.escolaridad) +
         field('Fecha de ingreso', r.fecha_ingreso) +
-        field('Tiempo en empresa', r.anos_org + ' anos') +
+        field('Tiempo en empresa', r.anos_org + ' años') +
         field('Turno de trabajo', r.turno||'DIURNO') +
         field('Fecha de retiro', r.fecha_retiro||'N/A') +
       '</div>' +
@@ -5797,7 +5917,7 @@ window.addEventListener('DOMContentLoaded', function() {
     <div class="form-section">Ingreso y tiempo</div>
     <div class="form-row-3">
       <div class="form-group"><label class="form-label">Fecha de ingreso</label><input class="form-input" id="e-fingreso" type="date" onchange="editCalcTiempo()"></div>
-      <div class="form-group"><label class="form-label">Anos en empresa (auto)</label><input class="form-input auto-field" id="e-anosorg" readonly></div>
+      <div class="form-group"><label class="form-label">Años en empresa (auto)</label><input class="form-input auto-field" id="e-anosorg" readonly></div>
       <div class="form-group"><label class="form-label">Fecha de retiro</label><input class="form-input" id="e-fretiro" type="date"></div>
     </div>
     <div class="form-section">Emergencias</div>
@@ -5850,8 +5970,11 @@ window.addEventListener('DOMContentLoaded', function() {
         <div style="font-size:14px;font-weight:700" id="modal-proj-title">Seguimiento a Indicadores</div>
         <div style="font-size:11px;opacity:0.65" id="modal-proj-sub">Proyecto</div>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <!-- ✅ FIX: Badge de guardado automático -->
+        <span id="autosave-badge" style="font-size:11px;color:#6EE7B7;opacity:0;transition:opacity 0.5s;font-family:monospace;margin-right:4px">✔ Guardado</span>
         <button onclick="resetIndicadores()" style="padding:7px 14px;border-radius:8px;background:rgba(255,255,255,0.12);color:rgba(255,255,255,0.85);border:1px solid rgba(255,255,255,0.2);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">Restablecer</button>
+        <button onclick="saveFichaState();alert('Guardado ✔');" style="padding:7px 14px;border-radius:8px;background:rgba(45,166,122,0.85);color:#fff;border:none;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">💾 Guardar</button>
         <button onclick="downloadFichaProyecto()" id="btn-download-proj" style="padding:7px 18px;border-radius:8px;background:#2DA67A;color:#fff;border:none;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">Descargar PDF</button>
         <button onclick="closeFichaProyecto()" style="padding:7px 18px;border-radius:8px;background:rgba(229,57,53,0.85);color:#fff;border:none;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">Cerrar X</button>
       </div>
