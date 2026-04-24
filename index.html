@@ -1877,14 +1877,18 @@ async function supaUpsert(table, record, keyField) {
     var res = await supa.from(table).upsert(clean, { onConflict: keyField }).select();
     supaSaving = false;
     if(res.error) {
-      _showSupaStatus('\u274c Error: ' + res.error.message, true);
+      // ✅ FIX: registrar error en log visible + retornar error para que el llamador lo maneje
+      _supaLog('❌ Error upsert [' + table + ']: ' + res.error.message + ' (código: ' + (res.error.code||'?') + ')', true);
+      _showSupaStatus('❌ Error: ' + res.error.message, true);
       return { error: res.error.message };
     }
-    _showSupaStatus('\u2705 Guardado en Supabase', false, 2000);
+    _supaLog('✅ Guardado [' + table + '] id=' + clean[keyField]);
+    _showSupaStatus('✅ Guardado en Supabase', false, 2000);
     return { data: res.data };
   } catch(e) {
     supaSaving = false;
-    _showSupaStatus('\u274c Error: ' + e.message, true);
+    _supaLog('❌ Excepción [' + table + ']: ' + e.message, true);
+    _showSupaStatus('❌ Error: ' + e.message, true);
     return { error: e.message };
   }
 }
@@ -4196,35 +4200,73 @@ function addProjectRecord() {
     }
   }
 
-  if(typeof supaEnabled !== 'undefined' && supaEnabled) supaUpsert('projects', r, 'id');
-  renderTableSeg(); renderChartsSeg();
-  if(typeof renderClienteBars === 'function') renderClienteBars();
-  if(typeof _buildYearFilterButtons === 'function') _buildYearFilterButtons();
-  if(typeof _buildAgtYearButtons === 'function') _buildAgtYearButtons();
-  // Refrescar AGT para que el proyecto nuevo aparezca alli tambien
-  if(typeof renderAGT === 'function') { try { renderAGT(); } catch(e){} }
-
-  // Feedback visible del exito
+  // ✅ FIX CRÍTICO: guardar en Supabase con await para capturar errores reales
+  // El botón muestra "Guardando..." y solo confirma cuando Supabase responde OK
   var btn = document.querySelector('button.btn-main[onclick*="addProjectRecord"]');
-  if(btn) {
-    btn.textContent = modoEdicion ? '✓ Proyecto actualizado' : '✓ Proyecto guardado';
-    btn.style.background = '#059669';
-    btn.style.color = 'white';
-    setTimeout(function(){
-      btn.textContent = '+ Agregar proyecto';
-      btn.style.background = '';
-      btn.style.color = '';
-    }, 2000);
-  }
-  // Quitar banner de edicion si existia
-  var banner = document.getElementById('edit-banner-proy');
-  if(banner) banner.remove();
+  var modoEdicionLabel = modoEdicion;
 
-  ['p-id','p-cliente','p-objeto','p-duracion','p-inicio','p-otrosi','p-obs'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
-  var fins2 = document.querySelectorAll('.p-fin-row:not(:first-child)');
-  fins2.forEach(function(r){ r.remove(); });
-  var pf1 = document.querySelector('input[name="p-fin[]"]');
-  if(pf1) pf1.value = '';
+  async function _doSave() {
+    if (btn) {
+      btn.textContent = '⏳ Guardando...';
+      btn.disabled = true;
+    }
+
+    if (typeof supaEnabled !== 'undefined' && supaEnabled) {
+      var res = await supaUpsert('projects', r, 'id');
+      if (res && res.error) {
+        // ❌ Error real de Supabase — mostrar al usuario
+        alert('❌ Error al guardar en Supabase:\n' + res.error +
+              '\n\nEl proyecto se guardó localmente pero NO en la base de datos.\nVerifica la conexión o los permisos RLS.');
+        if (btn) {
+          btn.textContent = '⚠ Error al guardar';
+          btn.style.background = '#E53935';
+          btn.style.color = 'white';
+          btn.disabled = false;
+          setTimeout(function(){ btn.textContent = '+ Agregar proyecto'; btn.style.background=''; btn.style.color=''; }, 3000);
+        }
+        // Aun así re-renderizar localmente
+        renderTableSeg(); renderChartsSeg();
+        if(typeof renderClienteBars === 'function') renderClienteBars();
+        if(typeof _buildYearFilterButtons === 'function') _buildYearFilterButtons();
+        if(typeof _buildAgtYearButtons === 'function') _buildAgtYearButtons();
+        if(typeof renderAGT === 'function') { try { renderAGT(); } catch(e){} }
+        return;
+      }
+    }
+
+    // ✅ Guardado exitoso (o sin Supabase) — re-render y feedback
+    renderTableSeg(); renderChartsSeg();
+    if(typeof renderClienteBars === 'function') renderClienteBars();
+    if(typeof _buildYearFilterButtons === 'function') _buildYearFilterButtons();
+    if(typeof _buildAgtYearButtons === 'function') _buildAgtYearButtons();
+    if(typeof renderAGT === 'function') { try { renderAGT(); } catch(e){} }
+
+    if (btn) {
+      btn.textContent = modoEdicionLabel ? '✓ Proyecto actualizado' : '✓ Proyecto guardado';
+      btn.style.background = '#059669';
+      btn.style.color = 'white';
+      btn.disabled = false;
+      setTimeout(function(){
+        btn.textContent = '+ Agregar proyecto';
+        btn.style.background = '';
+        btn.style.color = '';
+      }, 2500);
+    }
+
+    // Quitar banner de edición si existía
+    var banner = document.getElementById('edit-banner-proy');
+    if(banner) banner.remove();
+
+    // Limpiar formulario
+    ['p-id','p-cliente','p-objeto','p-duracion','p-inicio','p-otrosi','p-obs'].forEach(function(fid){
+      var el = document.getElementById(fid); if(el) el.value='';
+    });
+    var fins2 = document.querySelectorAll('.p-fin-row:not(:first-child)');
+    fins2.forEach(function(fr){ fr.remove(); });
+    var pf1 = document.querySelector('input[name="p-fin[]"]');
+    if(pf1) pf1.value = '';
+  }
+  _doSave();
 }
 
 // ===== EDIT PROYECTO =====
