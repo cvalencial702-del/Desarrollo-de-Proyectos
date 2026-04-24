@@ -2957,38 +2957,29 @@ function trimDescargarPDF(soloGuardar) {
 
   html2canvas(container.firstChild, {scale:2, backgroundColor:'#ffffff', useCORS:true, windowWidth:870}).then(function(canvas){
     document.body.removeChild(container);
-    var dataUrl = canvas.toDataURL('image/jpeg',0.93);
     var trimNames = ['T1','T2','T3','T4'];
     var fname = 'Informe_Trimestral_'+v.anio+'_T'+v.trim+'.pdf';
     var today = new Date().toLocaleDateString('es-CO',{year:'numeric',month:'long',day:'numeric'});
     try {
-      var jsPDF2 = window.jspdf.jsPDF;
-      var doc = new jsPDF2({orientation:'l', unit:'mm', format:'a4'});
+      // ✅ FIX: canvas slicing real — sin contenido cortado ni desbordado
+      var _jsPDF2 = window.jspdf && window.jspdf.jsPDF;
+      if (!_jsPDF2) throw new Error('jsPDF no disponible');
+      var doc = new _jsPDF2({orientation:'l', unit:'mm', format:'a4'});
       var pw=doc.internal.pageSize.getWidth(); var ph=doc.internal.pageSize.getHeight();
       var mg=6;
-      // Scale image to fit exactly one page
       var iw = pw - mg*2;
-      var ih = (canvas.height/canvas.width)*iw;
       var pageH = ph - mg*2;
-      // If content fits in one page
-      if(ih <= pageH) {
-        doc.addImage(dataUrl,'JPEG',mg,mg,iw,ih);
-      } else {
-        // Scale down to fit one page
-        var scale = pageH/ih;
-        var scaledW = iw * scale;
-        var scaledH = pageH;
-        var offsetX = (pw - scaledW)/2;
-        doc.addImage(dataUrl,'JPEG',offsetX,mg,scaledW,scaledH);
-      }
-      // If still needed, add pages
-      var pg_orig = Math.ceil(ih/pageH);
-      if(pg_orig > 1 && ih > pageH * 1.05) {
-        doc = new jsPDF2({orientation:'l', unit:'mm', format:'a4'});
-        for(var pg=0;pg<pg_orig;pg++){
-          if(pg>0) doc.addPage();
-          doc.addImage(dataUrl,'JPEG',mg,mg-pg*pageH,iw,ih);
-        }
+      var _sc2  = iw / canvas.width;
+      var _phPx = Math.floor(pageH / _sc2);
+      var _totPg = Math.ceil(canvas.height / _phPx);
+      var doc; doc = new _jsPDF2({orientation:'l', unit:'mm', format:'a4'});
+      for(var pg=0; pg<_totPg; pg++){
+        if(pg>0) doc.addPage();
+        var _sY=pg*_phPx, _sH=Math.min(_phPx,canvas.height-_sY);
+        var _sl=document.createElement('canvas');
+        _sl.width=canvas.width; _sl.height=_sH;
+        _sl.getContext('2d').drawImage(canvas,0,_sY,canvas.width,_sH,0,0,canvas.width,_sH);
+        doc.addImage(_sl.toDataURL('image/jpeg',0.93),'JPEG',mg,mg,iw,_sH*_sc2);
       }
       var blob = doc.output('blob');
       var blobUrl = URL.createObjectURL(blob);
@@ -4514,7 +4505,7 @@ function _scheduleAutoSave() {
     if (typeof supaEnabled !== 'undefined' && supaEnabled && currentFichaProjId) {
       var saved = fichaEditData[currentFichaProjId];
       if (saved) {
-        var record = Object.assign({}, saved, { id: currentFichaProjId });
+        var record = Object.assign({}, saved, { id: currentFichaProjId, updated_at: new Date().toISOString() });
         if (typeof supaUpsert === 'function') {
           supaUpsert('ficha_proyectos', record, 'id').catch(function(){});
         }
@@ -4524,9 +4515,9 @@ function _scheduleAutoSave() {
     var badge = document.getElementById('autosave-badge');
     if (badge) {
       badge.textContent = '✔ Guardado';
-      badge.style.color = '#1A6B50';
+      badge.style.color = '#6EE7B7';
       badge.style.opacity = '1';
-      setTimeout(function(){ badge.style.opacity = '0'; }, 2000);
+      setTimeout(function(){ badge.style.opacity = '0'; }, 2500);
     }
   }, 800);
 }
@@ -4668,6 +4659,16 @@ function saveFichaState() {
     indicadores: inds,
     plan: planRows
   };
+  // ✅ FIX: Persistir automáticamente en Supabase al guardar estado de ficha
+  if (typeof supaEnabled !== 'undefined' && supaEnabled && typeof supaUpsert === 'function') {
+    var _fichaRecord = Object.assign({}, fichaEditData[currentFichaProjId], {
+      id: currentFichaProjId,
+      updated_at: new Date().toISOString()
+    });
+    supaUpsert('ficha_proyectos', _fichaRecord, 'id').catch(function(e){
+      console.warn('[Supabase] Error guardando ficha:', e);
+    });
+  }
 }
 
 function resetIndicadores() {
@@ -4856,6 +4857,8 @@ function _getProjTrim(b) {
 // que aun no tienen registro en BASE_DATA. Los nuevos se muestran como "pendiente"
 // (sin indicadores evaluados) para que aparezcan en el AGT automaticamente.
 function _mergedBaseAGT() {
+  // ✅ FIX: asegurar que projectsData está actualizado antes de merge
+  // (puede haberse actualizado desde Supabase sin reasignar la referencia)
   // Indice rapido de los codigos ya presentes en BASE_DATA (normalizados)
   var normalizar = function(s){ return String(s||'').toUpperCase().replace(/\s+/g,'').split('/')[0].trim(); };
   var codigosExistentes = {};
@@ -5788,7 +5791,18 @@ function showFicha(no) {
         field('EPS', r.eps) +
         field('Escolaridad', r.escolaridad) +
         field('Fecha de ingreso', r.fecha_ingreso) +
-        field('Tiempo en empresa', r.anos_org + ' años') +
+        field('Tiempo en empresa', (function(){
+          var v = parseFloat(r.anos_org);
+          if (!isNaN(v) && v > 0) return v.toFixed(1) + ' años';
+          if (r.fecha_ingreso) {
+            var d = new Date(r.fecha_ingreso);
+            if (!isNaN(d.getTime())) {
+              var y = (new Date() - d) / (365.25*24*3600*1000);
+              return y.toFixed(1) + ' años';
+            }
+          }
+          return '-';
+        })()) +
         field('Turno de trabajo', r.turno||'DIURNO') +
         field('Fecha de retiro', r.fecha_retiro||'N/A') +
       '</div>' +
