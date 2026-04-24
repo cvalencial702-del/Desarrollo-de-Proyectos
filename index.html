@@ -1859,6 +1859,27 @@ function _updateSupaBadge() {
 }
 
 // Generic upsert helper
+
+// ✅ FIX DEFINITIVO: limpiar proyecto antes de enviarlo a Supabase
+// Supabase lanza error si recibe columnas que no existen en el schema
+// Solo se envían los campos que SÍ existen en la tabla projects
+function _cleanProjectForSupa(p) {
+  var clean = {
+    id:       p.id       || null,
+    cliente:  p.cliente  || null,
+    objeto:   p.objeto   || null,
+    duracion: p.duracion || null,
+    inicio:   p.inicio   || null,
+    fin:      p.fin      || null,
+    otrosi:   p.otrosi   || null,
+    obs:      p.obs      || null
+  };
+  // fins_extra: incluir SOLO si tiene valores Y si queremos intentarlo
+  // (la columna puede no existir en la BD; el error se captura en supaUpsert)
+  // NO incluir por defecto para evitar el error de schema cache
+  return clean;
+}
+
 async function supaUpsert(table, record, keyField) {
   if(!supaEnabled || !supa) return { error: 'Not connected' };
   supaSaving = true;
@@ -1930,8 +1951,8 @@ async function syncAllToSupabase() {
     for(var j=0; j<projectsData.length; j++) {
       var pr = projectsData[j];
       if(!pr.id) continue;
-      var res2 = await supa.from('projects').upsert(pr, { onConflict: 'id' });
-      if(res2.error) err++; else ok++;
+      var res2 = await supa.from('projects').upsert(_cleanProjectForSupa(pr), { onConflict: 'id' });
+      if(res2.error) { err++; _supaLog('❌ project '+pr.id+': '+res2.error.message, true); } else ok++;
     }
   }
   if(typeof atsHistorial !== "undefined" && atsHistorial.length) {
@@ -2482,7 +2503,7 @@ setTimeout(async function(){
         if (pc.fins_extra && Array.isArray(pc.fins_extra) && pc.fins_extra.length === 0) delete pc.fins_extra;
         return pc;
       });
-      var rp = await supa.from('projects').upsert(projSeedClean, { onConflict: 'id' });
+      var rp = await supa.from('projects').upsert(projSeedClean.map(_cleanProjectForSupa), { onConflict: 'id' });
         if(rp.error){ seedErr++; _supaLog('Error seed projects: '+rp.error.message, true); }
         else { seedOk += projSeed.length; }
       }
@@ -4356,7 +4377,7 @@ function addProjectRecord() {
     }
 
     if (typeof supaEnabled !== 'undefined' && supaEnabled) {
-      var res = await supaUpsert('projects', _rSupa, 'id');  // ✅ FIX: usar objeto limpio sin fins_extra
+      var res = await supaUpsert('projects', _cleanProjectForSupa(_rSupa), 'id');  // ✅ FIX DEFINITIVO
       if (res && res.error) {
         // ❌ Error real de Supabase — mostrar al usuario
         alert('❌ Error al guardar en Supabase:\n' + res.error +
