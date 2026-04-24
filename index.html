@@ -2165,6 +2165,29 @@ async function _autoLoadOnStart() {
       _supaLog('  ats_records: ' + r3.data.length + ' registros');
     }
 
+    // ✅ FIX CRÍTICO: Cargar fichas de indicadores guardadas en Supabase
+    // Sin esto, fichaEditData siempre está vacío al abrir y los cambios se pierden
+    var r4 = await supa.from('ficha_proyectos').select('*');
+    if(!r4.error && r4.data && r4.data.length) {
+      r4.data.forEach(function(f) {
+        if (f.id) {
+          fichaEditData[f.id] = {
+            lider:       f.lider      || 'GERENCIA TECNICA',
+            proceso:     f.proceso    || 'CONSULTORIA',
+            evaluador:   f.evaluador  || '',
+            cargo:       f.cargo      || '',
+            fecha:       f.fecha      || '',
+            analisis:    f.analisis   || '',
+            indicadores: f.indicadores || [],
+            plan:        f.plan        || []
+          };
+        }
+      });
+      _supaLog('  ficha_proyectos: ' + r4.data.length + ' fichas cargadas');
+    } else if (r4.error) {
+      _supaLog('  ficha_proyectos: ' + r4.error.message, true);
+    }
+
     // Re-render de todos los modulos
     if(typeof renderTableSocio === 'function') renderTableSocio();
     if(typeof renderChartsSocio === 'function') renderChartsSocio();
@@ -4278,17 +4301,43 @@ function _getIndDefs(id) {
   return fichaIndDefs[id] ? fichaIndDefs[id] : JSON.parse(JSON.stringify(IND_DEFS));
 }
 
+// ✅ FIX: Helper para cargar ficha desde Supabase si no está en memoria, luego abrir modal
+function _loadFichaAndOpen(id, r, focusIndicadores) {
+  if (!fichaEditData[id] && typeof supaEnabled !== 'undefined' && supaEnabled && supa) {
+    supa.from('ficha_proyectos').select('*').eq('id', id).then(function(res) {
+      if (!res.error && res.data && res.data.length) {
+        var f = res.data[0];
+        fichaEditData[id] = {
+          lider:       f.lider      || 'GERENCIA TECNICA',
+          proceso:     f.proceso    || 'CONSULTORIA',
+          evaluador:   f.evaluador  || '',
+          cargo:       f.cargo      || '',
+          fecha:       f.fecha      || '',
+          analisis:    f.analisis   || '',
+          indicadores: Array.isArray(f.indicadores) ? f.indicadores : [],
+          plan:        Array.isArray(f.plan)        ? f.plan        : []
+        };
+      }
+      _openFichaModal(id, r || {id:id, cliente:'', objeto:'', inicio:'', duracion:0}, focusIndicadores);
+    }).catch(function() {
+      _openFichaModal(id, r || {id:id, cliente:'', objeto:'', inicio:'', duracion:0}, focusIndicadores);
+    });
+  } else {
+    _openFichaModal(id, r || {id:id, cliente:'', objeto:'', inicio:'', duracion:0}, focusIndicadores);
+  }
+}
+
 function showFichaProyecto(id) {
   var r = projectsData.find(function(p){ return p.id === id; });
   if (!r) return;
   currentFichaProjId = id;
-  _openFichaModal(id, r, false);
+  _loadFichaAndOpen(id, r, false);
 }
 
 function showFichaIndicadores(projId) {
   var r = projectsData.find(function(p){ return p.id === projId || projId.indexOf(p.id.split('/')[0].trim()) >= 0; });
   currentFichaProjId = projId;
-  _openFichaModal(projId, r || {id:projId, cliente:'', objeto:'', inicio:'', duracion:0}, true);
+  _loadFichaAndOpen(projId, r, true);
 }
 
 function _openFichaModal(id, r, focusIndicadores) {
@@ -5988,7 +6037,7 @@ window.addEventListener('DOMContentLoaded', function() {
         <!-- ✅ FIX: Badge de guardado automático -->
         <span id="autosave-badge" style="font-size:11px;color:#6EE7B7;opacity:0;transition:opacity 0.5s;font-family:monospace;margin-right:4px">✔ Guardado</span>
         <button onclick="resetIndicadores()" style="padding:7px 14px;border-radius:8px;background:rgba(255,255,255,0.12);color:rgba(255,255,255,0.85);border:1px solid rgba(255,255,255,0.2);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">Restablecer</button>
-        <button onclick="saveFichaState();alert('Guardado ✔');" style="padding:7px 14px;border-radius:8px;background:rgba(45,166,122,0.85);color:#fff;border:none;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">💾 Guardar</button>
+        <button onclick="saveFichaState(); var b=document.getElementById('autosave-badge'); if(b){b.textContent='✔ Guardado';b.style.color='#6EE7B7';b.style.opacity='1';setTimeout(function(){b.style.opacity='0';},2500);}" style="padding:7px 14px;border-radius:8px;background:rgba(45,166,122,0.85);color:#fff;border:none;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">💾 Guardar</button>
         <button onclick="downloadFichaProyecto()" id="btn-download-proj" style="padding:7px 18px;border-radius:8px;background:#2DA67A;color:#fff;border:none;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">Descargar PDF</button>
         <button onclick="closeFichaProyecto()" style="padding:7px 18px;border-radius:8px;background:rgba(229,57,53,0.85);color:#fff;border:none;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">Cerrar X</button>
       </div>
