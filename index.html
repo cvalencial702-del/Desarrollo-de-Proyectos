@@ -2117,7 +2117,7 @@ async function testSupabaseConnection() {
   if (missingTables.length > 0) {
     sqlFix += '-- ⚠ TABLAS FALTANTES — ejecutar en SQL Editor de Supabase:\n\n';
     if (missingTables.includes('projects')) {
-      sqlFix += 'CREATE TABLE IF NOT EXISTS projects (\n  id TEXT PRIMARY KEY,\n  cliente TEXT,\n  objeto TEXT,\n  duracion INTEGER,\n  inicio TEXT,\n  fin TEXT,\n  fins_extra JSONB,\n  otrosi TEXT,\n  obs TEXT\n);\n\n';
+      sqlFix += '-- Crear tabla projects:\nCREATE TABLE IF NOT EXISTS projects (\n  id TEXT PRIMARY KEY,\n  cliente TEXT,\n  objeto TEXT,\n  duracion INTEGER,\n  inicio TEXT,\n  fin TEXT,\n  fins_extra JSONB DEFAULT \'[]\',\n  otrosi TEXT,\n  obs TEXT\n);\n\n-- Si la tabla ya existe, agregar columna fins_extra si falta:\nALTER TABLE projects ADD COLUMN IF NOT EXISTS fins_extra JSONB DEFAULT \'[]\';\n\n';
     }
     if (missingTables.includes('ficha_proyectos')) {
       sqlFix += 'CREATE TABLE IF NOT EXISTS ficha_proyectos (\n  id TEXT PRIMARY KEY,\n  evaluador TEXT,\n  cargo TEXT,\n  fecha TEXT,\n  analisis TEXT,\n  indicadores JSONB,\n  plan JSONB,\n  lider TEXT,\n  proceso TEXT,\n  updated_at TIMESTAMPTZ DEFAULT NOW()\n);\n\n';
@@ -2192,7 +2192,16 @@ function mostrarSchemaSQL() {
             'CREATE TABLE IF NOT EXISTS projects (\n' +
             '  id TEXT PRIMARY KEY,\n' +
             '  cliente TEXT, objeto TEXT, duracion INT,\n' +
-            '  inicio TEXT, fin TEXT, otrosi TEXT, obs TEXT,\n' +
+            '  inicio TEXT, fin TEXT, fins_extra JSONB DEFAULT \'[]\',' +
+            '  otrosi TEXT, obs TEXT,\n' +
+            '  updated_at TIMESTAMPTZ DEFAULT NOW()\n' +
+            ');\n' +
+            'ALTER TABLE projects ADD COLUMN IF NOT EXISTS fins_extra JSONB DEFAULT \'[]\';\n\n' +
+            '-- Tabla: ficha_proyectos (indicadores guardados)\n' +
+            'CREATE TABLE IF NOT EXISTS ficha_proyectos (\n' +
+            '  id TEXT PRIMARY KEY,\n' +
+            '  evaluador TEXT, cargo TEXT, fecha TEXT, analisis TEXT,\n' +
+            '  indicadores JSONB, plan JSONB, lider TEXT, proceso TEXT,\n' +
             '  updated_at TIMESTAMPTZ DEFAULT NOW()\n' +
             ');\n\n' +
             '-- Tabla: registros ATS\n' +
@@ -2206,10 +2215,12 @@ function mostrarSchemaSQL() {
             '-- Permitir acceso publico (ajusta segun tu politica de seguridad)\n' +
             'ALTER TABLE staff       ENABLE ROW LEVEL SECURITY;\n' +
             'ALTER TABLE projects    ENABLE ROW LEVEL SECURITY;\n' +
-            'ALTER TABLE ats_records ENABLE ROW LEVEL SECURITY;\n\n' +
-            'CREATE POLICY "Allow all" ON staff       FOR ALL USING (true) WITH CHECK (true);\n' +
-            'CREATE POLICY "Allow all" ON projects    FOR ALL USING (true) WITH CHECK (true);\n' +
-            'CREATE POLICY "Allow all" ON ats_records FOR ALL USING (true) WITH CHECK (true);';
+            'ALTER TABLE ats_records    ENABLE ROW LEVEL SECURITY;\n' +
+            'ALTER TABLE ficha_proyectos ENABLE ROW LEVEL SECURITY;\n\n' +
+            'CREATE POLICY "Allow all" ON staff           FOR ALL USING (true) WITH CHECK (true);\n' +
+            'CREATE POLICY "Allow all" ON projects         FOR ALL USING (true) WITH CHECK (true);\n' +
+            'CREATE POLICY "Allow all" ON ats_records      FOR ALL USING (true) WITH CHECK (true);\n' +
+            'CREATE POLICY "Allow all" ON ficha_proyectos  FOR ALL USING (true) WITH CHECK (true);';
 
   // Create modal to display SQL with copy button
   var modal = document.createElement('div');
@@ -2465,7 +2476,13 @@ setTimeout(async function(){
       // Subir projects
       var projSeed = PROJECTS_DATA.filter(function(p){ return p.id && String(p.id).trim(); });
       if(projSeed.length){
-        var rp = await supa.from('projects').upsert(projSeed, { onConflict: 'id' });
+        // ✅ FIX: limpiar fins_extra en seed inicial — puede no existir la columna
+      var projSeedClean = projSeed.map(function(p){
+        var pc = Object.assign({}, p);
+        if (pc.fins_extra && Array.isArray(pc.fins_extra) && pc.fins_extra.length === 0) delete pc.fins_extra;
+        return pc;
+      });
+      var rp = await supa.from('projects').upsert(projSeedClean, { onConflict: 'id' });
         if(rp.error){ seedErr++; _supaLog('Error seed projects: '+rp.error.message, true); }
         else { seedOk += projSeed.length; }
       }
@@ -4262,17 +4279,34 @@ function addProjectRecord() {
     if(diff > 0) duracion = diff;
   }
 
+  // ✅ FIX: separar fins_extra del objeto base para Supabase
+  // fins_extra se guarda localmente pero NO se envía a Supabase
+  // si la columna no existe en la BD — evita el error de schema cache
+  var _finsExtra = fins.slice(1);
   var r = {
-    id: document.getElementById('p-id').value.trim(),
-    cliente: document.getElementById('p-cliente').value.trim().toUpperCase(),
-    objeto: document.getElementById('p-objeto').value.trim(),
+    id:       document.getElementById('p-id').value.trim(),
+    cliente:  document.getElementById('p-cliente').value.trim().toUpperCase(),
+    objeto:   document.getElementById('p-objeto').value.trim(),
     duracion: duracion,
-    inicio: inicio,
-    fin: finPrimero,
-    fins_extra: fins.slice(1),
-    otrosi: document.getElementById('p-otrosi').value.trim(),
-    obs: document.getElementById('p-obs').value.trim()
+    inicio:   inicio,
+    fin:      finPrimero,
+    fins_extra: _finsExtra,   // campo local (tabla en pantalla)
+    otrosi:   document.getElementById('p-otrosi').value.trim(),
+    obs:      document.getElementById('p-obs').value.trim()
   };
+  // Objeto limpio para Supabase (sin fins_extra hasta que la columna exista)
+  var _rSupa = {
+    id:       r.id,
+    cliente:  r.cliente,
+    objeto:   r.objeto,
+    duracion: r.duracion,
+    inicio:   r.inicio,
+    fin:      r.fin,
+    otrosi:   r.otrosi,
+    obs:      r.obs
+  };
+  // Si fins_extra tiene valores, intentar incluirlo (la columna puede existir ya)
+  if (_finsExtra && _finsExtra.length > 0) _rSupa.fins_extra = _finsExtra;
   if (!r.id || !r.cliente) return alert('Ingresa N de proyecto y cliente.');
   if (!r.inicio)           return alert('Ingresa la fecha de inicio del proyecto.');
   if (!r.duracion && !r.fin) return alert('Ingresa la duracion en dias O la fecha de terminacion.');
@@ -4322,7 +4356,7 @@ function addProjectRecord() {
     }
 
     if (typeof supaEnabled !== 'undefined' && supaEnabled) {
-      var res = await supaUpsert('projects', r, 'id');
+      var res = await supaUpsert('projects', _rSupa, 'id');  // ✅ FIX: usar objeto limpio sin fins_extra
       if (res && res.error) {
         // ❌ Error real de Supabase — mostrar al usuario
         alert('❌ Error al guardar en Supabase:\n' + res.error +
