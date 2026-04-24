@@ -1863,6 +1863,22 @@ function _updateSupaBadge() {
 // ✅ FIX DEFINITIVO: limpiar proyecto antes de enviarlo a Supabase
 // Supabase lanza error si recibe columnas que no existen en el schema
 // Solo se envían los campos que SÍ existen en la tabla projects
+function _cleanFichaForSupa(f) {
+  // ✅ Solo columnas que existen en la tabla ficha_proyectos de Supabase
+  return {
+    id:          f.id          || null,
+    evaluador:   f.evaluador   || null,
+    cargo:       f.cargo       || null,
+    fecha:       f.fecha       || null,
+    analisis:    f.analisis    || null,
+    indicadores: f.indicadores || [],
+    plan:        f.plan        || [],
+    lider:       f.lider       || null,
+    proceso:     f.proceso     || null,
+    updated_at:  f.updated_at  || new Date().toISOString()
+  };
+}
+
 function _cleanProjectForSupa(p) {
   var clean = {
     id:       p.id       || null,
@@ -4763,7 +4779,10 @@ function _scheduleAutoSave() {
       if (saved) {
         var record = Object.assign({}, saved, { id: currentFichaProjId, updated_at: new Date().toISOString() });
         if (typeof supaUpsert === 'function') {
-          supaUpsert('ficha_proyectos', record, 'id').catch(function(){});
+          supaUpsert('ficha_proyectos', _cleanFichaForSupa(record), 'id')
+            .then(function(res){
+              if(res && res.error) _supaLog('❌ AutoSave ficha: ' + res.error, true);
+            }).catch(function(){});
         }
       }
     }
@@ -4915,15 +4934,24 @@ function saveFichaState() {
     indicadores: inds,
     plan: planRows
   };
-  // ✅ FIX: Persistir automáticamente en Supabase al guardar estado de ficha
+  // ✅ FIX DEFINITIVO: await + helper limpio + error visible
   if (typeof supaEnabled !== 'undefined' && supaEnabled && typeof supaUpsert === 'function') {
-    var _fichaRecord = Object.assign({}, fichaEditData[currentFichaProjId], {
+    var _fichaRaw = Object.assign({}, fichaEditData[currentFichaProjId], {
       id: currentFichaProjId,
       updated_at: new Date().toISOString()
     });
-    supaUpsert('ficha_proyectos', _fichaRecord, 'id').catch(function(e){
-      console.warn('[Supabase] Error guardando ficha:', e);
-    });
+    // Usar helper para enviar solo columnas que existen en Supabase
+    supaUpsert('ficha_proyectos', _cleanFichaForSupa(_fichaRaw), 'id')
+      .then(function(res) {
+        if (res && res.error) {
+          _supaLog('❌ Error guardando ficha [' + currentFichaProjId + ']: ' + res.error, true);
+        } else {
+          _supaLog('✅ Ficha guardada [' + currentFichaProjId + ']');
+        }
+      })
+      .catch(function(e) {
+        _supaLog('❌ Excepción ficha: ' + e.message, true);
+      });
   }
 }
 
