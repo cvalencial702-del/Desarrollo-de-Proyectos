@@ -2024,31 +2024,141 @@ function _supaLog(msg, isError) {
 // Test connection
 async function testSupabaseConnection() {
   if(!supaEnabled || !supa) {
-    alert('Supabase no esta configurado.\n\nClick en el boton "○ Supabase" para ingresar la API Key.');
+    _supaLog('❌ Supabase no configurado', true);
+    alert('Supabase no está configurado.\nClick en "○ Supabase" para ingresar la API Key.');
     return;
   }
-  _showSupaStatus('Probando conexion...');
-  try {
-    var res = await supa.from('staff').select('no', { count: 'exact', head: true });
-    if(res.error) {
-      var errMsg = res.error.message;
-      if(errMsg.indexOf('does not exist') >= 0 || errMsg.indexOf('not found') >= 0 || errMsg.indexOf('42P01') >= 0) {
-        alert('\u26A0 Las tablas no existen en Supabase.\n\nDebes crear las tablas primero:\n\n1. Click en el boton SQL (amarillo)\n2. Copia el SQL\n3. Pegalo en el SQL Editor de Supabase\n4. Ejecuta (Run)');
+
+  _supaLog('🔍 Iniciando diagnóstico completo...', false);
+  _showSupaStatus('Diagnosticando...');
+
+  var tables = ['staff', 'projects', 'ats_records', 'ficha_proyectos'];
+  var results = {};
+  var rlsErrors = [];
+  var missingTables = [];
+
+  // ── 1. TEST SELECT (lectura) en cada tabla ────────────────────
+  _supaLog('— Prueba 1: Lectura (SELECT) en cada tabla —');
+  for (var i = 0; i < tables.length; i++) {
+    var t = tables[i];
+    try {
+      var r = await supa.from(t).select('*', { count: 'exact', head: true });
+      if (r.error) {
+        var code = r.error.code || '';
+        if (code === '42P01' || r.error.message.indexOf('does not exist') >= 0) {
+          _supaLog('  ❌ [' + t + '] TABLA NO EXISTE', true);
+          missingTables.push(t);
+        } else if (code === '42501' || r.error.message.indexOf('permission') >= 0 || r.error.message.indexOf('policy') >= 0) {
+          _supaLog('  ❌ [' + t + '] ERROR RLS (SELECT): ' + r.error.message, true);
+          rlsErrors.push({table: t, op: 'SELECT', msg: r.error.message});
+        } else {
+          _supaLog('  ⚠ [' + t + '] Error: ' + r.error.message, true);
+        }
+        results[t] = {read: false, write: false};
       } else {
-        alert('Error al conectar:\n\n' + errMsg + '\n\nVerifica que la API Key sea correcta.');
+        _supaLog('  ✅ [' + t + '] SELECT OK — ' + (r.count || 0) + ' registros');
+        results[t] = {read: true, write: false, count: r.count || 0};
       }
-      _showSupaStatus('\u274c Error: ' + errMsg, true);
-      return false;
+    } catch(e) {
+      _supaLog('  ❌ [' + t + '] Excepción: ' + e.message, true);
+      results[t] = {read: false, write: false};
     }
-    var count = res.count || 0;
-    _showSupaStatus('\u2705 Conexion OK. ' + count + ' registros en staff', false, 4000);
-    alert('\u2705 Conexion exitosa!\n\nTabla staff: ' + count + ' registros\n\nYa puedes usar Subir/Bajar.');
-    return true;
-  } catch(e) {
-    _showSupaStatus('\u274c ' + e.message, true);
-    alert('Error: ' + e.message);
-    return false;
   }
+
+  // ── 2. TEST INSERT/UPSERT (escritura) en cada tabla existente ─
+  _supaLog('— Prueba 2: Escritura (UPSERT) en cada tabla —');
+  var testRecords = {
+    'projects':         {id: '__TEST_DIAG__', cliente: 'DIAGNOSTICO', objeto: 'test', inicio: '2026-01-01', duracion: 1},
+    'ficha_proyectos':  {id: '__TEST_DIAG__', evaluador: 'test', cargo: 'test', fecha: '2026-01-01'},
+    'ats_records':      {id: '__TEST_DIAG__', cc: '0', fecha: '2026-01-01'},
+    'staff':            {no: '__TEST__', nombres: 'DIAGNOSTICO', edad: 0, anos_org: 0}
+  };
+  var writeKeys = {'projects':'id','ficha_proyectos':'id','ats_records':'id','staff':'no'};
+
+  for (var j = 0; j < tables.length; j++) {
+    var tb = tables[j];
+    if (!results[tb] || !results[tb].read) continue; // tabla no existe, skip
+    try {
+      var wr = await supa.from(tb).upsert(testRecords[tb], {onConflict: writeKeys[tb]}).select();
+      if (wr.error) {
+        var wcode = wr.error.code || '';
+        if (wcode === '42501' || wr.error.message.indexOf('permission') >= 0 || wr.error.message.indexOf('policy') >= 0 || wr.error.message.indexOf('row-level') >= 0) {
+          _supaLog('  ❌ [' + tb + '] ERROR RLS (INSERT/UPDATE): ' + wr.error.message, true);
+          rlsErrors.push({table: tb, op: 'INSERT/UPDATE', msg: wr.error.message});
+        } else {
+          _supaLog('  ⚠ [' + tb + '] Error escritura: ' + wr.error.message, true);
+        }
+        results[tb].write = false;
+      } else {
+        _supaLog('  ✅ [' + tb + '] UPSERT OK');
+        results[tb].write = true;
+        // Limpiar registro de prueba
+        await supa.from(tb).delete().eq(writeKeys[tb], testRecords[tb][writeKeys[tb]]);
+      }
+    } catch(e) {
+      _supaLog('  ❌ [' + tb + '] Excepción escritura: ' + e.message, true);
+    }
+  }
+
+  // ── 3. RESUMEN Y SQL DE CORRECCIÓN ───────────────────────────
+  _supaLog('— RESUMEN —');
+  var allOk = rlsErrors.length === 0 && missingTables.length === 0;
+
+  if (allOk) {
+    _supaLog('✅ Todo OK — lectura y escritura funcionan en todas las tablas');
+    _showSupaStatus('✅ Diagnóstico OK', false, 4000);
+    alert('✅ Supabase funciona correctamente.\n\nTodas las tablas tienen lectura y escritura habilitadas.\n\nSi aún no se guardan los datos, revisa el log de actividad (ícono ⚙).');
+    return;
+  }
+
+  // Construir SQL de corrección
+  var sqlFix = '';
+
+  if (missingTables.length > 0) {
+    sqlFix += '-- ⚠ TABLAS FALTANTES — ejecutar en SQL Editor de Supabase:\n\n';
+    if (missingTables.includes('projects')) {
+      sqlFix += 'CREATE TABLE IF NOT EXISTS projects (\n  id TEXT PRIMARY KEY,\n  cliente TEXT,\n  objeto TEXT,\n  duracion INTEGER,\n  inicio TEXT,\n  fin TEXT,\n  fins_extra JSONB,\n  otrosi TEXT,\n  obs TEXT\n);\n\n';
+    }
+    if (missingTables.includes('ficha_proyectos')) {
+      sqlFix += 'CREATE TABLE IF NOT EXISTS ficha_proyectos (\n  id TEXT PRIMARY KEY,\n  evaluador TEXT,\n  cargo TEXT,\n  fecha TEXT,\n  analisis TEXT,\n  indicadores JSONB,\n  plan JSONB,\n  lider TEXT,\n  proceso TEXT,\n  updated_at TIMESTAMPTZ DEFAULT NOW()\n);\n\n';
+    }
+    if (missingTables.includes('ats_records')) {
+      sqlFix += 'CREATE TABLE IF NOT EXISTS ats_records (\n  id TEXT PRIMARY KEY,\n  cc TEXT,\n  fecha TEXT,\n  datos JSONB\n);\n\n';
+    }
+  }
+
+  if (rlsErrors.length > 0) {
+    var tablesConRLS = [...new Set(rlsErrors.map(function(e){return e.table;}))];
+    sqlFix += '-- ✅ POLÍTICAS RLS — ejecutar en SQL Editor de Supabase:\n\n';
+    tablesConRLS.forEach(function(tb) {
+      sqlFix += '-- Tabla: ' + tb + '\n';
+      sqlFix += 'ALTER TABLE ' + tb + ' ENABLE ROW LEVEL SECURITY;\n';
+      sqlFix += 'DROP POLICY IF EXISTS "allow_all_' + tb + '" ON ' + tb + ';\n';
+      sqlFix += 'CREATE POLICY "allow_all_' + tb + '" ON ' + tb + '\n  FOR ALL USING (true) WITH CHECK (true);\n\n';
+    });
+  }
+
+  // Mostrar SQL en modal copiable
+  _supaLog('❌ Se encontraron ' + (rlsErrors.length + missingTables.length) + ' problema(s). Ver SQL de corrección abajo.', true);
+  _showSupaStatus('❌ Errores encontrados — ver diagnóstico', true);
+
+  var modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML = '<div style="background:#0F172A;border-radius:12px;padding:24px;max-width:640px;width:100%;max-height:80vh;overflow-y:auto;border:1px solid #334155">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">' +
+      '<h3 style="color:white;margin:0;font-size:15px">❌ Diagnóstico Supabase — SQL de corrección</h3>' +
+      '<button onclick="this.closest(\'div[style*=inset]\').remove()" style="background:rgba(255,255,255,0.1);color:white;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:14px">✕ Cerrar</button>' +
+    '</div>' +
+    '<p style="color:#94A3B8;font-size:12px;margin-bottom:12px">Copia este SQL, pégalo en el <strong style=color:#7DD3FC>SQL Editor de Supabase</strong> y ejecuta con Run:</p>' +
+    '<textarea id="diag-sql-box" style="width:100%;height:320px;background:#1E293B;color:#7DD3FC;border:1px solid #334155;border-radius:8px;padding:12px;font-family:monospace;font-size:11px;line-height:1.6;resize:vertical;box-sizing:border-box">' + sqlFix + '</textarea>' +
+    '<div style="display:flex;gap:8px;margin-top:12px">' +
+      '<button onclick="navigator.clipboard.writeText(document.getElementById(\'diag-sql-box\').value);this.textContent=\'✅ Copiado!\';setTimeout(()=>this.textContent=\'📋 Copiar SQL\',2000)" ' +
+        'style="flex:1;padding:10px;background:#2DA67A;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-size:13px">📋 Copiar SQL</button>' +
+      '<a href="https://supabase.com/dashboard/project/ixlmuhlusmbikditybne/sql/new" target="_blank" ' +
+        'style="flex:1;padding:10px;background:#1E40AF;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-size:13px;text-decoration:none;text-align:center;display:flex;align-items:center;justify-content:center">🔗 Abrir SQL Editor</a>' +
+    '</div>' +
+  '</div>';
+  document.body.appendChild(modal);
 }
 
 // Diagnostic panel toggle
