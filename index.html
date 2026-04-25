@@ -657,6 +657,14 @@ tr:hover td { background: #F0F7FF; }
         <span id="supa-status" style="display:none"></span>
       </div>
 
+      <!-- ✅ Actividad pendiente #2: Botón de acción rápida ficha_proyectos -->
+      <button id="btn-crear-ficha-tabla"
+        onclick="crearTablasFichaProyectos()"
+        title="Crear tabla ficha_proyectos en Supabase (ver SQL)"
+        style="padding:5px 11px;border-radius:6px;background:rgba(255,199,44,0.14);color:#FFC72C;border:1px solid rgba(255,199,44,0.3);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:0.2px;display:none">
+        🗄 ficha_proyectos
+      </button>
+
       <button class="btn-sm btn-accent" onclick="logout()">🔒 Salir</button>
     </div>
   </nav>
@@ -2280,6 +2288,161 @@ function mostrarSchemaSQL() {
   document.body.appendChild(modal);
 }
 
+// ═══════════════════════════════════════════════════════════
+// crearTablasFichaProyectos — Actividad pendiente #3
+// Intenta crear la tabla via Supabase Management API.
+// Si no tiene permisos, muestra el SQL listo para copiar.
+// ═══════════════════════════════════════════════════════════
+var FICHA_PROYECTOS_SQL =
+  'CREATE TABLE IF NOT EXISTS ficha_proyectos (\n' +
+  '  id TEXT PRIMARY KEY,\n' +
+  '  evaluador TEXT,\n' +
+  '  cargo TEXT,\n' +
+  '  fecha TEXT,\n' +
+  '  analisis TEXT,\n' +
+  '  indicadores JSONB DEFAULT \'[]\',\n' +
+  '  plan JSONB DEFAULT \'[]\',\n' +
+  '  lider TEXT,\n' +
+  '  proceso TEXT,\n' +
+  '  updated_at TIMESTAMPTZ DEFAULT NOW()\n' +
+  ');\n\n' +
+  '-- Habilitar RLS y permitir acceso:\n' +
+  'ALTER TABLE ficha_proyectos ENABLE ROW LEVEL SECURITY;\n' +
+  'DROP POLICY IF EXISTS "allow_all_ficha_proyectos" ON ficha_proyectos;\n' +
+  'CREATE POLICY "allow_all_ficha_proyectos" ON ficha_proyectos\n' +
+  '  FOR ALL USING (true) WITH CHECK (true);';
+
+async function crearTablasFichaProyectos() {
+  if (!supaEnabled || !supa) {
+    _mostrarSQLFichaProyectos('⚠ Supabase no está conectado. Conéctalo primero con el botón "○ Supabase".');
+    return;
+  }
+
+  // 1. Verificar si ya existe
+  var check = await supa.from('ficha_proyectos').select('id', { count: 'exact', head: true });
+  if (!check.error) {
+    if (confirm('✅ La tabla ficha_proyectos ya existe en Supabase.\n\n¿Deseas ver el SQL de todas formas?')) {
+      _mostrarSQLFichaProyectos('ℹ La tabla ya existe. SQL disponible por referencia.');
+    }
+    return;
+  }
+
+  var code = check.error.code || '';
+  var msg  = check.error.message || '';
+
+  if (code !== '42P01' && msg.indexOf('does not exist') < 0) {
+    _mostrarSQLFichaProyectos('⚠ Error inesperado: ' + msg + '\nEjecuta el SQL manualmente:');
+    return;
+  }
+
+  // 2. Tabla no existe → intentar crearla via Management API (solo si tenemos service_role)
+  // La API pública (anon) no puede ejecutar DDL → mostrar SQL directamente
+  _mostrarSQLFichaProyectos('La tabla ficha_proyectos no existe en Supabase.\nCopia el SQL y ejecútalo en el SQL Editor:');
+}
+
+function _mostrarSQLFichaProyectos(headerMsg) {
+  // Ocultar banner si existía
+  var banner = document.getElementById('banner-ficha-faltante');
+  if (banner) banner.remove();
+  var projectId = (SUPABASE_URL || '').replace('https://', '').replace('.supabase.co', '');
+  var sqlEditorUrl = projectId
+    ? 'https://supabase.com/dashboard/project/' + projectId + '/sql/new'
+    : 'https://supabase.com/dashboard';
+
+  var modal = document.createElement('div');
+  modal.id = 'ficha-sql-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.78);z-index:10001;display:flex;align-items:center;justify-content:center;padding:20px;font-family:Inter,sans-serif';
+  modal.innerHTML =
+    '<div style="background:#0F172A;border-radius:14px;max-width:680px;width:100%;max-height:88vh;display:flex;flex-direction:column;border:1px solid #334155;box-shadow:0 24px 80px rgba(0,0,0,0.6)">' +
+      '<div style="background:linear-gradient(135deg,#002E5D,#003F7D);padding:16px 22px;border-radius:14px 14px 0 0;display:flex;align-items:center;justify-content:space-between">' +
+        '<div>' +
+          '<div style="font-size:15px;font-weight:800;color:white">🗄 Crear tabla <code style="background:rgba(255,199,44,0.2);color:#FFC72C;padding:1px 8px;border-radius:5px;font-size:13px">ficha_proyectos</code></div>' +
+          '<div style="font-size:11px;color:rgba(255,255,255,0.55);margin-top:3px">' + headerMsg + '</div>' +
+        '</div>' +
+        '<button onclick="document.getElementById(\'ficha-sql-modal\').remove()" style="background:rgba(255,255,255,0.1);color:white;border:none;border-radius:7px;padding:6px 12px;cursor:pointer;font-size:14px">✕</button>' +
+      '</div>' +
+      '<div style="padding:16px 20px;flex:1;overflow-y:auto">' +
+        '<p style="color:#94A3B8;font-size:12px;margin-bottom:10px;line-height:1.6">1. Copia el SQL · 2. Ve al SQL Editor · 3. Pega y ejecuta con <kbd style="background:#1E293B;color:#7DD3FC;padding:1px 6px;border-radius:4px;font-size:10px">Run</kbd></p>' +
+        '<textarea id="ficha-proj-sql-box" readonly style="width:100%;height:260px;background:#1E293B;color:#7DD3FC;border:1px solid #334155;border-radius:9px;padding:14px;font-family:monospace;font-size:11.5px;line-height:1.65;resize:vertical;box-sizing:border-box;outline:none">' + FICHA_PROYECTOS_SQL + '</textarea>' +
+      '</div>' +
+      '<div style="padding:12px 20px;border-top:1px solid #1E293B;display:flex;gap:8px">' +
+        '<button onclick="(function(){var t=document.getElementById(\'ficha-proj-sql-box\');t.select();navigator.clipboard.writeText(t.value).then(function(){var b=document.getElementById(\'btn-copy-ficha-sql\');if(b){b.textContent=\'✅ Copiado!\';b.style.background=\'#059669\';setTimeout(function(){b.textContent=\'📋 Copiar SQL\';b.style.background=\'#2DA67A\';},2200);}});})()" id="btn-copy-ficha-sql" style="flex:1;padding:11px;background:#2DA67A;color:white;border:none;border-radius:9px;cursor:pointer;font-weight:700;font-size:13px;font-family:inherit">📋 Copiar SQL</button>' +
+        '<a href="' + sqlEditorUrl + '" target="_blank" style="flex:1;padding:11px;background:#1E40AF;color:white;border:none;border-radius:9px;cursor:pointer;font-weight:700;font-size:13px;text-decoration:none;text-align:center;display:flex;align-items:center;justify-content:center">🔗 Abrir SQL Editor ↗</a>' +
+        '<button onclick="document.getElementById(\'ficha-sql-modal\').remove()" style="padding:11px 18px;background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.7);border:1px solid rgba(255,255,255,0.12);border-radius:9px;cursor:pointer;font-size:13px;font-family:inherit">Cerrar</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(modal);
+  // Select text for easy copy
+  setTimeout(function(){ var t = document.getElementById('ficha-proj-sql-box'); if(t) t.select(); }, 120);
+}
+
+// ═══════════════════════════════════════════════════════════
+// AUTO-DETECT: al iniciar Supabase, verificar ficha_proyectos
+// Actividad pendiente #4
+// ═══════════════════════════════════════════════════════════
+async function _autoDetectFichaProyectos() {
+  if (!supaEnabled || !supa) return;
+  try {
+    var res = await supa.from('ficha_proyectos').select('id', { count: 'exact', head: true });
+    if (res.error && (res.error.code === '42P01' || (res.error.message||'').indexOf('does not exist') >= 0)) {
+      _supaLog('⚠ ficha_proyectos no existe en Supabase', true);
+      // Mostrar botón de acción rápida en la topbar
+      var btnTopbar = document.getElementById('btn-crear-ficha-tabla');
+      if (btnTopbar) btnTopbar.style.display = 'inline-flex';
+      // Mostrar banner de aviso no intrusivo (no bloquea UI)
+      _mostrarBannerFaltaFichaProyectos();
+    } else if (!res.error) {
+      _supaLog('✅ ficha_proyectos encontrada (' + (res.count||0) + ' fichas)');
+      // Ocultar botón si la tabla ya existe
+      var btnTopbar2 = document.getElementById('btn-crear-ficha-tabla');
+      if (btnTopbar2) btnTopbar2.style.display = 'none';
+    }
+  } catch(e) {
+    _supaLog('⚠ Error verificando ficha_proyectos: ' + e.message, true);
+  }
+}
+
+function _mostrarBannerFaltaFichaProyectos() {
+  // Evitar duplicados
+  if (document.getElementById('banner-ficha-faltante')) return;
+
+  var banner = document.createElement('div');
+  banner.id = 'banner-ficha-faltante';
+  banner.style.cssText = [
+    'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:9998',
+    'background:linear-gradient(135deg,#7C2D12,#92400E);color:white',
+    'padding:13px 20px;border-radius:11px;box-shadow:0 8px 32px rgba(0,0,0,0.4)',
+    'display:flex;align-items:center;gap:14px;max-width:560px;width:calc(100% - 40px)',
+    'border:1px solid rgba(255,199,44,0.35);font-family:Inter,sans-serif',
+    'animation:_slideUpBanner 0.4s ease'
+  ].join(';');
+
+  // Agregar keyframe si no existe
+  if (!document.getElementById('banner-keyframe-style')) {
+    var st = document.createElement('style');
+    st.id = 'banner-keyframe-style';
+    st.textContent = '@keyframes _slideUpBanner{from{opacity:0;transform:translateX(-50%) translateY(20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}';
+    document.head.appendChild(st);
+  }
+
+  banner.innerHTML =
+    '<span style="font-size:22px;flex-shrink:0">⚠️</span>' +
+    '<div style="flex:1">' +
+      '<div style="font-size:13px;font-weight:700;margin-bottom:2px">Tabla <code style="background:rgba(0,0,0,0.3);padding:1px 6px;border-radius:4px">ficha_proyectos</code> no encontrada</div>' +
+      '<div style="font-size:11px;opacity:0.8">Los indicadores de proyectos no se guardarán en Supabase hasta crearla.</div>' +
+    '</div>' +
+    '<button onclick="document.getElementById(\'banner-ficha-faltante\').remove();crearTablasFichaProyectos();" style="padding:8px 14px;background:#FFC72C;color:#002E5D;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit">Ver SQL →</button>' +
+    '<button onclick="document.getElementById(\'banner-ficha-faltante\').remove()" style="padding:6px 10px;background:rgba(255,255,255,0.12);color:white;border:none;border-radius:7px;font-size:13px;cursor:pointer;font-family:inherit">✕</button>';
+
+  document.body.appendChild(banner);
+
+  // Auto-ocultar después de 15s
+  setTimeout(function(){
+    var b = document.getElementById('banner-ficha-faltante');
+    if(b) { b.style.transition='opacity 0.5s'; b.style.opacity='0'; setTimeout(function(){ if(b.parentNode) b.remove(); }, 500); }
+  }, 15000);
+}
+
 // Auto-init on load
 
 // ═══════════════════════════════════════════════════════════
@@ -2532,6 +2695,9 @@ setTimeout(async function(){
 
     // 2. Activar realtime para sincronizacion entre dispositivos
     subscribeRealtime();
+
+    // 3. ✅ Auto-detect ficha_proyectos (Actividad pendiente #4)
+    _autoDetectFichaProyectos();
 
   } catch(e){
     _supaLog('\u274c Error en init: ' + e.message, true);
