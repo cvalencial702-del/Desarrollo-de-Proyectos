@@ -5709,10 +5709,26 @@ function saveIndText(i) {
 
 function removeIndRow(i) {
   if (!currentFichaProjId) return;
+  // Verificar si está evaluado (tiene varA o varB)
+  var vA = document.getElementById('ind-varA-' + i);
+  var vB = document.getElementById('ind-varB-' + i);
+  var tieneValores = (vA && vA.value.trim() !== '') || (vB && vB.value.trim() !== '');
+  if (tieneValores) {
+    alert('⚠ Este indicador ya tiene valores registrados y no puede eliminarse.\nSolo se pueden eliminar indicadores sin evaluar.');
+    return;
+  }
+  var pin = prompt('🔐 Ingresa la clave para eliminar este indicador:');
+  if (pin === null) return;
+  if (pin.trim() !== '2026') {
+    alert('❌ Clave incorrecta. No se eliminó el indicador.');
+    return;
+  }
   var defs = _getIndDefs(currentFichaProjId);
   defs.splice(i, 1);
-  fichaIndDefs[currentFichaProjId] = defs;
+  // También eliminar de saved indicadores
   var saved = fichaEditData[currentFichaProjId];
+  if (saved && saved.indicadores) saved.indicadores.splice(i, 1);
+  fichaIndDefs[currentFichaProjId] = defs;
   var r = projectsData.find(function(p){ return p.id === currentFichaProjId; });
   var baseRec = BASE_DATA.find(function(b){
     var bid = b.proyecto.split('/')[0].trim();
@@ -5720,6 +5736,51 @@ function removeIndRow(i) {
     return b.proyecto === currentFichaProjId || bid === qid;
   });
   _buildIndicadorRows(currentFichaProjId, saved, baseRec);
+  _scheduleAutoSave();
+}
+
+// Eliminar todos los indicadores no evaluados con clave
+function removeIndNoEvaluados() {
+  if (!currentFichaProjId) return;
+  var defs = _getIndDefs(currentFichaProjId);
+  var saved = fichaEditData[currentFichaProjId];
+  // Contar no evaluados
+  var sinEvaluar = defs.filter(function(def, i) {
+    var vA = document.getElementById('ind-varA-' + i);
+    var vB = document.getElementById('ind-varB-' + i);
+    return (!vA || vA.value.trim() === '') && (!vB || vB.value.trim() === '');
+  });
+  if (!sinEvaluar.length) {
+    alert('ℹ Todos los indicadores tienen valores registrados.\nNo hay indicadores sin evaluar para eliminar.');
+    return;
+  }
+  var pin = prompt('🔐 Ingresa la clave para eliminar ' + sinEvaluar.length + ' indicador(es) sin evaluar:');
+  if (pin === null) return;
+  if (pin.trim() !== '2026') {
+    alert('❌ Clave incorrecta.');
+    return;
+  }
+  // Filtrar manteniendo solo los que tienen valores
+  var newDefs = [], newInds = [];
+  defs.forEach(function(def, i) {
+    var vA = document.getElementById('ind-varA-' + i);
+    var vB = document.getElementById('ind-varB-' + i);
+    var tieneValores = (vA && vA.value.trim() !== '') || (vB && vB.value.trim() !== '');
+    if (tieneValores) {
+      newDefs.push(def);
+      if (saved && saved.indicadores && saved.indicadores[i]) newInds.push(saved.indicadores[i]);
+    }
+  });
+  fichaIndDefs[currentFichaProjId] = newDefs;
+  if (saved) saved.indicadores = newInds;
+  var baseRec = BASE_DATA.find(function(b){
+    var bid = b.proyecto.split('/')[0].trim();
+    var qid = currentFichaProjId.split('/')[0].trim();
+    return b.proyecto === currentFichaProjId || bid === qid;
+  });
+  _buildIndicadorRows(currentFichaProjId, saved, baseRec);
+  _scheduleAutoSave();
+  alert('✅ Se eliminaron ' + sinEvaluar.length + ' indicador(es) sin evaluar.');
 }
 
 function addIndicadorRow() {
@@ -7334,6 +7395,7 @@ window.addEventListener('DOMContentLoaded', function() {
               <th style="padding:7px 10px;border:1px solid #C8DDD3;text-align:center;font-size:9px;text-transform:uppercase;color:#3D5C4A;width:9%">Estado</th>
               <th style="padding:5px;border:1px solid #C8DDD3;text-align:center;font-size:9px;color:#3D5C4A;width:7%" class="no-print">
                 <button onclick="addIndicadorRow()" title="Agregar indicador" style="padding:2px 8px;border-radius:5px;background:#1A6B50;color:white;border:none;font-size:11px;cursor:pointer;font-weight:700">+</button>
+                <button onclick="removeIndNoEvaluados()" title="Eliminar indicadores sin evaluar — clave 2026" style="padding:2px 8px;border-radius:5px;background:#7C3AED;color:white;border:none;font-size:11px;cursor:pointer;font-weight:700;margin-left:4px">🗑 Sin evaluar</button>
               </th>
             </tr>
           </thead>
