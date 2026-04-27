@@ -5736,21 +5736,44 @@ function addIndicadorRow() {
 // ✅ FIX: Guardado automático con debounce — se dispara 800ms después del último cambio
 var _autoSaveTimer = null;
 function _scheduleAutoSave() {
-  // Mostrar inmediatamente que hay cambios pendientes
+  // Marcar cambios pendientes de inmediato
   var badge = document.getElementById('autosave-badge');
-  if (badge) { badge.textContent = '● Cambios sin guardar'; badge.style.color = '#FCD34D'; badge.style.opacity = '1'; }
+  if (badge) { badge.textContent = '● Sin guardar'; badge.style.color = '#FCD34D'; badge.style.opacity = '1'; }
 
   if (_autoSaveTimer) clearTimeout(_autoSaveTimer);
   _autoSaveTimer = setTimeout(function() {
+    _autoSaveTimer = null;
+    // 1. Capturar estado actual en memoria
     saveFichaState();
-    // Guardar en Supabase si está conectado (saveFichaState ya lo hace, badge se actualiza ahí)
-    if (badge) {
-      badge.textContent = '✔ Guardado en Supabase';
-      badge.style.color = '#6EE7B7';
-      badge.style.opacity = '1';
-      setTimeout(function(){ badge.style.opacity = '0'; }, 3000);
+    // 2. Enviar a Supabase una sola vez, badge controlado por respuesta real
+    if (typeof supaEnabled !== 'undefined' && supaEnabled && currentFichaProjId && typeof supaUpsert === 'function') {
+      var saved = fichaEditData[currentFichaProjId];
+      if (!saved) return;
+      if (badge) { badge.textContent = '⟳ Guardando...'; badge.style.color = '#93C5FD'; badge.style.opacity = '1'; }
+      var record = _cleanFichaForSupa(Object.assign({}, saved, {
+        id: currentFichaProjId,
+        updated_at: new Date().toISOString()
+      }));
+      supaUpsert('ficha_proyectos', record, 'id')
+        .then(function(res) {
+          if (res && res.error) {
+            if (badge) { badge.textContent = '❌ Error al guardar'; badge.style.color = '#FCA5A5'; badge.style.opacity = '1'; }
+            _supaLog('❌ AutoSave ficha [' + currentFichaProjId + ']: ' + res.error, true);
+          } else {
+            if (badge) {
+              badge.textContent = '✔ Guardado';
+              badge.style.color = '#6EE7B7';
+              badge.style.opacity = '1';
+              setTimeout(function(){ badge.style.opacity = '0'; }, 3000);
+            }
+          }
+        })
+        .catch(function(e) {
+          if (badge) { badge.textContent = '❌ Error al guardar'; badge.style.color = '#FCA5A5'; badge.style.opacity = '1'; }
+          _supaLog('❌ Excepción autoSave: ' + e.message, true);
+        });
     }
-  }, 800);
+  }, 1200); // 1.2s debounce — suficiente para no saturar Supabase
 }
 
 function recalcInd(i) {
@@ -5890,25 +5913,8 @@ function saveFichaState() {
     indicadores: inds,
     plan: planRows
   };
-  // ✅ FIX DEFINITIVO: await + helper limpio + error visible
-  if (typeof supaEnabled !== 'undefined' && supaEnabled && typeof supaUpsert === 'function') {
-    var _fichaRaw = Object.assign({}, fichaEditData[currentFichaProjId], {
-      id: currentFichaProjId,
-      updated_at: new Date().toISOString()
-    });
-    // Usar helper para enviar solo columnas que existen en Supabase
-    supaUpsert('ficha_proyectos', _cleanFichaForSupa(_fichaRaw), 'id')
-      .then(function(res) {
-        if (res && res.error) {
-          _supaLog('❌ Error guardando ficha [' + currentFichaProjId + ']: ' + res.error, true);
-        } else {
-          _supaLog('✅ Ficha guardada [' + currentFichaProjId + ']');
-        }
-      })
-      .catch(function(e) {
-        _supaLog('❌ Excepción ficha: ' + e.message, true);
-      });
-  }
+  // Nota: el envío a Supabase lo maneja _scheduleAutoSave con debounce
+  // saveFichaState solo captura el estado en memoria para evitar doble escritura
 }
 
 function resetIndicadores() {
@@ -7228,7 +7234,7 @@ window.addEventListener('DOMContentLoaded', function() {
         <!-- ✅ FIX: Badge de guardado automático -->
         <span id="autosave-badge" style="font-size:11px;color:#6EE7B7;opacity:0;transition:opacity 0.5s;font-family:monospace;margin-right:4px">✔ Guardado</span>
         <button onclick="resetIndicadores()" style="padding:7px 14px;border-radius:8px;background:rgba(255,255,255,0.12);color:rgba(255,255,255,0.85);border:1px solid rgba(255,255,255,0.2);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">Restablecer</button>
-        <button onclick="saveFichaState(); var b=document.getElementById('autosave-badge'); if(b){b.textContent='✔ Guardado';b.style.color='#6EE7B7';b.style.opacity='1';setTimeout(function(){b.style.opacity='0';},2500);}" style="padding:7px 14px;border-radius:8px;background:rgba(45,166,122,0.85);color:#fff;border:none;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">💾 Guardar</button>
+        <button onclick="(function(){saveFichaState();var badge=document.getElementById('autosave-badge');if(badge){badge.textContent='⟳ Guardando...';badge.style.color='#93C5FD';badge.style.opacity='1';}if(typeof supaEnabled!=='undefined'&&supaEnabled&&currentFichaProjId&&typeof supaUpsert==='function'){var saved=fichaEditData[currentFichaProjId];if(saved){var rec=_cleanFichaForSupa(Object.assign({},saved,{id:currentFichaProjId,updated_at:new Date().toISOString()}));supaUpsert('ficha_proyectos',rec,'id').then(function(r){if(badge){if(r&&r.error){badge.textContent='❌ Error al guardar';badge.style.color='#FCA5A5';}else{badge.textContent='✔ Guardado';badge.style.color='#6EE7B7';setTimeout(function(){badge.style.opacity='0';},3000);}}}).catch(function(){if(badge){badge.textContent='❌ Error al guardar';badge.style.color='#FCA5A5';}});}}else if(badge){badge.textContent='✔ Guardado local';badge.style.color='#6EE7B7';setTimeout(function(){badge.style.opacity='0';},2500);}})()" style="padding:7px 14px;border-radius:8px;background:rgba(45,166,122,0.85);color:#fff;border:none;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">💾 Guardar</button>
         <button onclick="downloadFichaProyecto()" id="btn-download-proj" style="padding:7px 18px;border-radius:8px;background:#2DA67A;color:#fff;border:none;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">Descargar PDF</button>
         <button onclick="closeFichaProyecto()" style="padding:7px 18px;border-radius:8px;background:rgba(229,57,53,0.85);color:#fff;border:none;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">Cerrar X</button>
       </div>
