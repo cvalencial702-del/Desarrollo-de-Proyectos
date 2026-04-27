@@ -5469,7 +5469,11 @@ var IND_DEFS = [
 var fichaIndDefs = {};
 
 function _getIndDefs(id) {
-  return fichaIndDefs[id] ? fichaIndDefs[id] : JSON.parse(JSON.stringify(IND_DEFS));
+  // ✅ FIX CRÍTICO: Si no existe, crear la entrada persistente — nunca retornar clon suelto
+  if (!fichaIndDefs[id]) {
+    fichaIndDefs[id] = JSON.parse(JSON.stringify(IND_DEFS));
+  }
+  return fichaIndDefs[id];
 }
 
 // ✅ FIX DEFINITIVO: Siempre recargar desde Supabase al abrir ficha
@@ -5709,78 +5713,128 @@ function saveIndText(i) {
 
 function removeIndRow(i) {
   if (!currentFichaProjId) return;
-  // Verificar si está evaluado (tiene varA o varB)
+
+  // 1. Leer valor actual del DOM
   var vA = document.getElementById('ind-varA-' + i);
   var vB = document.getElementById('ind-varB-' + i);
   var tieneValores = (vA && vA.value.trim() !== '') || (vB && vB.value.trim() !== '');
   if (tieneValores) {
-    alert('⚠ Este indicador ya tiene valores registrados y no puede eliminarse.\nSolo se pueden eliminar indicadores sin evaluar.');
+    alert('⚠ Este indicador tiene valores registrados y no puede eliminarse.\nSolo se pueden eliminar indicadores sin evaluar (Variable A y B vacías).');
     return;
   }
+
   var pin = prompt('🔐 Ingresa la clave para eliminar este indicador:');
   if (pin === null) return;
-  if (pin.trim() !== '2026') {
-    alert('❌ Clave incorrecta. No se eliminó el indicador.');
-    return;
-  }
-  var defs = _getIndDefs(currentFichaProjId);
-  defs.splice(i, 1);
-  // También eliminar de saved indicadores
+  if (pin.trim() !== '2026') { alert('❌ Clave incorrecta.'); return; }
+
+  // 2. Capturar estado completo del DOM ANTES de modificar
+  saveFichaState();
+
+  // 3. Mutar defs e indicadores en memoria
+  var defs  = fichaIndDefs[currentFichaProjId];
   var saved = fichaEditData[currentFichaProjId];
-  if (saved && saved.indicadores) saved.indicadores.splice(i, 1);
-  fichaIndDefs[currentFichaProjId] = defs;
-  var r = projectsData.find(function(p){ return p.id === currentFichaProjId; });
-  var baseRec = BASE_DATA.find(function(b){
-    var bid = b.proyecto.split('/')[0].trim();
-    var qid = currentFichaProjId.split('/')[0].trim();
-    return b.proyecto === currentFichaProjId || bid === qid;
-  });
+  if (!defs)  { alert('Error: no se encontraron definiciones.'); return; }
+  defs.splice(i, 1);
+  if (saved && Array.isArray(saved.indicadores)) saved.indicadores.splice(i, 1);
+
+  // 4. Re-renderizar
+  var baseRec = _getBaseRec(currentFichaProjId);
   _buildIndicadorRows(currentFichaProjId, saved, baseRec);
-  _scheduleAutoSave();
+
+  // 5. Guardar inmediatamente en Supabase
+  _guardarFichaAhora('Indicador eliminado');
 }
 
-// Eliminar todos los indicadores no evaluados con clave
 function removeIndNoEvaluados() {
   if (!currentFichaProjId) return;
-  var defs = _getIndDefs(currentFichaProjId);
-  var saved = fichaEditData[currentFichaProjId];
-  // Contar no evaluados
-  var sinEvaluar = defs.filter(function(def, i) {
-    var vA = document.getElementById('ind-varA-' + i);
-    var vB = document.getElementById('ind-varB-' + i);
-    return (!vA || vA.value.trim() === '') && (!vB || vB.value.trim() === '');
-  });
-  if (!sinEvaluar.length) {
-    alert('ℹ Todos los indicadores tienen valores registrados.\nNo hay indicadores sin evaluar para eliminar.');
-    return;
-  }
-  var pin = prompt('🔐 Ingresa la clave para eliminar ' + sinEvaluar.length + ' indicador(es) sin evaluar:');
-  if (pin === null) return;
-  if (pin.trim() !== '2026') {
-    alert('❌ Clave incorrecta.');
-    return;
-  }
-  // Filtrar manteniendo solo los que tienen valores
-  var newDefs = [], newInds = [];
+  var defs = fichaIndDefs[currentFichaProjId];
+  if (!defs || !defs.length) { alert('No hay indicadores.'); return; }
+
+  // Identificar índices sin evaluar leyendo del DOM
+  var sinEval = [];
   defs.forEach(function(def, i) {
     var vA = document.getElementById('ind-varA-' + i);
     var vB = document.getElementById('ind-varB-' + i);
-    var tieneValores = (vA && vA.value.trim() !== '') || (vB && vB.value.trim() !== '');
-    if (tieneValores) {
-      newDefs.push(def);
-      if (saved && saved.indicadores && saved.indicadores[i]) newInds.push(saved.indicadores[i]);
-    }
+    var vacio = (!vA || vA.value.trim() === '') && (!vB || vB.value.trim() === '');
+    if (vacio) sinEval.push(i);
   });
-  fichaIndDefs[currentFichaProjId] = newDefs;
-  if (saved) saved.indicadores = newInds;
-  var baseRec = BASE_DATA.find(function(b){
-    var bid = b.proyecto.split('/')[0].trim();
-    var qid = currentFichaProjId.split('/')[0].trim();
-    return b.proyecto === currentFichaProjId || bid === qid;
+
+  if (!sinEval.length) {
+    alert('ℹ Todos los indicadores tienen valores registrados.\nNo hay indicadores sin evaluar para eliminar.');
+    return;
+  }
+
+  var pin = prompt('🔐 Clave para eliminar ' + sinEval.length + ' indicador(es) sin evaluar:');
+  if (pin === null) return;
+  if (pin.trim() !== '2026') { alert('❌ Clave incorrecta.'); return; }
+
+  // Capturar estado DOM antes de modificar
+  saveFichaState();
+
+  var saved = fichaEditData[currentFichaProjId];
+
+  // Filtrar eliminando los índices sin evaluar (de atrás hacia adelante para no desplazar)
+  sinEval.slice().reverse().forEach(function(i) {
+    defs.splice(i, 1);
+    if (saved && Array.isArray(saved.indicadores)) saved.indicadores.splice(i, 1);
   });
+
+  fichaIndDefs[currentFichaProjId] = defs;
+
+  // Re-renderizar
+  var baseRec = _getBaseRec(currentFichaProjId);
   _buildIndicadorRows(currentFichaProjId, saved, baseRec);
-  _scheduleAutoSave();
-  alert('✅ Se eliminaron ' + sinEvaluar.length + ' indicador(es) sin evaluar.');
+
+  // Guardar inmediatamente en Supabase
+  _guardarFichaAhora('Eliminados ' + sinEval.length + ' indicadores sin evaluar');
+}
+
+// Helper: obtener baseRec para un proyecto
+function _getBaseRec(projId) {
+  return BASE_DATA.find(function(b) {
+    var bid = (b.proyecto||'').split('/')[0].trim();
+    var qid = (projId||'').split('/')[0].trim();
+    return b.proyecto === projId || bid === qid;
+  });
+}
+
+// Guardar ficha a Supabase inmediatamente (sin debounce) con feedback visual
+function _guardarFichaAhora(motivo) {
+  if (!currentFichaProjId) return;
+  saveFichaState();
+  var badge = document.getElementById('autosave-badge');
+  if (badge) { badge.textContent = '⟳ Guardando...'; badge.style.color = '#93C5FD'; badge.style.opacity = '1'; }
+
+  if (typeof supaEnabled !== 'undefined' && supaEnabled && typeof supaUpsert === 'function') {
+    var saved = fichaEditData[currentFichaProjId];
+    if (!saved) return;
+    var record = _cleanFichaForSupa(Object.assign({}, saved, {
+      id: currentFichaProjId,
+      updated_at: new Date().toISOString()
+    }));
+    supaUpsert('ficha_proyectos', record, 'id')
+      .then(function(res) {
+        if (res && res.error) {
+          if (badge) { badge.textContent = '❌ Error: ' + res.error; badge.style.color = '#FCA5A5'; badge.style.opacity = '1'; }
+          _supaLog('❌ ' + motivo + ': ' + res.error, true);
+        } else {
+          if (badge) {
+            badge.textContent = '✔ ' + (motivo || 'Guardado');
+            badge.style.color = '#6EE7B7'; badge.style.opacity = '1';
+            setTimeout(function(){ badge.style.opacity = '0'; }, 3500);
+          }
+          _supaLog('✅ ' + (motivo||'Guardado') + ' [' + currentFichaProjId + ']');
+        }
+      })
+      .catch(function(e) {
+        if (badge) { badge.textContent = '❌ Error al guardar'; badge.style.color = '#FCA5A5'; badge.style.opacity = '1'; }
+        _supaLog('❌ Excepción: ' + e.message, true);
+      });
+  } else {
+    if (badge) { badge.textContent = '✔ Guardado local'; badge.style.color = '#FCD34D'; badge.style.opacity = '1';
+      setTimeout(function(){ badge.style.opacity = '0'; }, 2500);
+    }
+  }
 }
 
 function addIndicadorRow() {
@@ -5800,44 +5854,13 @@ function addIndicadorRow() {
 // ✅ FIX: Guardado automático con debounce — se dispara 800ms después del último cambio
 var _autoSaveTimer = null;
 function _scheduleAutoSave() {
-  // Marcar cambios pendientes de inmediato
   var badge = document.getElementById('autosave-badge');
   if (badge) { badge.textContent = '● Sin guardar'; badge.style.color = '#FCD34D'; badge.style.opacity = '1'; }
-
   if (_autoSaveTimer) clearTimeout(_autoSaveTimer);
   _autoSaveTimer = setTimeout(function() {
     _autoSaveTimer = null;
-    // 1. Capturar estado actual en memoria
-    saveFichaState();
-    // 2. Enviar a Supabase una sola vez, badge controlado por respuesta real
-    if (typeof supaEnabled !== 'undefined' && supaEnabled && currentFichaProjId && typeof supaUpsert === 'function') {
-      var saved = fichaEditData[currentFichaProjId];
-      if (!saved) return;
-      if (badge) { badge.textContent = '⟳ Guardando...'; badge.style.color = '#93C5FD'; badge.style.opacity = '1'; }
-      var record = _cleanFichaForSupa(Object.assign({}, saved, {
-        id: currentFichaProjId,
-        updated_at: new Date().toISOString()
-      }));
-      supaUpsert('ficha_proyectos', record, 'id')
-        .then(function(res) {
-          if (res && res.error) {
-            if (badge) { badge.textContent = '❌ Error al guardar'; badge.style.color = '#FCA5A5'; badge.style.opacity = '1'; }
-            _supaLog('❌ AutoSave ficha [' + currentFichaProjId + ']: ' + res.error, true);
-          } else {
-            if (badge) {
-              badge.textContent = '✔ Guardado';
-              badge.style.color = '#6EE7B7';
-              badge.style.opacity = '1';
-              setTimeout(function(){ badge.style.opacity = '0'; }, 3000);
-            }
-          }
-        })
-        .catch(function(e) {
-          if (badge) { badge.textContent = '❌ Error al guardar'; badge.style.color = '#FCA5A5'; badge.style.opacity = '1'; }
-          _supaLog('❌ Excepción autoSave: ' + e.message, true);
-        });
-    }
-  }, 1200); // 1.2s debounce — suficiente para no saturar Supabase
+    _guardarFichaAhora('Guardado automático');
+  }, 1200);
 }
 
 function recalcInd(i) {
