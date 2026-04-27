@@ -5469,12 +5469,25 @@ function _getIndDefs(id) {
   return fichaIndDefs[id] ? fichaIndDefs[id] : JSON.parse(JSON.stringify(IND_DEFS));
 }
 
-// ✅ FIX: Helper para cargar ficha desde Supabase si no está en memoria, luego abrir modal
+// ✅ FIX DEFINITIVO: Siempre recargar desde Supabase al abrir ficha
+// Garantiza que los cambios hechos desde otro dispositivo/sesión sean visibles
 function _loadFichaAndOpen(id, r, focusIndicadores) {
-  if (!fichaEditData[id] && typeof supaEnabled !== 'undefined' && supaEnabled && supa) {
+  if (typeof supaEnabled !== 'undefined' && supaEnabled && supa) {
+    // Mostrar indicador de carga
+    var _showLoading = function() {
+      var badge = document.getElementById('autosave-badge');
+      if (badge) { badge.textContent = '⟳ Cargando...'; badge.style.color = '#FFC72C'; badge.style.opacity = '1'; }
+    };
+    var _hideLoading = function() {
+      var badge = document.getElementById('autosave-badge');
+      if (badge) { badge.textContent = ''; badge.style.opacity = '0'; }
+    };
+    _showLoading();
     supa.from('ficha_proyectos').select('*').eq('id', id).then(function(res) {
+      _hideLoading();
       if (!res.error && res.data && res.data.length) {
         var f = res.data[0];
+        // ✅ Siempre sobreescribir con datos frescos de Supabase
         fichaEditData[id] = {
           lider:       f.lider      || 'GERENCIA TECNICA',
           proceso:     f.proceso    || 'CONSULTORIA',
@@ -5485,12 +5498,20 @@ function _loadFichaAndOpen(id, r, focusIndicadores) {
           indicadores: Array.isArray(f.indicadores) ? f.indicadores : [],
           plan:        Array.isArray(f.plan)        ? f.plan        : []
         };
+        _supaLog('✅ Ficha cargada desde Supabase [' + id + '] — updated: ' + (f.updated_at||'?'));
+      } else if (res.error) {
+        _supaLog('⚠ No se pudo cargar ficha de Supabase: ' + res.error.message, true);
+        // Si hay datos en memoria los usa como fallback
       }
+      // Si no hay datos en Supabase ni en memoria, abre en blanco (nueva ficha)
       _openFichaModal(id, r || {id:id, cliente:'', objeto:'', inicio:'', duracion:0}, focusIndicadores);
-    }).catch(function() {
+    }).catch(function(e) {
+      _hideLoading();
+      _supaLog('⚠ Error cargando ficha: ' + (e.message||e), true);
       _openFichaModal(id, r || {id:id, cliente:'', objeto:'', inicio:'', duracion:0}, focusIndicadores);
     });
   } else {
+    // Sin Supabase: usar datos en memoria o BASE_DATA
     _openFichaModal(id, r || {id:id, cliente:'', objeto:'', inicio:'', duracion:0}, focusIndicadores);
   }
 }
@@ -5715,29 +5736,19 @@ function addIndicadorRow() {
 // ✅ FIX: Guardado automático con debounce — se dispara 800ms después del último cambio
 var _autoSaveTimer = null;
 function _scheduleAutoSave() {
+  // Mostrar inmediatamente que hay cambios pendientes
+  var badge = document.getElementById('autosave-badge');
+  if (badge) { badge.textContent = '● Cambios sin guardar'; badge.style.color = '#FCD34D'; badge.style.opacity = '1'; }
+
   if (_autoSaveTimer) clearTimeout(_autoSaveTimer);
   _autoSaveTimer = setTimeout(function() {
     saveFichaState();
-    // Guardar en Supabase si está conectado
-    if (typeof supaEnabled !== 'undefined' && supaEnabled && currentFichaProjId) {
-      var saved = fichaEditData[currentFichaProjId];
-      if (saved) {
-        var record = Object.assign({}, saved, { id: currentFichaProjId, updated_at: new Date().toISOString() });
-        if (typeof supaUpsert === 'function') {
-          supaUpsert('ficha_proyectos', _cleanFichaForSupa(record), 'id')
-            .then(function(res){
-              if(res && res.error) _supaLog('❌ AutoSave ficha: ' + res.error, true);
-            }).catch(function(){});
-        }
-      }
-    }
-    // Indicador visual de guardado
-    var badge = document.getElementById('autosave-badge');
+    // Guardar en Supabase si está conectado (saveFichaState ya lo hace, badge se actualiza ahí)
     if (badge) {
-      badge.textContent = '✔ Guardado';
+      badge.textContent = '✔ Guardado en Supabase';
       badge.style.color = '#6EE7B7';
       badge.style.opacity = '1';
-      setTimeout(function(){ badge.style.opacity = '0'; }, 2500);
+      setTimeout(function(){ badge.style.opacity = '0'; }, 3000);
     }
   }, 800);
 }
