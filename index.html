@@ -1997,15 +1997,18 @@ function _updateSupaBadge() {
 // Supabase lanza error si recibe columnas que no existen en el schema
 // Solo se envían los campos que SÍ existen en la tabla projects
 function _cleanFichaForSupa(f) {
-  // ✅ Solo columnas que existen en la tabla ficha_proyectos de Supabase
+  // Serializar arrays a JSON string si es necesario, o enviar como objeto JS
+  // El cliente Supabase JS acepta arrays directamente para JSONB
+  var inds = Array.isArray(f.indicadores) ? f.indicadores : [];
+  var plan = Array.isArray(f.plan) ? f.plan : [];
   return {
     id:          f.id          || null,
     evaluador:   f.evaluador   || null,
     cargo:       f.cargo       || null,
     fecha:       f.fecha       || null,
     analisis:    f.analisis    || null,
-    indicadores: f.indicadores || [],
-    plan:        f.plan        || [],
+    indicadores: inds,
+    plan:        plan,
     lider:       f.lider       || null,
     proceso:     f.proceso     || null,
     updated_at:  f.updated_at  || new Date().toISOString()
@@ -5926,14 +5929,23 @@ function resetIndicadores() {
 }
 
 function closeFichaProyecto() {
+  // Cancelar autosave pendiente
+  if (_autoSaveTimer) { clearTimeout(_autoSaveTimer); _autoSaveTimer = null; }
+  // Capturar estado en memoria
   saveFichaState();
+  // Guardar en Supabase sincrónicamente antes de cerrar
+  if (typeof supaEnabled !== 'undefined' && supaEnabled && currentFichaProjId && typeof supaUpsert === 'function') {
+    var saved = fichaEditData[currentFichaProjId];
+    if (saved) {
+      var record = _cleanFichaForSupa(Object.assign({}, saved, {
+        id: currentFichaProjId,
+        updated_at: new Date().toISOString()
+      }));
+      supaUpsert('ficha_proyectos', record, 'id').catch(function(){});
+    }
+  }
   document.getElementById('ficha-proj-modal').style.display = 'none';
   currentFichaProjId = null;
-  if (document.getElementById('seg-view-indicadores') &&
-      document.getElementById('seg-view-indicadores').style.display !== 'none') {
-    renderIndTable();
-    if (currentIndProject) selectIndProject(currentIndProject.proyecto);
-  }
 }
 
 // ?? PDF download ?????????????????????????????????????????????????
