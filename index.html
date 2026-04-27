@@ -657,14 +657,6 @@ tr:hover td { background: #F0F7FF; }
         <span id="supa-status" style="display:none"></span>
       </div>
 
-      <!-- ✅ Actividad pendiente #2: Botón de acción rápida ficha_proyectos -->
-      <button id="btn-crear-ficha-tabla"
-        onclick="crearTablasFichaProyectos()"
-        title="Crear tabla ficha_proyectos en Supabase (ver SQL)"
-        style="padding:5px 11px;border-radius:6px;background:rgba(255,199,44,0.14);color:#FFC72C;border:1px solid rgba(255,199,44,0.3);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:0.2px;display:none">
-        🗄 ficha_proyectos
-      </button>
-
       <button class="btn-sm btn-accent" onclick="logout()">🔒 Salir</button>
     </div>
   </nav>
@@ -1509,9 +1501,81 @@ tr:hover td { background: #F0F7FF; }
             </div>
             <div class="ats-field-group">
               <div class="ats-field-label">Jefe inmediato / Supervisor</div>
-              <input id="ats-jefe" type="text" placeholder="Nombre del supervisor"
-                style="width:100%;padding:9px 12px;border:1px solid var(--gray3);border-radius:7px;font-family:inherit;font-size:12px;outline:none"
+              <input id="ats-jefe" type="text" value="" placeholder="Nombre del jefe inmediato o supervisor..."
+                style="width:100%;padding:9px 12px;border:none;border-bottom:2px solid var(--navy);border-radius:0;font-family:inherit;font-size:12px;outline:none;background:transparent"
+                onfocus="this.style.borderBottomColor='var(--sky)'" onblur="this.style.borderBottomColor='var(--navy)'">
+            </div>
+          </div>
+
+          <!-- ACTIVIDAD DEL PROYECTO -->
+          <div style="margin-top:14px">
+            <div class="ats-field-label" style="margin-bottom:6px;display:flex;align-items:center;gap:5px">
+              <span>📌</span> Actividad principal del proyecto
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <select id="ats-proj-actividad" onchange="atsOnSelectActividadProyecto(this)"
+                style="flex:1;min-width:220px;padding:9px 12px;border:1px solid var(--gray3);border-radius:7px;font-family:inherit;font-size:12px;background:white;outline:none"
                 onfocus="this.style.borderColor='var(--sky)'" onblur="this.style.borderColor='var(--gray3)'">
+                <option value="">— Seleccionar actividad del proyecto —</option>
+                <option value="Vista Ambiental">Vista Ambiental</option>
+                <option value="Trabajo Social">Trabajo Social</option>
+                <option value="Geologia">Geología</option>
+                <option value="Monitoreos Fisicos e hidrobiologicos">Monitoreos Físicos e hidrobiológicos</option>
+                <option value="Arqueologia">Arqueología</option>
+                <option value="Interventoria">Interventoría</option>
+                <option value="Toma de muestras">Toma de muestras</option>
+                <option value="Ruido">Ruido</option>
+                <option value="Trabajo Nocturno">Trabajo Nocturno</option>
+                <option value="Batimetrias">Batimetrías</option>
+                <option value="Topografia">Topografía</option>
+                <option value="__otra__">➕ Otra actividad (escribir)</option>
+              </select>
+              <input id="ats-proj-actividad-otra" type="text" placeholder="Nombre de la actividad..."
+                style="display:none;padding:9px 12px;border:1px solid var(--sky);border-radius:7px;font-family:inherit;font-size:12px;outline:none;min-width:200px">
+            </div>
+            <div id="ats-proj-actividad-tag" style="margin-top:8px;display:none">
+              <span id="ats-proj-actividad-chip" style="display:inline-flex;align-items:center;gap:6px;background:#EFF8FF;border:1.5px solid var(--sky);color:var(--navy);padding:5px 12px;border-radius:20px;font-size:11px;font-weight:700">
+                <span id="ats-proj-actividad-chip-text"></span>
+                <button type="button" onclick="atsLimpiarActividadProyecto()" style="background:none;border:none;color:var(--sky);cursor:pointer;font-size:14px;line-height:1;padding:0">×</button>
+              </span>
+            </div>
+
+            <!-- Descripción de la actividad -->
+            <div id="ats-proj-actividad-desc-wrap" style="margin-top:12px;display:none">
+              <div style="font-size:10px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:5px;display:flex;align-items:center;gap:5px">
+                <span>📝</span> Descripción de la actividad
+              </div>
+              <textarea id="ats-proj-actividad-desc" rows="3"
+                placeholder="Describe en qué consiste la actividad, el alcance, las condiciones del sitio y cualquier información relevante para la ejecución segura..."
+                style="width:100%;padding:10px 12px;border:1px solid var(--gray3);border-radius:8px;font-family:inherit;font-size:12px;resize:vertical;outline:none;line-height:1.6;box-sizing:border-box"
+                onfocus="this.style.borderColor='var(--sky)'" onblur="this.style.borderColor='var(--gray3)'"></textarea>
+            </div>
+          </div>
+
+          <!-- PANTALLAZO CENTRO MÉDICO -->
+          <div style="margin-top:14px">
+            <div style="font-size:11px;font-weight:700;color:var(--navy);margin-bottom:6px;display:flex;align-items:center;gap:6px">
+              <span>🏥</span> Pantallazo del Centro Médico ARL
+              <span style="font-size:10px;font-weight:400;color:var(--gray2)">(soporte obligatorio)</span>
+            </div>
+            <div id="ats-centro-dropzone"
+              onclick="document.getElementById('ats-centro-img-input').click()"
+              ondragover="event.preventDefault();this.style.borderColor='var(--sky)';this.style.background='#EFF8FF'"
+              ondragleave="this.style.borderColor='var(--gray3)';this.style.background='#FAFAFA'"
+              ondrop="event.preventDefault();this.style.borderColor='var(--gray3)';this.style.background='#FAFAFA';atsCentroHandleFile(event.dataTransfer.files[0])"
+              style="border:2px dashed var(--gray3);border-radius:10px;background:#FAFAFA;padding:18px;text-align:center;cursor:pointer;transition:all 0.2s;position:relative">
+              <input id="ats-centro-img-input" type="file" accept="image/*" style="display:none"
+                onchange="atsCentroHandleFile(this.files[0])">
+              <div id="ats-centro-preview-wrap" style="display:none;position:relative">
+                <img id="ats-centro-preview-img" style="max-width:100%;max-height:220px;border-radius:7px;border:1px solid var(--gray3);display:block;margin:0 auto">
+                <button type="button" onclick="event.stopPropagation();atsCentroRemoveImg()"
+                  style="position:absolute;top:-8px;right:-8px;background:var(--danger);color:white;border:none;border-radius:50%;width:22px;height:22px;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;line-height:1">✕</button>
+              </div>
+              <div id="ats-centro-placeholder">
+                <div style="font-size:28px;margin-bottom:6px">📸</div>
+                <div style="font-size:12px;font-weight:600;color:var(--navy)">Adjuntar pantallazo del centro médico</div>
+                <div style="font-size:10px;color:var(--gray2);margin-top:3px">Haz clic o arrastra la imagen aquí · PNG, JPG</div>
+              </div>
             </div>
           </div>
         </div>
@@ -1540,6 +1604,65 @@ tr:hover td { background: #F0F7FF; }
           </div>
         </div>
 
+        </div>
+
+        <!-- RECUADRO 2.55: EQUIPOS Y HERRAMIENTAS -->
+        <div class="chart-card" style="margin-bottom:20px;border-left:4px solid #7C3AED">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid var(--gray4)">
+            <div style="width:32px;height:32px;border-radius:8px;background:rgba(124,58,237,0.1);display:flex;align-items:center;justify-content:center;font-size:16px">🔧</div>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:var(--navy)">Equipos y Herramientas</div>
+              <div style="font-size:11px;color:var(--gray2)">Registra los equipos y herramientas a utilizar en la actividad</div>
+            </div>
+          </div>
+          <!-- Tags de equipos agregados -->
+          <div id="ats-equipos-tags" style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px;min-height:8px"></div>
+          <!-- Input para agregar -->
+          <div style="display:flex;gap:8px;align-items:center">
+            <input id="ats-equipo-input" type="text"
+              placeholder="Ej: GPS, Cámara fotográfica, Machete, Ecosonda, Corredera de medición..."
+              style="flex:1;padding:9px 12px;border:1px solid var(--gray3);border-radius:7px;font-family:inherit;font-size:12px;outline:none"
+              onkeydown="if(event.key==='Enter'){event.preventDefault();atsAgregarEquipo();}"
+              onfocus="this.style.borderColor='#7C3AED'" onblur="this.style.borderColor='var(--gray3)'">
+            <button type="button" onclick="atsAgregarEquipo()"
+              style="padding:9px 16px;border-radius:7px;background:#7C3AED;color:white;border:none;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">
+              + Agregar
+            </button>
+          </div>
+          <div style="font-size:10px;color:var(--gray2);margin-top:6px">Presiona Enter o el botón para agregar · Haz clic en × para eliminar</div>
+        </div>
+
+        <!-- RECUADRO 2.6: CONTACTOS DE EMERGENCIA -->
+        <div class="chart-card" style="margin-bottom:20px;border-left:4px solid var(--danger)">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding-bottom:12px;border-bottom:2px solid var(--gray4)">
+            <div style="width:32px;height:32px;border-radius:8px;background:rgba(220,38,38,0.1);display:flex;align-items:center;justify-content:center;font-size:16px">🆘</div>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:var(--navy)">Contactos de Emergencia</div>
+              <div style="font-size:11px;color:var(--gray2)">Comunicar de inmediato ante cualquier incidente</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <!-- Martha Castro -->
+            <div style="background:#FEF2F2;border:1.5px solid #FECACA;border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px">
+              <div style="width:38px;height:38px;border-radius:50%;background:var(--danger);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">👩‍💼</div>
+              <div>
+                <div style="font-size:10px;font-weight:700;color:var(--danger);text-transform:uppercase;letter-spacing:0.5px">Asistente HSEQ</div>
+                <div style="font-size:12px;font-weight:700;color:#111827">Martha Castro</div>
+                <div style="font-size:13px;font-weight:800;color:var(--danger);margin-top:2px">📞 311 516 5040</div>
+              </div>
+            </div>
+            <!-- ARL Bolívar -->
+            <div style="background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px">
+              <div style="width:38px;height:38px;border-radius:50%;background:#1D4ED8;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🏥</div>
+              <div>
+                <div style="font-size:10px;font-weight:700;color:#1D4ED8;text-transform:uppercase;letter-spacing:0.5px">ARL Bolívar</div>
+                <div style="font-size:12px;font-weight:700;color:#111827">Línea de Emergencias</div>
+                <div style="font-size:12px;font-weight:800;color:#1D4ED8;margin-top:2px">📱 <code style="font-size:13px">#322</code> &nbsp;|&nbsp; 📞 (601) 312 2122</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- RECUADRO 3: ACTIVIDADES Y RIESGOS -->
         <div class="chart-card" style="margin-bottom:20px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:14px;border-bottom:2px solid var(--gray4)">
@@ -1550,10 +1673,12 @@ tr:hover td { background: #F0F7FF; }
                 <div style="font-size:11px;color:var(--gray2)">Descripcion de la tarea y medidas preventivas</div>
               </div>
             </div>
-            <button onclick="atsAddActividad()" style="padding:7px 14px;border-radius:7px;background:var(--navy);color:white;border:none;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">+ Agregar actividad</button>
+            <div style="display:flex;align-items:center;gap:8px">
+              <button onclick="atsAbrirBiblioteca('')" title="Ver y usar peligros/riesgos/controles predefinidos" style="padding:7px 13px;border-radius:7px;background:linear-gradient(135deg,#002E5D,#003F7D);color:#FFC72C;border:1px solid rgba(255,199,44,0.35);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;display:flex;align-items:center;gap:5px">📚 Biblioteca</button>
+            </div>
           </div>
           <div id="ats-actividades-container">
-            <div id="ats-act-empty" style="text-align:center;padding:20px;color:var(--gray2);font-size:12px">Sin actividades registradas. Haz clic en "+ Agregar actividad"</div>
+            <div id="ats-act-empty" style="text-align:center;padding:20px;color:var(--gray2);font-size:12px">Sin actividades registradas. Escribe el nombre y haz clic en "+ Agregar"</div>
           </div>
         </div>
 
@@ -1588,7 +1713,7 @@ tr:hover td { background: #F0F7FF; }
               <div style="width:32px;height:32px;border-radius:8px;background:rgba(0,163,224,0.1);display:flex;align-items:center;justify-content:center;font-size:16px">📁</div>
               <div>
                 <div style="font-size:13px;font-weight:700;color:var(--navy)">Historial de ATS Guardados</div>
-                <div style="font-size:11px;color:var(--gray2)">Registros por proyecto y persona</div>
+                <div style="font-size:11px;color:var(--gray2)">Agrupados por proyecto · Eliminación protegida con clave</div>
               </div>
             </div>
             <span id="ats-hist-counter" style="background:rgba(0,46,93,0.07);color:var(--navy);font-size:11px;font-weight:700;padding:3px 12px;border-radius:20px">0 registros</span>
@@ -2288,161 +2413,6 @@ function mostrarSchemaSQL() {
   document.body.appendChild(modal);
 }
 
-// ═══════════════════════════════════════════════════════════
-// crearTablasFichaProyectos — Actividad pendiente #3
-// Intenta crear la tabla via Supabase Management API.
-// Si no tiene permisos, muestra el SQL listo para copiar.
-// ═══════════════════════════════════════════════════════════
-var FICHA_PROYECTOS_SQL =
-  'CREATE TABLE IF NOT EXISTS ficha_proyectos (\n' +
-  '  id TEXT PRIMARY KEY,\n' +
-  '  evaluador TEXT,\n' +
-  '  cargo TEXT,\n' +
-  '  fecha TEXT,\n' +
-  '  analisis TEXT,\n' +
-  '  indicadores JSONB DEFAULT \'[]\',\n' +
-  '  plan JSONB DEFAULT \'[]\',\n' +
-  '  lider TEXT,\n' +
-  '  proceso TEXT,\n' +
-  '  updated_at TIMESTAMPTZ DEFAULT NOW()\n' +
-  ');\n\n' +
-  '-- Habilitar RLS y permitir acceso:\n' +
-  'ALTER TABLE ficha_proyectos ENABLE ROW LEVEL SECURITY;\n' +
-  'DROP POLICY IF EXISTS "allow_all_ficha_proyectos" ON ficha_proyectos;\n' +
-  'CREATE POLICY "allow_all_ficha_proyectos" ON ficha_proyectos\n' +
-  '  FOR ALL USING (true) WITH CHECK (true);';
-
-async function crearTablasFichaProyectos() {
-  if (!supaEnabled || !supa) {
-    _mostrarSQLFichaProyectos('⚠ Supabase no está conectado. Conéctalo primero con el botón "○ Supabase".');
-    return;
-  }
-
-  // 1. Verificar si ya existe
-  var check = await supa.from('ficha_proyectos').select('id', { count: 'exact', head: true });
-  if (!check.error) {
-    if (confirm('✅ La tabla ficha_proyectos ya existe en Supabase.\n\n¿Deseas ver el SQL de todas formas?')) {
-      _mostrarSQLFichaProyectos('ℹ La tabla ya existe. SQL disponible por referencia.');
-    }
-    return;
-  }
-
-  var code = check.error.code || '';
-  var msg  = check.error.message || '';
-
-  if (code !== '42P01' && msg.indexOf('does not exist') < 0) {
-    _mostrarSQLFichaProyectos('⚠ Error inesperado: ' + msg + '\nEjecuta el SQL manualmente:');
-    return;
-  }
-
-  // 2. Tabla no existe → intentar crearla via Management API (solo si tenemos service_role)
-  // La API pública (anon) no puede ejecutar DDL → mostrar SQL directamente
-  _mostrarSQLFichaProyectos('La tabla ficha_proyectos no existe en Supabase.\nCopia el SQL y ejecútalo en el SQL Editor:');
-}
-
-function _mostrarSQLFichaProyectos(headerMsg) {
-  // Ocultar banner si existía
-  var banner = document.getElementById('banner-ficha-faltante');
-  if (banner) banner.remove();
-  var projectId = (SUPABASE_URL || '').replace('https://', '').replace('.supabase.co', '');
-  var sqlEditorUrl = projectId
-    ? 'https://supabase.com/dashboard/project/' + projectId + '/sql/new'
-    : 'https://supabase.com/dashboard';
-
-  var modal = document.createElement('div');
-  modal.id = 'ficha-sql-modal';
-  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.78);z-index:10001;display:flex;align-items:center;justify-content:center;padding:20px;font-family:Inter,sans-serif';
-  modal.innerHTML =
-    '<div style="background:#0F172A;border-radius:14px;max-width:680px;width:100%;max-height:88vh;display:flex;flex-direction:column;border:1px solid #334155;box-shadow:0 24px 80px rgba(0,0,0,0.6)">' +
-      '<div style="background:linear-gradient(135deg,#002E5D,#003F7D);padding:16px 22px;border-radius:14px 14px 0 0;display:flex;align-items:center;justify-content:space-between">' +
-        '<div>' +
-          '<div style="font-size:15px;font-weight:800;color:white">🗄 Crear tabla <code style="background:rgba(255,199,44,0.2);color:#FFC72C;padding:1px 8px;border-radius:5px;font-size:13px">ficha_proyectos</code></div>' +
-          '<div style="font-size:11px;color:rgba(255,255,255,0.55);margin-top:3px">' + headerMsg + '</div>' +
-        '</div>' +
-        '<button onclick="document.getElementById(\'ficha-sql-modal\').remove()" style="background:rgba(255,255,255,0.1);color:white;border:none;border-radius:7px;padding:6px 12px;cursor:pointer;font-size:14px">✕</button>' +
-      '</div>' +
-      '<div style="padding:16px 20px;flex:1;overflow-y:auto">' +
-        '<p style="color:#94A3B8;font-size:12px;margin-bottom:10px;line-height:1.6">1. Copia el SQL · 2. Ve al SQL Editor · 3. Pega y ejecuta con <kbd style="background:#1E293B;color:#7DD3FC;padding:1px 6px;border-radius:4px;font-size:10px">Run</kbd></p>' +
-        '<textarea id="ficha-proj-sql-box" readonly style="width:100%;height:260px;background:#1E293B;color:#7DD3FC;border:1px solid #334155;border-radius:9px;padding:14px;font-family:monospace;font-size:11.5px;line-height:1.65;resize:vertical;box-sizing:border-box;outline:none">' + FICHA_PROYECTOS_SQL + '</textarea>' +
-      '</div>' +
-      '<div style="padding:12px 20px;border-top:1px solid #1E293B;display:flex;gap:8px">' +
-        '<button onclick="(function(){var t=document.getElementById(\'ficha-proj-sql-box\');t.select();navigator.clipboard.writeText(t.value).then(function(){var b=document.getElementById(\'btn-copy-ficha-sql\');if(b){b.textContent=\'✅ Copiado!\';b.style.background=\'#059669\';setTimeout(function(){b.textContent=\'📋 Copiar SQL\';b.style.background=\'#2DA67A\';},2200);}});})()" id="btn-copy-ficha-sql" style="flex:1;padding:11px;background:#2DA67A;color:white;border:none;border-radius:9px;cursor:pointer;font-weight:700;font-size:13px;font-family:inherit">📋 Copiar SQL</button>' +
-        '<a href="' + sqlEditorUrl + '" target="_blank" style="flex:1;padding:11px;background:#1E40AF;color:white;border:none;border-radius:9px;cursor:pointer;font-weight:700;font-size:13px;text-decoration:none;text-align:center;display:flex;align-items:center;justify-content:center">🔗 Abrir SQL Editor ↗</a>' +
-        '<button onclick="document.getElementById(\'ficha-sql-modal\').remove()" style="padding:11px 18px;background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.7);border:1px solid rgba(255,255,255,0.12);border-radius:9px;cursor:pointer;font-size:13px;font-family:inherit">Cerrar</button>' +
-      '</div>' +
-    '</div>';
-  document.body.appendChild(modal);
-  // Select text for easy copy
-  setTimeout(function(){ var t = document.getElementById('ficha-proj-sql-box'); if(t) t.select(); }, 120);
-}
-
-// ═══════════════════════════════════════════════════════════
-// AUTO-DETECT: al iniciar Supabase, verificar ficha_proyectos
-// Actividad pendiente #4
-// ═══════════════════════════════════════════════════════════
-async function _autoDetectFichaProyectos() {
-  if (!supaEnabled || !supa) return;
-  try {
-    var res = await supa.from('ficha_proyectos').select('id', { count: 'exact', head: true });
-    if (res.error && (res.error.code === '42P01' || (res.error.message||'').indexOf('does not exist') >= 0)) {
-      _supaLog('⚠ ficha_proyectos no existe en Supabase', true);
-      // Mostrar botón de acción rápida en la topbar
-      var btnTopbar = document.getElementById('btn-crear-ficha-tabla');
-      if (btnTopbar) btnTopbar.style.display = 'inline-flex';
-      // Mostrar banner de aviso no intrusivo (no bloquea UI)
-      _mostrarBannerFaltaFichaProyectos();
-    } else if (!res.error) {
-      _supaLog('✅ ficha_proyectos encontrada (' + (res.count||0) + ' fichas)');
-      // Ocultar botón si la tabla ya existe
-      var btnTopbar2 = document.getElementById('btn-crear-ficha-tabla');
-      if (btnTopbar2) btnTopbar2.style.display = 'none';
-    }
-  } catch(e) {
-    _supaLog('⚠ Error verificando ficha_proyectos: ' + e.message, true);
-  }
-}
-
-function _mostrarBannerFaltaFichaProyectos() {
-  // Evitar duplicados
-  if (document.getElementById('banner-ficha-faltante')) return;
-
-  var banner = document.createElement('div');
-  banner.id = 'banner-ficha-faltante';
-  banner.style.cssText = [
-    'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:9998',
-    'background:linear-gradient(135deg,#7C2D12,#92400E);color:white',
-    'padding:13px 20px;border-radius:11px;box-shadow:0 8px 32px rgba(0,0,0,0.4)',
-    'display:flex;align-items:center;gap:14px;max-width:560px;width:calc(100% - 40px)',
-    'border:1px solid rgba(255,199,44,0.35);font-family:Inter,sans-serif',
-    'animation:_slideUpBanner 0.4s ease'
-  ].join(';');
-
-  // Agregar keyframe si no existe
-  if (!document.getElementById('banner-keyframe-style')) {
-    var st = document.createElement('style');
-    st.id = 'banner-keyframe-style';
-    st.textContent = '@keyframes _slideUpBanner{from{opacity:0;transform:translateX(-50%) translateY(20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}';
-    document.head.appendChild(st);
-  }
-
-  banner.innerHTML =
-    '<span style="font-size:22px;flex-shrink:0">⚠️</span>' +
-    '<div style="flex:1">' +
-      '<div style="font-size:13px;font-weight:700;margin-bottom:2px">Tabla <code style="background:rgba(0,0,0,0.3);padding:1px 6px;border-radius:4px">ficha_proyectos</code> no encontrada</div>' +
-      '<div style="font-size:11px;opacity:0.8">Los indicadores de proyectos no se guardarán en Supabase hasta crearla.</div>' +
-    '</div>' +
-    '<button onclick="document.getElementById(\'banner-ficha-faltante\').remove();crearTablasFichaProyectos();" style="padding:8px 14px;background:#FFC72C;color:#002E5D;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit">Ver SQL →</button>' +
-    '<button onclick="document.getElementById(\'banner-ficha-faltante\').remove()" style="padding:6px 10px;background:rgba(255,255,255,0.12);color:white;border:none;border-radius:7px;font-size:13px;cursor:pointer;font-family:inherit">✕</button>';
-
-  document.body.appendChild(banner);
-
-  // Auto-ocultar después de 15s
-  setTimeout(function(){
-    var b = document.getElementById('banner-ficha-faltante');
-    if(b) { b.style.transition='opacity 0.5s'; b.style.opacity='0'; setTimeout(function(){ if(b.parentNode) b.remove(); }, 500); }
-  }, 15000);
-}
-
 // Auto-init on load
 
 // ═══════════════════════════════════════════════════════════
@@ -2695,9 +2665,6 @@ setTimeout(async function(){
 
     // 2. Activar realtime para sincronizacion entre dispositivos
     subscribeRealtime();
-
-    // 3. ✅ Auto-detect ficha_proyectos (Actividad pendiente #4)
-    _autoDetectFichaProyectos();
 
   } catch(e){
     _supaLog('\u274c Error en init: ' + e.message, true);
@@ -3802,12 +3769,20 @@ var atsEPPCustom = []; // {id, label} agregados por el usuario
 function atsRenderEPP() {
   var grid = document.getElementById('ats-epp-grid');
   if(!grid) return;
+  // ✅ Preservar estado checked antes de re-renderizar
+  var prevChecked = {};
+  var all0 = ATS_EPP_BASE.concat(atsEPPCustom);
+  all0.forEach(function(e){
+    var cb = document.getElementById('epp-'+e.id);
+    if(cb) prevChecked[e.id] = cb.checked;
+  });
   var all = ATS_EPP_BASE.concat(atsEPPCustom);
   grid.innerHTML = all.map(function(e){
     var isCustom = atsEPPCustom.some(function(c){ return c.id === e.id; });
+    var wasChecked = prevChecked[e.id] ? ' checked' : '';
     return '<label style="display:flex;align-items:center;gap:8px;padding:9px 11px;border:1.5px solid var(--gray3);border-radius:8px;cursor:pointer;background:white;transition:all 0.15s" ' +
       'onmouseover="this.style.borderColor=\'var(--sky)\'" onmouseout="this.style.borderColor=\'var(--gray3)\'">' +
-      '<input type="checkbox" id="epp-'+e.id+'" data-epp-id="'+e.id+'" data-epp-label="'+e.label+'" style="width:16px;height:16px;accent-color:var(--sky);cursor:pointer">' +
+      '<input type="checkbox" id="epp-'+e.id+'" data-epp-id="'+e.id+'" data-epp-label="'+e.label+'"'+wasChecked+' style="width:16px;height:16px;accent-color:var(--sky);cursor:pointer">' +
       '<span style="font-size:13px">'+e.icon+'</span>' +
       '<span style="font-size:11px;font-weight:600;color:var(--navy);flex:1">'+e.label+'</span>' +
       (isCustom ? '<button type="button" onclick="event.preventDefault();atsRemoveEPPOtro(\''+e.id+'\')" title="Quitar" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:14px;padding:0;line-height:1">×</button>' : '') +
@@ -3863,14 +3838,417 @@ function atsLocalizarCentros() {
     if(inp) inp.focus();
     return;
   }
-  // Buscar hospitales, clínicas y centros de urgencias cerca del lugar
-  var query = encodeURIComponent('hospital clinica urgencias cerca de ' + lugar + ', Colombia');
-  var url = 'https://www.google.com/maps/search/' + query;
+  // Normalizar: tomar solo la ciudad (antes de la coma), quitar tildes, minúsculas
+  var ciudad = lugar.split(',')[0].trim();
+  ciudad = ciudad.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  var ciudadEnc = encodeURIComponent(ciudad);
+
+  alert('📍 Centros de Atención — ARL Bolívar\n\nSe abrirá el directorio de salud de Seguros Bolívar para:\n' + ciudad.toUpperCase() + '\n\n⚠ Toma pantallazo como soporte del ATS.');
+
+  var url = 'https://www.segurosbolivar.com/directorio-unico-de-salud/';
   window.open(url, '_blank', 'noopener');
 }
 
+// ─── Equipos y Herramientas ───────────────────────────────
+var atsEquipos = [];
+
+function atsAgregarEquipo() {
+  var inp = document.getElementById('ats-equipo-input');
+  if(!inp) return;
+  var val = inp.value.trim();
+  if(!val) return;
+  // Puede ingresar varios separados por coma
+  val.split(',').forEach(function(v){
+    var s = v.trim();
+    if(s && !atsEquipos.includes(s)) atsEquipos.push(s);
+  });
+  inp.value = '';
+  atsRenderEquipos();
+}
+
+function atsRemoverEquipo(idx) {
+  atsEquipos.splice(idx, 1);
+  atsRenderEquipos();
+}
+
+function atsRenderEquipos() {
+  var container = document.getElementById('ats-equipos-tags');
+  if(!container) return;
+  if(!atsEquipos.length) { container.innerHTML = ''; return; }
+  container.innerHTML = atsEquipos.map(function(e, i){
+    return '<span style="display:inline-flex;align-items:center;gap:5px;background:#EDE9FE;border:1.5px solid #C4B5FD;color:#5B21B6;padding:5px 11px;border-radius:20px;font-size:11px;font-weight:600">'+
+      '<span>🔧</span>'+e+
+      '<button onclick="atsRemoverEquipo('+i+')" style="background:none;border:none;color:#7C3AED;cursor:pointer;font-size:13px;line-height:1;padding:0;margin-left:2px">×</button>'+
+    '</span>';
+  }).join('');
+}
+
+// ─── Actividad manual en sección 3 ───────────────────────
+function atsAddActividadManual() {
+  var inp = document.getElementById('ats-act-manual-input');
+  if(!inp) return;
+  var nombre = inp.value.trim();
+  if(!nombre) { inp.focus(); return; }
+  var yaExiste = atsActividades.some(function(a){ return a.desc.toLowerCase() === nombre.toLowerCase(); });
+  if(yaExiste) { alert('⚠ La actividad "' + nombre + '" ya fue agregada.'); return; }
+  atsActividades.push({ desc: nombre, nivel: 'Bajo', filas: [{ peligro:'', riesgo:'', control:'' }] });
+  atsRenderActividades();
+  inp.value = '';
+  inp.focus();
+}
+
+// ─── Actividad del Proyecto (en sección Info Proyecto) ───
+function atsOnSelectActividadProyecto(sel) {
+  var otraInput = document.getElementById('ats-proj-actividad-otra');
+  if(!otraInput) return;
+  if(sel.value === '__otra__') {
+    otraInput.style.display = 'block';
+    otraInput.focus();
+    _atsActualizarChipActividad('');
+  } else if(sel.value) {
+    otraInput.style.display = 'none';
+    var texto = sel.options[sel.selectedIndex].text;
+    _atsActualizarChipActividad(texto);
+    // Actualizar KPIs del historial con esta actividad seleccionada
+    _renderAtsHistorial();
+  } else {
+    otraInput.style.display = 'none';
+    _atsActualizarChipActividad('');
+    _renderAtsHistorial();
+  }
+}
+
+function _atsActualizarChipActividad(nombre) {
+  var tag  = document.getElementById('ats-proj-actividad-tag');
+  var chip = document.getElementById('ats-proj-actividad-chip-text');
+  var descWrap = document.getElementById('ats-proj-actividad-desc-wrap');
+  if(!tag || !chip) return;
+  if(nombre) {
+    chip.textContent = '📌 ' + nombre;
+    tag.style.display = 'block';
+    if(descWrap) descWrap.style.display = 'block';
+  } else {
+    tag.style.display = 'none';
+    if(descWrap) descWrap.style.display = 'none';
+  }
+}
+
+function atsGetActividadProyecto() {
+  var sel = document.getElementById('ats-proj-actividad');
+  var otra = document.getElementById('ats-proj-actividad-otra');
+  if(!sel) return '';
+  if(sel.value === '__otra__') return (otra ? otra.value.trim() : '');
+  return sel.value ? (sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : sel.value) : '';
+}
+
+// Actualizar chip cuando se escribe en "Otra"
+document.addEventListener('DOMContentLoaded', function(){
+  var otraInput = document.getElementById('ats-proj-actividad-otra');
+  if(otraInput) {
+    otraInput.addEventListener('input', function(){
+      _atsActualizarChipActividad(this.value.trim());
+    });
+  }
+});
+
+function atsLimpiarActividadProyecto() {
+  var sel  = document.getElementById('ats-proj-actividad');
+  var otra = document.getElementById('ats-proj-actividad-otra');
+  var desc = document.getElementById('ats-proj-actividad-desc');
+  var descWrap = document.getElementById('ats-proj-actividad-desc-wrap');
+  if(sel)  sel.value = '';
+  if(otra) { otra.value = ''; otra.style.display = 'none'; }
+  if(desc) desc.value = '';
+  if(descWrap) descWrap.style.display = 'none';
+  _atsActualizarChipActividad('');
+}
+
+// ─── Pantallazo Centro Médico ─────────────────────────────
+var atsCentroImgDataUrl = null; // base64 de la imagen adjuntada
+
+function atsCentroHandleFile(file) {
+  if(!file || !file.type.startsWith('image/')) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    atsCentroImgDataUrl = e.target.result;
+    var img = document.getElementById('ats-centro-preview-img');
+    var wrap = document.getElementById('ats-centro-preview-wrap');
+    var placeholder = document.getElementById('ats-centro-placeholder');
+    var dz = document.getElementById('ats-centro-dropzone');
+    if(img) img.src = atsCentroImgDataUrl;
+    if(wrap) wrap.style.display = 'block';
+    if(placeholder) placeholder.style.display = 'none';
+    if(dz) { dz.style.borderColor = 'var(--sky)'; dz.style.background = '#EFF8FF'; }
+  };
+  reader.readAsDataURL(file);
+}
+
+function atsCentroRemoveImg() {
+  atsCentroImgDataUrl = null;
+  var img = document.getElementById('ats-centro-preview-img');
+  var wrap = document.getElementById('ats-centro-preview-wrap');
+  var placeholder = document.getElementById('ats-centro-placeholder');
+  var dz = document.getElementById('ats-centro-dropzone');
+  var inp = document.getElementById('ats-centro-img-input');
+  if(img) img.src = '';
+  if(wrap) wrap.style.display = 'none';
+  if(placeholder) placeholder.style.display = 'block';
+  if(dz) { dz.style.borderColor = 'var(--gray3)'; dz.style.background = '#FAFAFA'; }
+  if(inp) inp.value = '';
+}
+
+// ═══════════════════════════════════════════════════════════
+// BIBLIOTECA DE PELIGROS / RIESGOS / CONTROLES
+// Extraída de la imagen de referencia + editable en runtime
+// ═══════════════════════════════════════════════════════════
+var ATS_BIBLIOTECA = [
+  {
+    actividad: 'Desplazamientos caminata por el área',
+    peligro: 'Caída al mismo nivel.\nCaída a diferente nivel.\nGeneración de fracturas.\nPolitraumatismo en miembros superiores e inferiores.',
+    riesgo: 'Caída',
+    controles: 'Estar atento en todo momento a las condiciones del terreno y su entorno.\nDesplazarse por camino ya marcado en caso de alto riesgo estable cidar.\nNo deambular por particular.\nNo correr.\nUsar calzado adecuado (Botar caña alta).\nProcura no saltar de un lado a otro si el terreno puede ser inestable.\nNo pierdas contacto visual con su grupo de trabajo y acompañar.\nIntente no pararse encima del surcado de árboles en bosque.\nPara parar por su propia elección y de pasar hojas reses acoda a un apoyo de su compañero.'
+  },
+  {
+    actividad: 'Desplazamientos caminata por el área',
+    peligro: 'Manejo de herramienta menor',
+    riesgo: 'Golpes, cortadas, sobresfuerzar',
+    controles: 'Inspección de equipo y herramientas.\nUso de elementos de protección adecuados para el trabajo con herramientas de equipo.\nNo hacer broma y/o campañear con las equipos y herramientas.\nLas herramientas están diseñadas para personas que no realice actividades de azar.\nReporte los daños y condiciones subestándar de las equipos, equipar y herramientas.\nRealice los mantenimientos preventivos y correctivos que estén en capacidad de realizar.\nEn caso de emergencia haga uso de las elementos para la atención de emergencias.'
+  },
+  {
+    actividad: 'Transporte Fluvial',
+    peligro: 'Ahogamiento',
+    riesgo: 'Ahogamiento',
+    controles: 'Uso de chaleco salvavidas.'
+  },
+  {
+    actividad: 'Transporte Fluvial',
+    peligro: 'Pérdidas de equipo y herramientas',
+    riesgo: 'Pérdida de equipo',
+    controles: 'Naracar las manos del bote a lancha, narace al agua cantar manos durante el desplazamiento.\nAceptar las normas de seguridad del operador a lancha.'
+  },
+  {
+    actividad: 'Transporte Fluvial',
+    peligro: 'Cambios de temperatura (Frío, calor, tormenta eléctrica, inundaciones, vendaval)',
+    riesgo: 'Exposición climática',
+    controles: 'Use ropa adecuada para la condición natural del área y lugar de trabajo.\nEn caso de zonar con temperaturas elevadas se cuerda partar hidratación y moverse en la sombra.\nUse bloqueador solar.\nEn caso de tormenta eléctrica aléjese de cuerpo y agua, tarros de energía, árboles altos.\nEn caso de concentrarse en zonar abiertas y espacios al aire libre campañear mínima 3 mt.\nEn caso de buscar refugio realícelo en árboles de dar la llaga y la baja.\nEn caso de crecientes súbitas aléjese de los cuerpos de agua y ubíquese zona alta.'
+  },
+  {
+    actividad: 'Trabajo con comunidades',
+    peligro: 'Interacción social',
+    riesgo: 'Conflicto social',
+    controles: 'Mantenga siempre el respeto por las creencias de la gente y no lugar donde desarrollar el trabajo.\nMantenga una actitud respetuosa para tratar las personas.\nNo genere falsas expectativas a la comunidad.\nNo brinde información aún no conocida o no autorizada ni título de cambio.'
+  }
+];
+
+// Clave localStorage para persistir la biblioteca
+var ATS_BIB_KEY = 'ats_biblioteca_v1';
+
+function atsBibliotecaLoad() {
+  try {
+    var raw = localStorage.getItem(ATS_BIB_KEY);
+    if (raw) {
+      var parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length) {
+        // Merge: base + custom (evitar duplicados exactos)
+        parsed.forEach(function(item) {
+          var dup = ATS_BIBLIOTECA.some(function(b) {
+            return b.actividad === item.actividad && b.peligro === item.peligro;
+          });
+          if (!dup) ATS_BIBLIOTECA.push(item);
+        });
+      }
+    }
+  } catch(e) {}
+}
+
+function atsBibliotecaSave() {
+  try { localStorage.setItem(ATS_BIB_KEY, JSON.stringify(ATS_BIBLIOTECA)); } catch(e) {}
+}
+
+// Inicializar al cargar
+document.addEventListener('DOMContentLoaded', atsBibliotecaLoad);
+
+// ─── Modal: Biblioteca de Referencia ──────────────────────
+function atsAbrirBiblioteca(actividadFiltro) {
+  var existing = document.getElementById('ats-bib-modal');
+  if (existing) existing.remove();
+
+  var modal = document.createElement('div');
+  modal.id = 'ats-bib-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.72);z-index:10005;display:flex;align-items:center;justify-content:center;padding:16px;font-family:Inter,sans-serif';
+
+  function render() {
+    var filtro = (document.getElementById('bib-search') ? document.getElementById('bib-search').value : '').toLowerCase();
+    var items = ATS_BIBLIOTECA.filter(function(b) {
+      return !filtro || b.actividad.toLowerCase().includes(filtro) || b.peligro.toLowerCase().includes(filtro) || b.riesgo.toLowerCase().includes(filtro);
+    });
+
+    var rows = items.map(function(b, idx) {
+      var realIdx = ATS_BIBLIOTECA.indexOf(b);
+      return '<div style="border:1px solid #1E3A5F;border-radius:9px;padding:12px 14px;margin-bottom:10px;background:#0B1929;position:relative">'+
+        '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px">'+
+          '<div style="font-size:11px;font-weight:700;color:#7DD3FC;flex:1">⚠️ '+b.actividad+'</div>'+
+          '<div style="display:flex;gap:4px;flex-shrink:0">'+
+            '<button onclick="atsBibUsarFila('+realIdx+')" title="Usar en formulario" style="padding:3px 10px;background:#2DA67A;color:white;border:none;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">✚ Usar</button>'+
+            '<button onclick="atsBibEditar('+realIdx+')" title="Editar" style="padding:3px 8px;background:#1E40AF;color:white;border:none;border-radius:6px;font-size:11px;cursor:pointer">✏️</button>'+
+            '<button onclick="atsBibEliminar('+realIdx+')" title="Eliminar" style="padding:3px 8px;background:rgba(220,38,38,0.2);color:#FCA5A5;border:1px solid rgba(220,38,38,0.3);border-radius:6px;font-size:11px;cursor:pointer">✕</button>'+
+          '</div>'+
+        '</div>'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">'+
+          '<div>'+
+            '<div style="font-size:8.5px;font-weight:800;color:#FCD34D;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:3px">🟠 Peligro</div>'+
+            '<div style="font-size:10px;color:#E5E7EB;line-height:1.5;white-space:pre-wrap">'+b.peligro+'</div>'+
+          '</div>'+
+          '<div>'+
+            '<div style="font-size:8.5px;font-weight:800;color:#FCA5A5;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:3px">🔴 Riesgo</div>'+
+            '<div style="font-size:10px;color:#E5E7EB;line-height:1.5;white-space:pre-wrap">'+b.riesgo+'</div>'+
+          '</div>'+
+          '<div>'+
+            '<div style="font-size:8.5px;font-weight:800;color:#6EE7B7;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:3px">🟢 Controles</div>'+
+            '<div style="font-size:10px;color:#E5E7EB;line-height:1.5;white-space:pre-wrap">'+b.controles+'</div>'+
+          '</div>'+
+        '</div>'+
+      '</div>';
+    }).join('') || '<div style="text-align:center;padding:24px;color:#64748B;font-size:12px">Sin resultados</div>';
+
+    var inner = document.getElementById('bib-inner');
+    if (inner) inner.innerHTML = rows;
+  }
+
+  modal.innerHTML =
+    '<div style="background:#0A1628;border-radius:14px;max-width:900px;width:100%;max-height:90vh;display:flex;flex-direction:column;border:1px solid #1E3A5F;box-shadow:0 24px 80px rgba(0,0,0,0.7)">'+
+      '<div style="background:linear-gradient(135deg,#002E5D,#003F7D);padding:14px 20px;border-radius:14px 14px 0 0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">'+
+        '<div>'+
+          '<div style="font-size:15px;font-weight:800;color:white">📚 Biblioteca de Peligros / Riesgos / Controles</div>'+
+          '<div style="font-size:11px;color:rgba(255,255,255,0.55);margin-top:2px">Referencia editable · '+ATS_BIBLIOTECA.length+' registros</div>'+
+        '</div>'+
+        '<button onclick="document.getElementById(\'ats-bib-modal\').remove()" style="background:rgba(255,255,255,0.1);color:white;border:none;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:14px">✕ Cerrar</button>'+
+      '</div>'+
+      '<div style="padding:12px 16px;border-bottom:1px solid #1E3A5F;display:flex;gap:8px;flex-shrink:0">'+
+        '<input id="bib-search" type="text" placeholder="🔍 Buscar actividad, peligro o riesgo..." oninput="(function(){var m=document.getElementById(\'ats-bib-modal\');m._render&&m._render();})()" style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid #1E3A5F;background:#0F2137;color:white;font-family:inherit;font-size:12px;outline:none">'+
+        '<button onclick="atsBibNuevo()" style="padding:8px 16px;background:#2DA67A;color:white;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">➕ Nueva entrada</button>'+
+      '</div>'+
+      '<div id="bib-inner" style="flex:1;overflow-y:auto;padding:14px 16px"></div>'+
+    '</div>';
+
+  document.body.appendChild(modal);
+  modal._render = render;
+
+  // Bind search
+  setTimeout(function(){
+    var s = document.getElementById('bib-search');
+    if(s) { s.addEventListener('input', render); if(actividadFiltro) s.value = actividadFiltro; }
+    render();
+  }, 30);
+
+  // Exponer funciones al scope global via modal
+  window.atsBibUsarFila = function(idx) {
+    var b = ATS_BIBLIOTECA[idx];
+    if(!b) return;
+    // Buscar actividad existente con mismo nombre o crear nueva
+    var actExist = atsActividades.findIndex(function(a){ return a.desc.toLowerCase() === b.actividad.toLowerCase(); });
+    if(actExist >= 0) {
+      atsActividades[actExist].filas.push({ peligro: b.peligro, riesgo: b.riesgo, control: b.controles });
+    } else {
+      atsActividades.push({ desc: b.actividad, nivel: 'Bajo', filas: [{ peligro: b.peligro, riesgo: b.riesgo, control: b.controles }] });
+    }
+    atsRenderActividades();
+    modal.remove();
+    // Scroll a actividades
+    var sec = document.getElementById('ats-actividades-container');
+    if(sec) sec.scrollIntoView({ behavior:'smooth', block:'start' });
+  };
+
+  window.atsBibEditar = function(idx) {
+    var b = ATS_BIBLIOTECA[idx];
+    if(!b) return;
+    var panel = document.createElement('div');
+    panel.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:10010;display:flex;align-items:center;justify-content:center;padding:20px;font-family:Inter,sans-serif';
+    panel.innerHTML =
+      '<div style="background:#0A1628;border-radius:12px;max-width:680px;width:100%;border:1px solid #1E3A5F;padding:20px">'+
+        '<div style="font-size:14px;font-weight:800;color:#7DD3FC;margin-bottom:14px">✏️ Editar entrada de biblioteca</div>'+
+        '<label style="font-size:10px;font-weight:700;color:#FCD34D;text-transform:uppercase;letter-spacing:0.8px">Actividad</label>'+
+        '<input id="bib-e-act" value="'+b.actividad.replace(/"/g,'&quot;')+'" style="width:100%;margin:4px 0 10px;padding:8px 10px;border-radius:7px;border:1px solid #1E3A5F;background:#0F2137;color:white;font-family:inherit;font-size:11px;outline:none;box-sizing:border-box">'+
+        '<label style="font-size:10px;font-weight:700;color:#FCD34D;text-transform:uppercase;letter-spacing:0.8px">🟠 Peligro</label>'+
+        '<textarea id="bib-e-peligro" rows="3" style="width:100%;margin:4px 0 10px;padding:8px 10px;border-radius:7px;border:1px solid #1E3A5F;background:#FFFBEB;color:#333;font-family:inherit;font-size:11px;resize:vertical;outline:none;box-sizing:border-box">'+b.peligro+'</textarea>'+
+        '<label style="font-size:10px;font-weight:700;color:#FCA5A5;text-transform:uppercase;letter-spacing:0.8px">🔴 Riesgo</label>'+
+        '<input id="bib-e-riesgo" value="'+b.riesgo.replace(/"/g,'&quot;')+'" style="width:100%;margin:4px 0 10px;padding:8px 10px;border-radius:7px;border:1px solid #1E3A5F;background:#FFF1F2;color:#333;font-family:inherit;font-size:11px;outline:none;box-sizing:border-box">'+
+        '<label style="font-size:10px;font-weight:700;color:#6EE7B7;text-transform:uppercase;letter-spacing:0.8px">🟢 Controles</label>'+
+        '<textarea id="bib-e-control" rows="4" style="width:100%;margin:4px 0 14px;padding:8px 10px;border-radius:7px;border:1px solid #1E3A5F;background:#F0FDF4;color:#333;font-family:inherit;font-size:11px;resize:vertical;outline:none;box-sizing:border-box">'+b.controles+'</textarea>'+
+        '<div style="display:flex;gap:8px;justify-content:flex-end">'+
+          '<button onclick="this.closest(\'div[style*=fixed]\').remove()" style="padding:9px 20px;background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.7);border:1px solid rgba(255,255,255,0.12);border-radius:8px;cursor:pointer;font-family:inherit;font-size:12px">Cancelar</button>'+
+          '<button onclick="(function(){var p=document.getElementById(\'bib-e-peligro\'),r=document.getElementById(\'bib-e-riesgo\'),c=document.getElementById(\'bib-e-control\'),a=document.getElementById(\'bib-e-act\');if(!p||!r||!c||!a)return;ATS_BIBLIOTECA['+idx+']={actividad:a.value.trim(),peligro:p.value.trim(),riesgo:r.value.trim(),controles:c.value.trim()};atsBibliotecaSave();document.getElementById(\'bib-inner\')._render&&document.getElementById(\'bib-inner\').parentNode._render&&document.getElementById(\'ats-bib-modal\')._render();document.getElementById(\'ats-bib-modal\')._render();this.closest(\'div[style*=fixed]\').remove();})()" style="padding:9px 20px;background:#2DA67A;color:white;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">💾 Guardar</button>'+
+        '</div>'+
+      '</div>';
+    document.body.appendChild(panel);
+  };
+
+  window.atsBibEliminar = function(idx) {
+    if(!confirm('¿Eliminar esta entrada de la biblioteca?')) return;
+    ATS_BIBLIOTECA.splice(idx, 1);
+    atsBibliotecaSave();
+    render();
+  };
+
+  window.atsBibNuevo = function() {
+    var panel = document.createElement('div');
+    panel.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:10010;display:flex;align-items:center;justify-content:center;padding:20px;font-family:Inter,sans-serif';
+    panel.innerHTML =
+      '<div style="background:#0A1628;border-radius:12px;max-width:680px;width:100%;border:1px solid #2DA67A;padding:20px">'+
+        '<div style="font-size:14px;font-weight:800;color:#6EE7B7;margin-bottom:14px">➕ Nueva entrada de biblioteca</div>'+
+        '<label style="font-size:10px;font-weight:700;color:#FCD34D;text-transform:uppercase;letter-spacing:0.8px">Actividad</label>'+
+        '<input id="bib-n-act" placeholder="Ej: Trabajo en altura" style="width:100%;margin:4px 0 10px;padding:8px 10px;border-radius:7px;border:1px solid #1E3A5F;background:#0F2137;color:white;font-family:inherit;font-size:11px;outline:none;box-sizing:border-box">'+
+        '<label style="font-size:10px;font-weight:700;color:#FCD34D;text-transform:uppercase;letter-spacing:0.8px">🟠 Peligro</label>'+
+        '<textarea id="bib-n-peligro" rows="3" placeholder="Describe el peligro..." style="width:100%;margin:4px 0 10px;padding:8px 10px;border-radius:7px;border:1px solid #1E3A5F;background:#FFFBEB;color:#333;font-family:inherit;font-size:11px;resize:vertical;outline:none;box-sizing:border-box"></textarea>'+
+        '<label style="font-size:10px;font-weight:700;color:#FCA5A5;text-transform:uppercase;letter-spacing:0.8px">🔴 Riesgo</label>'+
+        '<input id="bib-n-riesgo" placeholder="Tipo de riesgo..." style="width:100%;margin:4px 0 10px;padding:8px 10px;border-radius:7px;border:1px solid #1E3A5F;background:#FFF1F2;color:#333;font-family:inherit;font-size:11px;outline:none;box-sizing:border-box">'+
+        '<label style="font-size:10px;font-weight:700;color:#6EE7B7;text-transform:uppercase;letter-spacing:0.8px">🟢 Controles</label>'+
+        '<textarea id="bib-n-control" rows="4" placeholder="Medidas de control..." style="width:100%;margin:4px 0 14px;padding:8px 10px;border-radius:7px;border:1px solid #1E3A5F;background:#F0FDF4;color:#333;font-family:inherit;font-size:11px;resize:vertical;outline:none;box-sizing:border-box"></textarea>'+
+        '<div style="display:flex;gap:8px;justify-content:flex-end">'+
+          '<button onclick="this.closest(\'div[style*=fixed]\').remove()" style="padding:9px 20px;background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.7);border:1px solid rgba(255,255,255,0.12);border-radius:8px;cursor:pointer;font-family:inherit;font-size:12px">Cancelar</button>'+
+          '<button onclick="(function(){var a=document.getElementById(\'bib-n-act\'),p=document.getElementById(\'bib-n-peligro\'),r=document.getElementById(\'bib-n-riesgo\'),c=document.getElementById(\'bib-n-control\');if(!a.value.trim()||!p.value.trim()){alert(\'Completa Actividad y Peligro\');return;}ATS_BIBLIOTECA.push({actividad:a.value.trim(),peligro:p.value.trim(),riesgo:r.value.trim(),controles:c.value.trim()});atsBibliotecaSave();document.getElementById(\'ats-bib-modal\')._render();this.closest(\'div[style*=fixed]\').remove();})()" style="padding:9px 20px;background:#2DA67A;color:white;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">💾 Guardar en biblioteca</button>'+
+        '</div>'+
+      '</div>';
+    document.body.appendChild(panel);
+  };
+}
+
+// ─── Selector de actividades predefinidas ────────────────
+function atsOnSelectActividad(sel) {
+  var otraInput = document.getElementById('ats-act-otra-input');
+  if(!otraInput) return;
+  if(sel.value === '__otra__') {
+    otraInput.style.display = 'block';
+    otraInput.focus();
+  } else {
+    otraInput.style.display = 'none';
+  }
+}
+
+function atsAddActividadSeleccionada() {
+  var sel = document.getElementById('ats-act-select');
+  var otraInput = document.getElementById('ats-act-otra-input');
+  var nombre = '';
+  if(!sel) return;
+  if(sel.value === '__otra__') {
+    nombre = (otraInput ? otraInput.value.trim() : '');
+    if(!nombre) { if(otraInput) otraInput.focus(); return; }
+  } else if(sel.value) {
+    nombre = sel.value;
+  } else {
+    sel.focus(); return;
+  }
+  var yaExiste = atsActividades.some(function(a){ return a.desc.toLowerCase() === nombre.toLowerCase(); });
+  if(yaExiste) { alert('⚠ La actividad "' + nombre + '" ya fue agregada.'); return; }
+  // Cada actividad tiene: desc, nivel, filas:[{peligro,riesgo,control}]
+  atsActividades.push({ desc:nombre, nivel:'Bajo', filas:[{peligro:'',riesgo:'',control:''}] });
+  atsRenderActividades();
+  sel.value = '';
+  if(otraInput) { otraInput.value=''; otraInput.style.display='none'; }
+}
+
 function atsAddActividad() {
-  atsActividades.push({ desc:'', riesgo:'', nivel:'Bajo', control:'', epp:'' });
+  atsActividades.push({ desc:'', nivel:'Bajo', filas:[{peligro:'',riesgo:'',control:''}] });
   atsRenderActividades();
 }
 
@@ -3879,49 +4257,127 @@ function atsRemoveActividad(i) {
   atsRenderActividades();
 }
 
+// Agregar nueva fila de Peligro/Riesgo/Control a una actividad
+function atsAddFila(actIdx) {
+  atsSaveActividad(actIdx);
+  if(!atsActividades[actIdx].filas) atsActividades[actIdx].filas = [];
+  atsActividades[actIdx].filas.push({peligro:'',riesgo:'',control:''});
+  atsRenderActividades();
+  // Scroll a la nueva fila
+  setTimeout(function(){
+    var el = document.getElementById('ats-act-peligro-'+actIdx+'-'+(atsActividades[actIdx].filas.length-1));
+    if(el) el.focus();
+  }, 60);
+}
+
+// Eliminar fila (mínimo 1)
+function atsRemoveFila(actIdx, filaIdx) {
+  atsSaveActividad(actIdx);
+  if(!atsActividades[actIdx].filas || atsActividades[actIdx].filas.length <= 1) return;
+  atsActividades[actIdx].filas.splice(filaIdx, 1);
+  atsRenderActividades();
+}
+
 function atsSaveActividad(i) {
   if(!atsActividades[i]) return;
-  atsActividades[i].desc    = (document.getElementById('ats-act-desc-'+i)||{}).value||'';
-  atsActividades[i].riesgo  = (document.getElementById('ats-act-riesgo-'+i)||{}).value||'';
-  atsActividades[i].nivel   = (document.getElementById('ats-act-nivel-'+i)||{}).value||'Bajo';
-  atsActividades[i].control = (document.getElementById('ats-act-control-'+i)||{}).value||'';
-  atsActividades[i].epp     = (document.getElementById('ats-act-epp-'+i)||{}).value||'';
+  atsActividades[i].desc  = (document.getElementById('ats-act-desc-'+i)||{}).value||'';
+  atsActividades[i].nivel = (document.getElementById('ats-act-nivel-'+i)||{}).value||'Bajo';
+  // Guardar todas las filas
+  if(!atsActividades[i].filas) atsActividades[i].filas = [{peligro:'',riesgo:'',control:''}];
+  atsActividades[i].filas.forEach(function(f, j){
+    f.peligro = (document.getElementById('ats-act-peligro-'+i+'-'+j)||{}).value||'';
+    f.riesgo  = (document.getElementById('ats-act-riesgo-'+i+'-'+j)||{}).value||'';
+    f.control = (document.getElementById('ats-act-control-'+i+'-'+j)||{}).value||'';
+  });
 }
 
 function atsRenderActividades() {
   var container = document.getElementById('ats-actividades-container');
   if(!container) return;
-  var nivelColor = { Bajo:'#059669', Medio:'#D97706', Alto:'#DC2626', Critico:'#7C3AED' };
-  var nivelBg    = { Bajo:'#D1FAE5', Medio:'#FEF3C7', Alto:'#FEE2E2', Critico:'#EDE9FE' };
+  var nivelColor  = { Bajo:'#059669', Medio:'#D97706', Alto:'#DC2626', Critico:'#7C3AED' };
+  var nivelBg     = { Bajo:'#D1FAE5', Medio:'#FEF3C7', Alto:'#FEE2E2', Critico:'#EDE9FE' };
+  var nivelBorder = { Bajo:'#6EE7B7', Medio:'#FCD34D', Alto:'#FECACA', Critico:'#C4B5FD' };
   if(!atsActividades.length) {
     container.innerHTML = '<div id="ats-act-empty" style="text-align:center;padding:20px;color:var(--gray2);font-size:12px">Sin actividades registradas.</div>';
     return;
   }
   container.innerHTML = atsActividades.map(function(a, i){
-    return '<div class="ats-risk-row">'+
-      '<div>'+
-        '<div class="ats-risk-label">Descripcion de la actividad</div>'+
-        '<textarea id="ats-act-desc-'+i+'" class="ats-risk-input" rows="2" placeholder="Describe la actividad a realizar..." onchange="atsSaveActividad('+i+')">'+a.desc+'</textarea>'+
+    var nv = a.nivel || 'Bajo';
+    var bk = nivelBg[nv]||'#F9FAFB', cl = nivelColor[nv]||'#6B7280', bd = nivelBorder[nv]||'#E5E7EB';
+    if(!a.filas || !a.filas.length) a.filas = [{peligro:'',riesgo:'',control:''}];
+    var filasHtml = a.filas.map(function(f, j){
+      var esUltima = j === a.filas.length - 1;
+      var puedeBorrar = a.filas.length > 1;
+      return '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border-top:1px solid '+bd+';position:relative">'+
+        // Peligro
+        '<div style="padding:8px 10px;border-right:1px solid '+bd+'">'+
+          (j===0 ? '<div style="font-size:9px;font-weight:800;color:#D97706;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:4px;display:flex;align-items:center;gap:4px"><span>🟠</span> Peligro</div>' : '')+
+          '<textarea id="ats-act-peligro-'+i+'-'+j+'" rows="2" placeholder="Peligro..."'+
+            ' onchange="atsSaveActividad('+i+')"'+
+            ' style="width:100%;border:1px solid var(--gray3);border-radius:6px;padding:6px 8px;font-family:inherit;font-size:11px;resize:vertical;outline:none;background:#FFFBEB">'+
+            (f.peligro||'')+
+          '</textarea>'+
+        '</div>'+
+        // Riesgo
+        '<div style="padding:8px 10px;border-right:1px solid '+bd+'">'+
+          (j===0 ? '<div style="font-size:9px;font-weight:800;color:'+cl+';text-transform:uppercase;letter-spacing:0.8px;margin-bottom:4px;display:flex;align-items:center;gap:4px"><span>🔴</span> Riesgo</div>' : '')+
+          '<textarea id="ats-act-riesgo-'+i+'-'+j+'" rows="2" placeholder="Riesgo..."'+
+            ' onchange="atsSaveActividad('+i+')"'+
+            ' style="width:100%;border:1px solid var(--gray3);border-radius:6px;padding:6px 8px;font-family:inherit;font-size:11px;resize:vertical;outline:none;background:#FFF1F2">'+
+            (f.riesgo||'')+
+          '</textarea>'+
+        '</div>'+
+        // Controles + botones
+        '<div style="padding:8px 10px;position:relative">'+
+          (j===0 ? '<div style="font-size:9px;font-weight:800;color:#059669;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:4px;display:flex;align-items:center;gap:4px"><span>🟢</span> Controles</div>' : '')+
+          '<textarea id="ats-act-control-'+i+'-'+j+'" rows="2" placeholder="Control..."'+
+            ' onchange="atsSaveActividad('+i+')"'+
+            ' style="width:100%;border:1px solid var(--gray3);border-radius:6px;padding:6px 8px;font-family:inherit;font-size:11px;resize:vertical;outline:none;background:#F0FDF4">'+
+            (f.control||'')+
+          '</textarea>'+
+          // Botón eliminar fila (solo si hay más de 1)
+          (puedeBorrar
+            ? '<button onclick="atsRemoveFila('+i+','+j+')" title="Eliminar esta fila" style="position:absolute;top:8px;right:8px;background:rgba(220,38,38,0.08);border:1px solid #FECACA;color:#DC2626;border-radius:5px;font-size:10px;cursor:pointer;padding:1px 6px;line-height:1.6;font-family:inherit">−</button>'
+            : '')+
+        '</div>'+
+      '</div>';
+    }).join('');
+
+    // Botón "+ Fila" al final
+    var addFilaBtn =
+      '<div style="padding:6px 12px 10px;background:'+bk+'30;border-top:1px dashed '+bd+'">'+
+        '<button onclick="atsAddFila('+i+')"'+
+          ' style="background:white;border:1.5px dashed '+cl+';color:'+cl+';border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;padding:5px 14px;font-family:inherit;display:flex;align-items:center;gap:5px;transition:all 0.15s"'+
+          ' onmouseover="this.style.background=\''+bk+'\'" onmouseout="this.style.background=\'white\'">'+
+          '<span style="font-size:14px">＋</span> Agregar fila de Peligro / Riesgo / Control'+
+        '</button>'+
+      '</div>';
+
+    return '<div style="margin-bottom:14px;border:1.5px solid '+bd+';border-radius:10px;overflow:hidden;background:white">'+
+      // Header tarjeta
+      '<div style="background:'+bk+';padding:9px 14px;display:flex;align-items:center;justify-content:space-between">'+
+        '<div style="display:flex;align-items:center;gap:8px;flex:1">'+
+          '<span style="font-size:14px">⚠️</span>'+
+          '<input id="ats-act-desc-'+i+'" type="text" value="'+a.desc.replace(/"/g,'&quot;').replace(/'/g,"&#39;")+'" placeholder="Nombre de la actividad..."'+
+            ' onchange="atsSaveActividad('+i+')"'+
+            ' style="background:transparent;border:none;outline:none;font-size:12px;font-weight:700;color:#111827;font-family:inherit;flex:1;min-width:0">'+
+        '</div>'+
+        '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0;margin-left:8px">'+
+          '<select id="ats-act-nivel-'+i+'" onchange="atsSaveActividad('+i+');atsRenderActividades()"'+
+            ' style="border:1.5px solid '+cl+';border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;color:'+cl+';background:white;outline:none;font-family:inherit">'+
+            ['Bajo','Medio','Alto','Critico'].map(function(n){ return '<option value="'+n+'"'+(nv===n?' selected':'')+'>'+n+'</option>'; }).join('')+
+          '</select>'+
+          '<button onclick="atsAbrirBiblioteca(\''+a.desc.replace(/'/g,"\\'")+'\')" title="Ver biblioteca para esta actividad" style="padding:3px 8px;background:rgba(0,46,93,0.08);border:1px solid rgba(0,46,93,0.2);color:var(--navy);border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit">📚</button>'+
+          '<button onclick="atsRemoveActividad('+i+')" title="Eliminar actividad"'+
+            ' style="background:rgba(220,38,38,0.1);border:1px solid #FECACA;color:var(--danger);border-radius:6px;font-size:13px;cursor:pointer;padding:2px 8px;font-weight:700;font-family:inherit">✕</button>'+
+        '</div>'+
       '</div>'+
-      '<div>'+
-        '<div class="ats-risk-label">Nivel de riesgo</div>'+
-        '<select id="ats-act-nivel-'+i+'" class="ats-risk-input" onchange="atsSaveActividad('+i+');atsRenderActividades()">'+
-          ['Bajo','Medio','Alto','Critico'].map(function(n){ return '<option value="'+n+'"'+(a.nivel===n?' selected':'')+'>'+n+'</option>'; }).join('')+
-        '</select>'+
-        '<span class="ats-nivel-badge" style="background:'+(nivelBg[a.nivel]||'#E5E7EB')+';color:'+(nivelColor[a.nivel]||'#6B7280')+'">'+a.nivel+'</span>'+
-      '</div>'+
-      '<div>'+
-        '<div class="ats-risk-label">Riesgo identificado</div>'+
-        '<textarea id="ats-act-riesgo-'+i+'" class="ats-risk-input" rows="2" placeholder="Riesgo potencial..." onchange="atsSaveActividad('+i+')">'+a.riesgo+'</textarea>'+
-      '</div>'+
-      '<div style="position:relative">'+
-        '<div class="ats-risk-label">Medida de control / EPP</div>'+
-        '<textarea id="ats-act-control-'+i+'" class="ats-risk-input" rows="2" placeholder="Controles y equipo de proteccion..." onchange="atsSaveActividad('+i+')">'+a.control+'</textarea>'+
-        '<button onclick="atsRemoveActividad('+i+')" style="position:absolute;top:0;right:0;background:none;border:none;color:var(--danger);font-size:14px;cursor:pointer;font-weight:700;padding:0 4px">✕</button>'+
-      '</div>'+
+      filasHtml +
+      addFilaBtn +
     '</div>';
   }).join('');
 }
+
 
 function _buildATSHTML(isPreview) {
   if(!atsUser) return '<p>Sin datos de usuario</p>';
@@ -3941,6 +4397,9 @@ function _buildATSHTML(isPreview) {
   var eppList     = (typeof atsGetEPPSeleccionados === 'function') ? atsGetEPPSeleccionados() : [];
   var eppTxt      = eppList.length ? eppList.join(' · ') : 'No se registraron EPP';
   var projObjeto  = (document.getElementById('ats-proj-objeto')||{}).textContent||'—';
+  var actividadProy = (typeof atsGetActividadProyecto === 'function') ? atsGetActividadProyecto() : '';
+  var actividadDesc = (document.getElementById('ats-proj-actividad-desc')||{}).value||'';
+  var equiposTxt  = atsEquipos.length ? atsEquipos.join(' · ') : '';
   var nombre   = (atsUser.apellidos||'').toUpperCase()+', '+(atsUser.nombres||'');
   var alergiaTxt = [atsUser.alergia, atsUser.prescripcion].filter(function(x){return x&&x!=='NO';}).join(' · ')||'Sin alergias conocidas';
   var fechaEjFmt = fechaEj ? new Date(fechaEj+'T12:00').toLocaleDateString('es-CO',{year:'numeric',month:'long',day:'numeric'}) : '—';
@@ -3949,17 +4408,24 @@ function _buildATSHTML(isPreview) {
   var nColor = {Bajo:'#059669',Medio:'#D97706',Alto:'#DC2626',Critico:'#7C3AED'};
   var nBg    = {Bajo:'#D1FAE5',Medio:'#FEF3C7',Alto:'#FEE2E2',Critico:'#EDE9FE'};
 
-  // Activity rows
+  // Activity rows — por cada actividad expande sus filas
   var actRows = atsActividades.length
     ? atsActividades.map(function(a,i){
         var cc=nColor[a.nivel]||'#6B7280', bg=nBg[a.nivel]||'#F9FAFB';
-        return '<tr style="background:'+bg+';border-bottom:1px solid #D1D5DB">'+
-          '<td style="padding:7px 8px;font-size:10px;font-weight:700;text-align:center;color:#002E5D;width:4%;border-right:1px solid #D1D5DB">'+(i+1)+'</td>'+
-          '<td style="padding:7px 8px;font-size:10px;text-align:justify;width:30%;border-right:1px solid #D1D5DB">'+a.desc+'</td>'+
-          '<td style="padding:7px 8px;font-size:10px;text-align:justify;width:30%;border-right:1px solid #D1D5DB">'+a.riesgo+'</td>'+
-          '<td style="padding:7px 8px;text-align:center;width:10%;border-right:1px solid #D1D5DB"><span style="background:'+bg+';color:'+cc+';padding:2px 7px;border-radius:20px;font-size:9px;font-weight:700;border:1px solid '+cc+'30">'+a.nivel+'</span></td>'+
-          '<td style="padding:7px 8px;font-size:10px;text-align:justify;width:26%">'+a.control+'</td>'+
-        '</tr>';
+        var filas = (a.filas && a.filas.length) ? a.filas : [{peligro:a.peligro||'—',riesgo:a.riesgo||'—',control:a.control||'—'}];
+        return filas.map(function(f, j){
+          var isFirst = j===0;
+          var rowspan = filas.length;
+          return '<tr style="border-bottom:1px solid #D1D5DB">'+
+            (isFirst
+              ? '<td rowspan="'+rowspan+'" style="padding:6px 7px;font-size:9.5px;font-weight:700;text-align:center;color:#002E5D;width:3%;border-right:1px solid #D1D5DB;background:'+bg+';vertical-align:middle">'+(i+1)+'</td>'+
+                '<td rowspan="'+rowspan+'" style="padding:6px 7px;font-size:9.5px;width:18%;border-right:1px solid #D1D5DB;font-weight:700;color:#002E5D;vertical-align:middle">'+a.desc+'<br><span style="background:'+bg+';color:'+cc+';padding:1px 6px;border-radius:12px;font-size:8px;font-weight:700;border:1px solid '+cc+'30;display:inline-block;margin-top:3px">'+a.nivel+'</span></td>'
+              : '')+
+            '<td style="padding:6px 7px;font-size:9.5px;text-align:justify;width:22%;border-right:1px solid #D1D5DB;background:#FFFBEB">'+(f.peligro||'—')+'</td>'+
+            '<td style="padding:6px 7px;font-size:9.5px;text-align:justify;width:22%;border-right:1px solid #D1D5DB;background:#FFF1F2">'+(f.riesgo||'—')+'</td>'+
+            '<td style="padding:6px 7px;font-size:9.5px;text-align:justify;width:35%;background:#F0FDF4">'+(f.control||'—')+'</td>'+
+          '</tr>';
+        }).join('');
       }).join('')
     : '<tr><td colspan="5" style="padding:12px;text-align:center;font-size:10px;color:#9CA3AF;font-style:italic">Sin actividades registradas</td></tr>';
 
@@ -4035,7 +4501,9 @@ function _buildATSHTML(isPreview) {
           '<td style="padding:5px 6px"><div style="'+LBL+'">Fecha de ejecución</div></td>'+
           '<td style="padding:5px 6px"><div style="'+VAL+'">'+fechaEjFmt+'</div></td>'+
           '<td style="padding:5px 6px"><div style="'+LBL+'">Jefe inmediato / Supervisor</div></td>'+
-          '<td style="padding:5px 6px"><div style="'+VAL+'">'+(jefe||'—')+'</div></td>'+
+          '<td style="padding:5px 6px">'+
+            '<div style="border-bottom:1.5px solid #002E5D;min-height:22px;font-size:10px;font-weight:600;color:#374151;padding-bottom:2px">'+(jefe||'')+'</div>'+
+          '</td>'+
         '</tr>'+
         '<tr>'+
           '<td style="padding:5px 6px"><div style="'+LBL+'">Objeto del contrato</div></td>'+
@@ -4045,6 +4513,14 @@ function _buildATSHTML(isPreview) {
           '<td style="padding:5px 6px"><div style="'+LBL+'">Ciudad / Municipio / Locación</div></td>'+
           '<td colspan="3" style="padding:5px 6px"><div style="'+VAL+'">'+(lugar||'—')+'</div></td>'+
         '</tr>'+
+        (actividadProy ?
+        '<tr style="background:#EFF8FF">'+
+          '<td style="padding:5px 6px"><div style="'+LBL+'">Actividad principal</div></td>'+
+          '<td colspan="3" style="padding:5px 6px">'+
+            '<div style="font-size:10px;font-weight:700;color:#1D4ED8;display:flex;align-items:center;gap:6px"><span>📌</span>'+actividadProy+'</div>'+
+            (actividadDesc ? '<div style="font-size:9.5px;color:#374151;line-height:1.5;margin-top:4px;text-align:justify">'+actividadDesc+'</div>' : '')+
+          '</td>'+
+        '</tr>' : '')+
       '</table>'+
     '</div>'+
   '</div>'+
@@ -4065,18 +4541,66 @@ function _buildATSHTML(isPreview) {
     '</div>'+
   '</div>'+
 
+  // ─── SECCIÓN 2.52: EQUIPOS Y HERRAMIENTAS ────────────────
+  (atsEquipos.length ?
+    '<div style="border-bottom:1px solid #E5E7EB">'+
+      '<div style="'+SEC_HDR+';background:#4C1D95"><span style="color:#C4B5FD;font-size:12px">&#9679;</span> Equipos y Herramientas</div>'+
+      '<div style="padding:10px 14px">'+
+        '<div style="display:flex;flex-wrap:wrap;gap:6px">'+
+          atsEquipos.map(function(e){
+            return '<span style="display:inline-block;padding:5px 11px;background:#EDE9FE;color:#5B21B6;border:1px solid #C4B5FD;border-radius:14px;font-size:10px;font-weight:700">🔧 '+e+'</span>';
+          }).join('')+
+        '</div>'+
+      '</div>'+
+    '</div>'
+    : '')+
+
+  // ─── SECCIÓN 2.55: PANTALLAZO CENTRO MÉDICO ──────────────
+  (atsCentroImgDataUrl ?
+    '<div style="border-bottom:1px solid #E5E7EB">'+
+      '<div style="'+SEC_HDR+';background:#065F46"><span style="color:#6EE7B7;font-size:12px">&#9679;</span> Soporte Centro Médico ARL</div>'+
+      '<div style="padding:10px 14px;text-align:center">'+
+        '<img src="'+atsCentroImgDataUrl+'" style="max-width:100%;max-height:260px;border-radius:8px;border:1.5px solid #D1FAE5;display:block;margin:0 auto">'+
+        '<div style="font-size:8.5px;color:#6B7280;margin-top:6px;font-style:italic">Pantallazo del directorio de centros médicos ARL Bolívar</div>'+
+      '</div>'+
+    '</div>'
+    : '')+
+
+  // ─── SECCIÓN 2.6: CONTACTOS DE EMERGENCIA ─────────────────
+  '<div style="border-bottom:1px solid #E5E7EB">'+
+    '<div style="'+SEC_HDR+';background:#7F1D1D"><span style="color:#FCA5A5;font-size:12px">&#9679;</span> Contactos de Emergencia</div>'+
+    '<div style="padding:10px 14px;display:flex;gap:12px">'+
+      '<div style="flex:1;background:#FEF2F2;border:1.5px solid #FECACA;border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:10px">'+
+        '<span style="font-size:22px">👩‍💼</span>'+
+        '<div>'+
+          '<div style="font-size:8px;font-weight:700;color:#DC2626;text-transform:uppercase;letter-spacing:0.5px">Asistente HSEQ</div>'+
+          '<div style="font-size:11px;font-weight:700;color:#111827">Martha Castro</div>'+
+          '<div style="font-size:12px;font-weight:800;color:#DC2626">📞 311 516 5040</div>'+
+        '</div>'+
+      '</div>'+
+      '<div style="flex:1;background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:10px">'+
+        '<span style="font-size:22px">🏥</span>'+
+        '<div>'+
+          '<div style="font-size:8px;font-weight:700;color:#1D4ED8;text-transform:uppercase;letter-spacing:0.5px">ARL Bolívar</div>'+
+          '<div style="font-size:11px;font-weight:700;color:#111827">Línea de Emergencias</div>'+
+          '<div style="font-size:11px;font-weight:800;color:#1D4ED8">📱 #322 &nbsp;|&nbsp; 📞 (601) 312 2122</div>'+
+        '</div>'+
+      '</div>'+
+    '</div>'+
+  '</div>'+
+
   // ─── SECCIÓN 3: ACTIVIDADES Y RIESGOS ────────────────────
   '<div style="border-bottom:1px solid #E5E7EB">'+
     '<div style="'+SEC_HDR+'"><span style="color:#DC2626;font-size:12px">&#9679;</span> 3. Actividades, Riesgos y Controles</div>'+
     '<div style="padding:10px 14px">'+
       '<table style="width:100%;border-collapse:collapse;table-layout:fixed">'+
-        '<colgroup><col width="4%"><col width="30%"><col width="30%"><col width="10%"><col width="26%"></colgroup>'+
+        '<colgroup><col width="3%"><col width="18%"><col width="22%"><col width="22%"><col width="35%"></colgroup>'+
         '<thead><tr style="background:#003F7D">'+
           '<th style="'+TH_STYLE+';text-align:center">#</th>'+
-          '<th style="'+TH_STYLE+'">Descripción de la actividad</th>'+
-          '<th style="'+TH_STYLE+'">Riesgo identificado</th>'+
-          '<th style="'+TH_STYLE+';text-align:center">Nivel</th>'+
-          '<th style="'+TH_STYLE+';border-right:none">Medida de control / EPP</th>'+
+          '<th style="'+TH_STYLE+';background:#1E3A5F">Actividad / Nivel</th>'+
+          '<th style="'+TH_STYLE+';background:#7C2D12">🟠 Peligro</th>'+
+          '<th style="'+TH_STYLE+';background:#7F1D1D">🔴 Riesgo</th>'+
+          '<th style="'+TH_STYLE+';border-right:none;background:#14532D">🟢 Controles</th>'+
         '</tr></thead>'+
         '<tbody>'+actRows+'</tbody>'+
       '</table>'+
@@ -4101,13 +4625,22 @@ function _buildATSHTML(isPreview) {
 
   // ─── FIRMA ────────────────────────────────────────────────
   '<div style="padding:14px 18px 18px">'+
-    '<div style="display:flex;justify-content:center">'+
-      '<div style="text-align:center;min-width:260px">'+
-        '<div style="border-bottom:1.5px solid #002E5D;height:40px;width:240px;margin:0 auto 8px"></div>'+
+    '<div style="display:flex;justify-content:center;gap:60px;flex-wrap:wrap">'+
+      // Firma trabajador
+      '<div style="text-align:center;min-width:220px">'+
+        '<div style="height:44px;width:220px;margin:0 auto 2px"></div>'+
+        '<div style="border-bottom:1.5px solid #002E5D;width:220px;margin:0 auto 6px"></div>'+
         '<div style="font-size:12px;font-weight:800;color:#002E5D;letter-spacing:0.2px">'+nombre+'</div>'+
         '<div style="font-size:10px;color:#6B7280;margin-top:2px;text-transform:uppercase;letter-spacing:0.5px">'+atsUser.cargo+'</div>'+
         '<div style="font-size:10px;color:#6B7280;margin-top:1px">C.C. '+atsUser.cc+'</div>'+
         '<div style="font-size:9px;color:#9CA3AF;margin-top:4px">Proyecto: '+(projInput||'—')+' · '+fechaEjFmt+'</div>'+
+      '</div>'+
+      // Firma Gerente Técnico
+      '<div style="text-align:center;min-width:220px">'+
+        '<img src="data:image/png;base64,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" style="height:44px;width:auto;display:block;margin:0 auto 2px">'+
+        '<div style="border-bottom:1.5px solid #002E5D;width:220px;margin:0 auto 6px"></div>'+
+        '<div style="font-size:12px;font-weight:800;color:#002E5D;letter-spacing:0.2px">JOSÉ GREGORIO VILLAMIL PRIETO</div>'+
+        '<div style="font-size:10px;color:#6B7280;margin-top:2px;text-transform:uppercase;letter-spacing:0.5px">Gerente Técnico</div>'+
       '</div>'+
     '</div>'+
     '<div style="display:flex;align-items:center;justify-content:space-between;border-top:1px solid #E5E7EB;padding-top:8px;margin-top:14px">'+
@@ -4127,14 +4660,104 @@ function atsPrevisualizar() {
   if(pz) { pz.style.display=''; pz.scrollIntoView({behavior:'smooth',block:'start'}); }
 }
 
+// ─── Modal de validación de campos ───────────────────────────
+function _atsShowValidationAlert(errores) {
+  var existing = document.getElementById('ats-val-modal');
+  if(existing) existing.remove();
+
+  var modal = document.createElement('div');
+  modal.id = 'ats-val-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:10020;display:flex;align-items:center;justify-content:center;padding:20px;font-family:Inter,sans-serif';
+
+  modal.innerHTML =
+    '<div style="background:white;border-radius:14px;max-width:480px;width:100%;box-shadow:0 24px 80px rgba(0,0,0,0.3);overflow:hidden">'+
+      '<div style="background:linear-gradient(135deg,#DC2626,#991B1B);padding:16px 20px;display:flex;align-items:center;gap:10px">'+
+        '<div style="width:36px;height:36px;background:rgba(255,255,255,0.15);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">⚠️</div>'+
+        '<div>'+
+          '<div style="font-size:14px;font-weight:800;color:white">Campos incompletos</div>'+
+          '<div style="font-size:11px;color:rgba(255,255,255,0.7);margin-top:1px">Completa todos los campos antes de descargar el ATS</div>'+
+        '</div>'+
+      '</div>'+
+      '<div style="padding:18px 20px">'+
+        '<div style="font-size:11px;font-weight:700;color:#DC2626;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:10px">'+errores.length+' campo'+(errores.length!==1?'s':'')+' sin completar:</div>'+
+        '<div style="display:flex;flex-direction:column;gap:7px;max-height:280px;overflow-y:auto">'+
+          errores.map(function(e){
+            return '<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;font-size:12px;color:#7F1D1D;font-weight:600">'+
+              '<span style="font-size:14px;flex-shrink:0">●</span>'+e+
+            '</div>';
+          }).join('')+
+        '</div>'+
+      '</div>'+
+      '<div style="padding:12px 20px;border-top:1px solid #F3F4F6;display:flex;justify-content:flex-end">'+
+        '<button onclick="document.getElementById(\'ats-val-modal\').remove()" '+
+          'style="padding:10px 24px;background:var(--navy);color:white;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">'+
+          'Volver a completar →'+
+        '</button>'+
+      '</div>'+
+    '</div>';
+
+  document.body.appendChild(modal);
+
+  // Highlight empty fields briefly
+  var fieldMap = {
+    'Código del proyecto':             'ats-proj-input',
+    'Fecha de ejecución':              'ats-fecha-ej',
+    'Ciudad / Municipio / Locación':   'ats-lugar',
+    'Actividad principal del proyecto':'ats-proj-actividad',
+    'Descripción de la actividad':     'ats-proj-actividad-desc',
+    'Compromisos y Declaración':       'ats-compromisos'
+  };
+  errores.forEach(function(e){
+    var cleanKey = e.replace(/^[^\s]+ /,'');
+    var id = fieldMap[cleanKey];
+    if(id){
+      var el = document.getElementById(id);
+      if(el){
+        var orig = el.style.borderColor || el.style.borderBottomColor || '';
+        el.style.borderColor = '#DC2626';
+        el.style.borderWidth = '2px';
+        setTimeout(function(){ el.style.borderColor = orig; el.style.borderWidth = ''; }, 4000);
+      }
+    }
+  });
+}
+
 function atsDescargarPDF() {
   // Save all activity inputs before building
   atsActividades.forEach(function(a,i){ atsSaveActividad(i); });
 
-  // Validate completeness warning
-  var projInput = (document.getElementById('ats-proj-input')||{}).value||'';
-  if(!projInput.trim()) {
-    if(!confirm('El codigo de proyecto esta vacio. ¿Continuar de todas formas?')) return;
+  // ── Validación completa de campos ──────────────────────────
+  var errores = [];
+
+  var projInput   = (document.getElementById('ats-proj-input')||{}).value||'';
+  var fechaEj     = (document.getElementById('ats-fecha-ej')||{}).value||'';
+  var lugar       = (document.getElementById('ats-lugar')||{}).value||'';
+  var actividadP  = (typeof atsGetActividadProyecto==='function') ? atsGetActividadProyecto() : '';
+  var actividadD  = (document.getElementById('ats-proj-actividad-desc')||{}).value||'';
+  var eppSel      = (typeof atsGetEPPSeleccionados==='function') ? atsGetEPPSeleccionados() : [];
+  var compromisos = (document.getElementById('ats-compromisos')||{}).value||'';
+
+  if(!projInput.trim())   errores.push('📋 Código del proyecto');
+  if(!fechaEj.trim())     errores.push('📅 Fecha de ejecución');
+  if(!lugar.trim())       errores.push('📍 Ciudad / Municipio / Locación');
+  if(!actividadP.trim())  errores.push('📌 Actividad principal del proyecto');
+  if(!actividadD.trim())  errores.push('📝 Descripción de la actividad');
+  if(!eppSel.length)      errores.push('🦺 Equipo de Protección Personal (EPP)');
+  if(!atsActividades.length) errores.push('⚠️ Actividades, Riesgos y Controles (mínimo 1)');
+  else {
+    // Verificar que cada actividad tenga al menos peligro o control en la primera fila
+    atsActividades.forEach(function(a, i){
+      var f = a.filas && a.filas[0];
+      if(!a.desc.trim()) errores.push('⚠️ Actividad #'+(i+1)+': falta el nombre');
+      else if(!f || (!f.peligro.trim() && !f.control.trim())) {
+        errores.push('⚠️ Actividad "'+a.desc+'": falta peligro y/o control');
+      }
+    });
+  }
+  if(errores.length) {
+    // Mostrar modal de alerta estilizado
+    _atsShowValidationAlert(errores);
+    return;
   }
 
   var btn = document.getElementById('btn-ats-descargar');
@@ -4219,6 +4842,7 @@ function _atsGuardarRegistro(fname, dataUrl, projCod, projKey, personKey) {
     fecha_ej: fechaEj,
     eps:      epsVal,
     arl:      arlVal,
+    actividades: JSON.stringify(atsActividades.map(function(a){ return { desc:a.desc, nivel:a.nivel||'Bajo', filas:(a.filas||[{peligro:a.peligro||'',riesgo:a.riesgo||'',control:a.control||''}]) }; })),
     data_url: dataUrl                  // nombre de columna snake_case (coincide con Supabase)
   };
   // Check for duplicate (same project + person)
@@ -4262,8 +4886,16 @@ function _atsRedescargar(id) {
 }
 
 function _atsEliminarRegistro(id) {
-  if(!confirm('\u00bfEliminar este registro del historial?')) return;
-  atsHistorial = atsHistorial.filter(function(h){ return h.id!==id; });
+  var pin = prompt('🔐 Ingresa la clave para eliminar este registro:');
+  if(pin === null) return;
+  if(pin.trim() !== '2025') {
+    alert('❌ Clave incorrecta. No se eliminó el registro.');
+    return;
+  }
+  atsHistorial = atsHistorial.filter(function(h){ return h.id !== id; });
+  if(supaEnabled && supa) {
+    supa.from('ats_records').delete().eq('id', id).then(function(){});
+  }
   _renderAtsHistorial();
 }
 
@@ -4272,26 +4904,173 @@ function _renderAtsHistorial() {
   if(!container) return;
   var counter = document.getElementById('ats-hist-counter');
   if(counter) counter.textContent = atsHistorial.length + ' registros';
+
   if(!atsHistorial.length){
-    container.innerHTML = '<div style="text-align:center;padding:20px;font-size:12px;color:var(--gray2)">Sin registros guardados.</div>';
+    container.innerHTML = '<div style="text-align:center;padding:24px;font-size:12px;color:var(--gray2)">Sin registros guardados.</div>';
     return;
   }
-  container.innerHTML = atsHistorial.map(function(h){
-    return '<div style="background:white;border:1px solid var(--gray4);border-radius:9px;padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:12px">'+
-      '<div style="display:flex;align-items:center;gap:12px;min-width:0">'+
-        '<div style="width:38px;height:38px;background:rgba(0,46,93,0.07);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">📄</div>'+
-        '<div style="min-width:0">'+
-          '<div style="font-size:12px;font-weight:700;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+h.persona+'</div>'+
-          '<div style="font-size:11px;color:var(--sky2);margin-top:1px">Proyecto: '+h.proyecto+'</div>'+
-          '<div style="font-size:10px;color:var(--gray2);margin-top:1px">'+h.cargo+' · '+h.fecha+'</div>'+
-        '</div>'+
+
+  // ── Actividad seleccionada en "Información del Proyecto" ──
+  var actFiltro = atsGetActividadProyecto ? atsGetActividadProyecto() : '';
+  // Si "Otra", leer el campo libre
+  var selEl = document.getElementById('ats-proj-actividad');
+  if(selEl && selEl.value === '__otra__') {
+    var otraEl = document.getElementById('ats-proj-actividad-otra');
+    actFiltro = otraEl ? otraEl.value.trim() : '';
+  }
+
+  // ── Historial filtrado (para KPIs) vs completo (para grupos) ──
+  var histFiltrado = actFiltro
+    ? atsHistorial.filter(function(h){
+        if(!h.actividades) return false;
+        try {
+          var pa = JSON.parse(h.actividades);
+          return Array.isArray(pa) && pa.some(function(a){
+            return (a.desc||'').toLowerCase().includes(actFiltro.toLowerCase());
+          });
+        } catch(e){ return false; }
+      })
+    : atsHistorial;
+
+  var totalATS   = histFiltrado.length;
+  var totalTotal = atsHistorial.length;
+
+  // Agrupar por proyecto (del historial filtrado para KPIs)
+  var byProy = {};
+  atsHistorial.forEach(function(h){
+    var k = (h.proyecto||'Sin proyecto').toString().trim();
+    if(!byProy[k]) byProy[k] = [];
+    byProy[k].push(h);
+  });
+  var numProyectos = Object.keys(byProy).length;
+
+  // ATS por actividad (del filtrado)
+  var byAct = {};
+  histFiltrado.forEach(function(h){
+    var acts = [];
+    if(h.actividades) {
+      try {
+        var parsed = JSON.parse(h.actividades);
+        if(Array.isArray(parsed)) acts = parsed.map(function(a){ return a.desc||''; }).filter(Boolean);
+      } catch(e) {}
+    }
+    if(!acts.length && h.actividad) acts = [h.actividad];
+    if(!acts.length) acts = ['Sin actividad'];
+    acts.forEach(function(act){
+      var k = act.trim() || 'Sin actividad';
+      byAct[k] = (byAct[k]||0) + 1;
+    });
+  });
+
+  var topAct = '—', topActN = 0;
+  Object.keys(byAct).forEach(function(k){
+    if(byAct[k] > topActN){ topActN = byAct[k]; topAct = k; }
+  });
+
+  // ── KPIs ──────────────────────────────────────────────────
+  var filtroLabel = actFiltro
+    ? '<div style="display:inline-flex;align-items:center;gap:6px;background:#EFF8FF;border:1px solid #BFDBFE;color:#1D4ED8;padding:4px 12px;border-radius:20px;font-size:10px;font-weight:700;margin-bottom:12px">'+
+        '📌 Filtrando por: '+actFiltro+
+        '<button onclick="(function(){var s=document.getElementById(\'ats-proj-actividad\');if(s)s.value=\'\';var o=document.getElementById(\'ats-proj-actividad-otra\');if(o){o.value=\'\';o.style.display=\'none\';}var c=document.getElementById(\'ats-proj-actividad-chip-tag\');if(c)c.style.display=\'none\';atsLimpiarActividadProyecto();_renderAtsHistorial();})()" style="background:none;border:none;color:#1D4ED8;cursor:pointer;font-size:13px;line-height:1;padding:0;margin-left:2px">×</button>'+
+      '</div><br>'
+    : '';
+
+  var kpiHtml =
+    filtroLabel+
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px">'+
+      _atsKpiBox('📄', actFiltro ? 'ATS con esta actividad' : 'Total ATS', ''+totalATS,
+        actFiltro ? 'de '+totalTotal+' totales' : 'registros', 'var(--sky)', 'rgba(0,163,224,0.08)')+
+      _atsKpiBox('📁','Proyectos',''+numProyectos,'con ATS','#7C3AED','rgba(124,58,237,0.08)')+
+      _atsKpiBox('📌','Top Actividad', topActN>0 ? ''+topActN : '—', topAct,'#059669','rgba(5,150,105,0.08)')+
+    '</div>'+
+    '<div style="background:var(--off2);border-radius:10px;padding:12px 14px;margin-bottom:16px;border:1px solid var(--gray4)">'+
+      '<div style="font-size:10px;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px">'+
+        (actFiltro ? 'ATS con "'+actFiltro+'" — por actividad interna' : 'ATS por Actividad')+
       '</div>'+
-      '<div style="display:flex;gap:6px;flex-shrink:0">'+
-        '<button onclick="_atsRedescargar('+h.id+')" style="padding:5px 12px;border-radius:6px;background:var(--navy);color:white;border:none;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">Descargar</button>'+
-        '<button onclick="_atsEliminarRegistro('+h.id+')" style="padding:5px 10px;border-radius:6px;background:rgba(220,38,38,0.08);color:var(--danger);border:1px solid rgba(220,38,38,0.15);font-size:11px;cursor:pointer;font-family:inherit">✕</button>'+
+      (Object.keys(byAct).length
+        ? Object.keys(byAct).sort(function(a,b){return byAct[b]-byAct[a];}).slice(0,8).map(function(k){
+            var pct = totalATS > 0 ? Math.round((byAct[k]/totalATS)*100) : 0;
+            return '<div style="margin-bottom:7px">'+
+              '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">'+
+                '<span style="font-size:10px;font-weight:600;color:var(--navy)">'+k+'</span>'+
+                '<span style="font-size:10px;font-weight:700;color:var(--sky)">'+byAct[k]+'</span>'+
+              '</div>'+
+              '<div style="background:var(--gray4);border-radius:4px;height:5px">'+
+                '<div style="background:var(--sky);border-radius:4px;height:5px;width:'+pct+'%;transition:width 0.4s"></div>'+
+              '</div>'+
+            '</div>';
+          }).join('')
+        : '<div style="font-size:11px;color:var(--gray2);font-style:italic">Sin coincidencias para esta actividad.</div>'
+      )+
+    '</div>';
+
+  // ── Grupos por proyecto (siempre el historial completo) ──
+  var gruposHtml = Object.keys(byProy).sort().map(function(proy){
+    var registros = byProy[proy];
+    var isOpen = Object.keys(byProy).length === 1;
+    var grpId = 'ats-grp-'+proy.replace(/\W/g,'_');
+    // Si hay filtro de actividad, resaltar los registros que coinciden
+    return '<div style="border:1px solid var(--gray4);border-radius:10px;margin-bottom:10px;overflow:hidden">'+
+      '<div onclick="(function(){var c=document.getElementById(\''+grpId+'\');var ic=document.getElementById(\''+grpId+'-ic\');if(c.style.display===\'none\'){c.style.display=\'block\';ic.textContent=\'▾\';}else{c.style.display=\'none\';ic.textContent=\'▸\';}})()" '+
+        'style="background:linear-gradient(135deg,var(--navy),#003F7D);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none">'+
+        '<div style="display:flex;align-items:center;gap:10px">'+
+          '<div style="width:30px;height:30px;background:rgba(255,255,255,0.12);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px">📁</div>'+
+          '<div>'+
+            '<div style="font-size:12px;font-weight:800;color:white">Proyecto '+proy+'</div>'+
+            '<div style="font-size:10px;color:rgba(255,255,255,0.6);margin-top:1px">'+registros.length+' ATS guardado'+(registros.length!==1?'s':'')+'</div>'+
+          '</div>'+
+        '</div>'+
+        '<span id="'+grpId+'-ic" style="color:rgba(255,255,255,0.7);font-size:14px;font-weight:700">'+(isOpen?'▾':'▸')+'</span>'+
+      '</div>'+
+      '<div id="'+grpId+'" style="display:'+(isOpen?'block':'none')+'">'+
+        registros.map(function(h){
+          var actChips = '';
+          var matchAct = false;
+          if(h.actividades) {
+            try {
+              var pa = JSON.parse(h.actividades);
+              if(Array.isArray(pa) && pa.length) {
+                matchAct = actFiltro && pa.some(function(a){return (a.desc||'').toLowerCase().includes(actFiltro.toLowerCase());});
+                actChips = '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px">'+
+                  pa.slice(0,4).map(function(a){
+                    var hl = actFiltro && (a.desc||'').toLowerCase().includes(actFiltro.toLowerCase());
+                    return '<span style="font-size:9px;padding:2px 7px;background:'+(hl?'#FEF3C7':'#EFF8FF')+';border:1px solid '+(hl?'#FCD34D':'#BFDBFE')+';color:'+(hl?'#92400E':'#1D4ED8')+';border-radius:10px;font-weight:600">'+a.desc+'</span>';
+                  }).join('')+
+                  (pa.length>4?'<span style="font-size:9px;color:var(--gray2)">+'+(pa.length-4)+'</span>':'')+
+                '</div>';
+              }
+            } catch(e) {}
+          }
+          var rowBg = (actFiltro && matchAct) ? '#FFFBEB' : 'white';
+          return '<div style="padding:10px 14px;border-bottom:1px solid var(--gray4);display:flex;align-items:center;justify-content:space-between;gap:12px;background:'+rowBg+'">'+
+            '<div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1">'+
+              '<div style="width:34px;height:34px;background:rgba(0,46,93,0.06);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">📄</div>'+
+              '<div style="min-width:0">'+
+                '<div style="font-size:11px;font-weight:700;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+h.persona+'</div>'+
+                '<div style="font-size:10px;color:var(--gray2);margin-top:1px">'+h.cargo+' · '+h.fecha+'</div>'+
+                actChips+
+              '</div>'+
+            '</div>'+
+            '<div style="display:flex;gap:5px;flex-shrink:0">'+
+              '<button onclick="_atsRedescargar('+h.id+')" style="padding:5px 10px;border-radius:6px;background:var(--navy);color:white;border:none;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">⬇ Descargar</button>'+
+              '<button onclick="_atsEliminarRegistro('+h.id+')" title="Requiere clave 2025" style="padding:5px 8px;border-radius:6px;background:rgba(220,38,38,0.07);color:var(--danger);border:1px solid rgba(220,38,38,0.15);font-size:11px;cursor:pointer;font-family:inherit">🔐</button>'+
+            '</div>'+
+          '</div>';
+        }).join('')+
       '</div>'+
     '</div>';
   }).join('');
+
+  container.innerHTML = kpiHtml + gruposHtml;
+}
+
+function _atsKpiBox(icon, label, value, sub, color, bg) {
+  return '<div style="background:'+bg+';border:1.5px solid '+color+'30;border-radius:10px;padding:12px 14px">'+
+    '<div style="font-size:18px;margin-bottom:4px">'+icon+'</div>'+
+    '<div style="font-size:10px;font-weight:700;color:var(--gray2);text-transform:uppercase;letter-spacing:0.6px">'+label+'</div>'+
+    '<div style="font-size:22px;font-weight:800;color:'+color+';line-height:1.1;margin-top:4px">'+value+'</div>'+
+    '<div style="font-size:10px;color:var(--gray2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+sub+'">'+sub+'</div>'+
+  '</div>';
 }
 
 
