@@ -5610,13 +5610,32 @@ function fmtPct(res, meta) {
 
 // ?? Build indicator rows ?????????????????????????????????????????
 function _buildIndicadorRows(id, saved, baseRec) {
+  // ✅ FIX CRÍTICO: sincronizar fichaIndDefs con lo que hay en Supabase
+  // Si saved.indicadores tiene datos, reconstruir defs en base a ellos
+  if (saved && Array.isArray(saved.indicadores) && saved.indicadores.length > 0) {
+    // Asegurar que fichaIndDefs tenga exactamente el mismo número de entradas
+    var baseDefs = JSON.parse(JSON.stringify(IND_DEFS));
+    var newDefs = saved.indicadores.map(function(ind, i) {
+      var base = baseDefs[i] || baseDefs[0];
+      return {
+        nombre:     ind.nombre     || base.nombre     || 'Indicador ' + (i+1),
+        estrategia: ind.estrategia || base.estrategia || base.nombre || '',
+        indicador:  ind.indicador  || base.indicador  || '',
+        meta:       (ind.meta !== undefined && ind.meta !== null) ? ind.meta : base.meta,
+        frecuencia: ind.frecuencia || base.frecuencia || 'Final del Proyecto',
+        esCurrency: ind.esCurrency || base.esCurrency || false
+      };
+    });
+    fichaIndDefs[id] = newDefs;
+  }
+
   var defs = _getIndDefs(id);
   var tbody = document.getElementById('fp-indicadores-body');
   tbody.innerHTML = defs.map(function(def, i) {
     var savedInd = saved && saved.indicadores ? saved.indicadores[i] : null;
     var baseInd  = baseRec && baseRec.indicadores ? baseRec.indicadores[i] : null;
-    var varA = savedInd ? (savedInd.varA !== null ? savedInd.varA : '') : (baseInd ? (baseInd.varA !== null ? baseInd.varA : '') : '');
-    var varB = savedInd ? (savedInd.varB !== null ? savedInd.varB : '') : (baseInd ? (baseInd.varB !== null ? baseInd.varB : '') : '');
+    var varA = savedInd ? (savedInd.varA !== null && savedInd.varA !== undefined ? savedInd.varA : '') : (baseInd ? (baseInd.varA !== null ? baseInd.varA : '') : '');
+    var varB = savedInd ? (savedInd.varB !== null && savedInd.varB !== undefined ? savedInd.varB : '') : (baseInd ? (baseInd.varB !== null ? baseInd.varB : '') : '');
     var res  = savedInd ? savedInd.resultado : (baseInd ? baseInd.resultado : null);
     if (res === null || res === undefined) res = '';
     var meta = def.meta;
@@ -5751,14 +5770,17 @@ function removeIndNoEvaluados() {
   var defs = fichaIndDefs[currentFichaProjId];
   if (!defs || !defs.length) { alert('No hay indicadores cargados.'); return; }
 
-  // Identificar sin evaluar leyendo DOM
+  // Identificar sin evaluar — vacío en DOM O null en saved.indicadores
   var sinEval = [];
+  var savedNow = fichaEditData[currentFichaProjId];
   defs.forEach(function(def, i) {
     var vA = document.getElementById('ind-varA-' + i);
     var vB = document.getElementById('ind-varB-' + i);
-    if ((!vA || vA.value.trim() === '') && (!vB || vB.value.trim() === '')) {
-      sinEval.push(i);
-    }
+    var domVacio = (!vA || vA.value.trim() === '') && (!vB || vB.value.trim() === '');
+    // También verificar en memoria (para null de Supabase)
+    var savedInd = savedNow && savedNow.indicadores ? savedNow.indicadores[i] : null;
+    var memVacio = !savedInd || (savedInd.varA === null && savedInd.varB === null);
+    if (domVacio || memVacio) sinEval.push(i);
   });
 
   if (!sinEval.length) {
