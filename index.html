@@ -5713,54 +5713,56 @@ function saveIndText(i) {
 
 function removeIndRow(i) {
   if (!currentFichaProjId) return;
-
-  // 1. Leer valor actual del DOM
   var vA = document.getElementById('ind-varA-' + i);
   var vB = document.getElementById('ind-varB-' + i);
   var tieneValores = (vA && vA.value.trim() !== '') || (vB && vB.value.trim() !== '');
   if (tieneValores) {
-    alert('⚠ Este indicador tiene valores registrados y no puede eliminarse.\nSolo se pueden eliminar indicadores sin evaluar (Variable A y B vacías).');
+    alert('⚠ Este indicador tiene valores registrados y no puede eliminarse.\nSolo se pueden eliminar indicadores sin evaluar.');
     return;
   }
-
-  var pin = prompt('🔐 Ingresa la clave para eliminar este indicador:');
+  var pin = prompt('🔐 Clave para eliminar este indicador:');
   if (pin === null) return;
   if (pin.trim() !== '2026') { alert('❌ Clave incorrecta.'); return; }
 
-  // 2. Capturar estado completo del DOM ANTES de modificar
-  saveFichaState();
+  // Capturar TODO el DOM antes de tocar nada
+  var defs = fichaIndDefs[currentFichaProjId];
+  if (!defs) return;
+  var snapshot = _capturarIndicadoresDOM(defs);
 
-  // 3. Mutar defs e indicadores en memoria
-  var defs  = fichaIndDefs[currentFichaProjId];
-  var saved = fichaEditData[currentFichaProjId];
-  if (!defs)  { alert('Error: no se encontraron definiciones.'); return; }
+  // Eliminar el índice
   defs.splice(i, 1);
-  if (saved && Array.isArray(saved.indicadores)) saved.indicadores.splice(i, 1);
+  snapshot.splice(i, 1);
+  fichaIndDefs[currentFichaProjId] = defs;
 
-  // 4. Re-renderizar
+  // Guardar snapshot en memoria
+  if (!fichaEditData[currentFichaProjId]) fichaEditData[currentFichaProjId] = {};
+  fichaEditData[currentFichaProjId].indicadores = snapshot;
+
+  // Re-renderizar con datos ya limpios
   var baseRec = _getBaseRec(currentFichaProjId);
-  _buildIndicadorRows(currentFichaProjId, saved, baseRec);
+  _buildIndicadorRows(currentFichaProjId, fichaEditData[currentFichaProjId], baseRec);
 
-  // 5. Guardar inmediatamente en Supabase
+  // Guardar a Supabase con los datos ya correctos en memoria
   _guardarFichaAhora('Indicador eliminado');
 }
 
 function removeIndNoEvaluados() {
   if (!currentFichaProjId) return;
   var defs = fichaIndDefs[currentFichaProjId];
-  if (!defs || !defs.length) { alert('No hay indicadores.'); return; }
+  if (!defs || !defs.length) { alert('No hay indicadores cargados.'); return; }
 
-  // Identificar índices sin evaluar leyendo del DOM
+  // Identificar sin evaluar leyendo DOM
   var sinEval = [];
   defs.forEach(function(def, i) {
     var vA = document.getElementById('ind-varA-' + i);
     var vB = document.getElementById('ind-varB-' + i);
-    var vacio = (!vA || vA.value.trim() === '') && (!vB || vB.value.trim() === '');
-    if (vacio) sinEval.push(i);
+    if ((!vA || vA.value.trim() === '') && (!vB || vB.value.trim() === '')) {
+      sinEval.push(i);
+    }
   });
 
   if (!sinEval.length) {
-    alert('ℹ Todos los indicadores tienen valores registrados.\nNo hay indicadores sin evaluar para eliminar.');
+    alert('ℹ Todos los indicadores tienen valores. No hay sin evaluar para eliminar.');
     return;
   }
 
@@ -5768,25 +5770,46 @@ function removeIndNoEvaluados() {
   if (pin === null) return;
   if (pin.trim() !== '2026') { alert('❌ Clave incorrecta.'); return; }
 
-  // Capturar estado DOM antes de modificar
-  saveFichaState();
+  // Capturar TODO el DOM antes de modificar
+  var snapshot = _capturarIndicadoresDOM(defs);
 
-  var saved = fichaEditData[currentFichaProjId];
-
-  // Filtrar eliminando los índices sin evaluar (de atrás hacia adelante para no desplazar)
+  // Eliminar de atrás hacia adelante para no desplazar índices
   sinEval.slice().reverse().forEach(function(i) {
     defs.splice(i, 1);
-    if (saved && Array.isArray(saved.indicadores)) saved.indicadores.splice(i, 1);
+    snapshot.splice(i, 1);
   });
-
   fichaIndDefs[currentFichaProjId] = defs;
+
+  if (!fichaEditData[currentFichaProjId]) fichaEditData[currentFichaProjId] = {};
+  fichaEditData[currentFichaProjId].indicadores = snapshot;
 
   // Re-renderizar
   var baseRec = _getBaseRec(currentFichaProjId);
-  _buildIndicadorRows(currentFichaProjId, saved, baseRec);
+  _buildIndicadorRows(currentFichaProjId, fichaEditData[currentFichaProjId], baseRec);
 
-  // Guardar inmediatamente en Supabase
+  // Guardar a Supabase
   _guardarFichaAhora('Eliminados ' + sinEval.length + ' indicadores sin evaluar');
+}
+
+// Captura todos los valores actuales del DOM para los indicadores
+function _capturarIndicadoresDOM(defs) {
+  return defs.map(function(def, i) {
+    var vA    = document.getElementById('ind-varA-' + i);
+    var vB    = document.getElementById('ind-varB-' + i);
+    var metaEl = document.getElementById('ind-meta-' + i);
+    var vaVal  = vA    ? parseFloat(vA.value)    : NaN;
+    var vbVal  = vB    ? parseFloat(vB.value)    : NaN;
+    var meta   = metaEl ? parseFloat(metaEl.value)/100 : def.meta;
+    var res    = (!isNaN(vaVal) && !isNaN(vbVal) && vbVal !== 0) ? vaVal/vbVal : null;
+    return {
+      nombre:    def.nombre || def.estrategia || '',
+      meta:      isNaN(meta) ? def.meta : meta,
+      varA:      isNaN(vaVal)  ? null : vaVal,
+      varB:      isNaN(vbVal)  ? null : vbVal,
+      resultado: res,
+      cumple:    res !== null ? (meta === 1.0 ? res <= 1.0 : res >= meta) : null
+    };
+  });
 }
 
 // Helper: obtener baseRec para un proyecto
@@ -5974,34 +5997,22 @@ function addPlanRow() {
 function saveFichaState() {
   if (!currentFichaProjId) return;
   var defs = _getIndDefs(currentFichaProjId);
-  var inds = defs.map(function(def, i) {
-    var vA = document.getElementById('ind-varA-' + i);
-    var vB = document.getElementById('ind-varB-' + i);
-    var vaVal = vA ? parseFloat(vA.value) : null;
-    var vbVal = vB ? parseFloat(vB.value) : null;
-    var res = (!isNaN(vaVal) && !isNaN(vbVal) && vbVal !== 0) ? vaVal/vbVal : null;
-    var metaEl = document.getElementById('ind-meta-' + i);
-    var meta = metaEl ? parseFloat(metaEl.value)/100 : def.meta;
-    return {nombre:def.nombre, meta:meta, varA:isNaN(vaVal)?null:vaVal, varB:isNaN(vbVal)?null:vbVal,
-            resultado:res, cumple: res!==null ? (meta===1.0 ? res<=1.0 : res>=meta) : null};
-  });
+  var inds = _capturarIndicadoresDOM(defs);
   var planRows = [];
   document.querySelectorAll('#fp-plan-body tr').forEach(function(tr) {
     var inp = tr.querySelectorAll('input');
     if(inp.length >= 4) planRows.push({act:inp[0].value, resp:inp[1].value, fecha:inp[2].value, obs:inp[3].value});
   });
   fichaEditData[currentFichaProjId] = {
-    lider:    (document.getElementById('fp-lider')||{}).textContent || '',
-    proceso:  (document.getElementById('fp-proceso')||{}).textContent || '',
-    evaluador: document.getElementById('fp-evaluador').value,
-    cargo:     document.getElementById('fp-cargo-eval').value,
-    fecha:     document.getElementById('fp-fecha-eval').value,
-    analisis:  document.getElementById('fp-analisis').value,
+    lider:     (document.getElementById('fp-lider')||{}).textContent  || '',
+    proceso:   (document.getElementById('fp-proceso')||{}).textContent || '',
+    evaluador:  document.getElementById('fp-evaluador') ? document.getElementById('fp-evaluador').value : '',
+    cargo:      document.getElementById('fp-cargo-eval') ? document.getElementById('fp-cargo-eval').value : '',
+    fecha:      document.getElementById('fp-fecha-eval') ? document.getElementById('fp-fecha-eval').value : '',
+    analisis:   document.getElementById('fp-analisis')   ? document.getElementById('fp-analisis').value   : '',
     indicadores: inds,
     plan: planRows
   };
-  // Nota: el envío a Supabase lo maneja _scheduleAutoSave con debounce
-  // saveFichaState solo captura el estado en memoria para evitar doble escritura
 }
 
 function resetIndicadores() {
