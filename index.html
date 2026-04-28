@@ -4051,21 +4051,32 @@ function atsBibliotecaLoad() {
     var raw = localStorage.getItem(ATS_BIB_KEY);
     if (raw) {
       var parsed = JSON.parse(raw);
+      // ✅ FIX: Si hay datos guardados, reemplazar completamente el array base
+      // Esto asegura que ediciones a entradas existentes también se persistan
       if (Array.isArray(parsed) && parsed.length) {
-        // Merge: base + custom (evitar duplicados exactos)
-        parsed.forEach(function(item) {
-          var dup = ATS_BIBLIOTECA.some(function(b) {
-            return b.actividad === item.actividad && b.peligro === item.peligro;
-          });
-          if (!dup) ATS_BIBLIOTECA.push(item);
-        });
+        ATS_BIBLIOTECA.length = 0;
+        parsed.forEach(function(item) { ATS_BIBLIOTECA.push(item); });
       }
     }
   } catch(e) {}
 }
 
 function atsBibliotecaSave() {
-  try { localStorage.setItem(ATS_BIB_KEY, JSON.stringify(ATS_BIBLIOTECA)); } catch(e) {}
+  // ✅ FIX: Guardar siempre el array completo (entradas base + nuevas + editadas)
+  try {
+    localStorage.setItem(ATS_BIB_KEY, JSON.stringify(ATS_BIBLIOTECA));
+    // Feedback visual en el modal si está abierto
+    var badge = document.getElementById('bib-save-badge');
+    if (badge) {
+      badge.textContent = '✔ Guardado';
+      badge.style.color = '#6EE7B7';
+      badge.style.opacity = '1';
+      setTimeout(function() { badge.style.opacity = '0'; }, 2500);
+    }
+  } catch(e) {
+    var badge = document.getElementById('bib-save-badge');
+    if (badge) { badge.textContent = '❌ Error al guardar'; badge.style.color = '#FCA5A5'; badge.style.opacity = '1'; }
+  }
 }
 
 // Inicializar al cargar
@@ -4125,7 +4136,11 @@ function atsAbrirBiblioteca(actividadFiltro) {
           '<div style="font-size:15px;font-weight:800;color:white">📚 Biblioteca de Peligros / Riesgos / Controles</div>'+
           '<div style="font-size:11px;color:rgba(255,255,255,0.55);margin-top:2px">Referencia editable · '+ATS_BIBLIOTECA.length+' registros</div>'+
         '</div>'+
-        '<button onclick="document.getElementById(\'ats-bib-modal\').remove()" style="background:rgba(255,255,255,0.1);color:white;border:none;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:14px">✕ Cerrar</button>'+
+        '<div style="display:flex;align-items:center;gap:8px">'+
+          '<span id="bib-save-badge" style="font-size:11px;font-weight:600;color:#6EE7B7;opacity:0;transition:opacity 0.3s"></span>'+
+          '<button onclick="atsBibliotecaSave()" title="Guardar todos los cambios de la biblioteca" style="padding:6px 14px;background:rgba(45,166,122,0.85);color:white;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit">💾 Guardar cambios</button>'+
+          '<button onclick="document.getElementById(\'ats-bib-modal\').remove()" style="background:rgba(255,255,255,0.1);color:white;border:none;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:14px">✕ Cerrar</button>'+
+        '</div>'+
       '</div>'+
       '<div style="padding:12px 16px;border-bottom:1px solid #1E3A5F;display:flex;gap:8px;flex-shrink:0">'+
         '<input id="bib-search" type="text" placeholder="🔍 Buscar actividad, peligro o riesgo..." oninput="(function(){var m=document.getElementById(\'ats-bib-modal\');m._render&&m._render();})()" style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid #1E3A5F;background:#0F2137;color:white;font-family:inherit;font-size:12px;outline:none">'+
