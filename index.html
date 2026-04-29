@@ -114,13 +114,15 @@ body {
   letter-spacing: -0.3px;
 }
 .lock-card p { font-size: 13px; opacity: 0.6; margin-bottom: 32px; line-height: 1.5; }
-.lock-tabs { display: flex; gap: 6px; margin-bottom: 28px; }
+.lock-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 28px; }
 .lock-tab {
-  flex: 1; padding: 9px 12px; border-radius: 8px;
+  padding: 9px 10px; border-radius: 8px; text-align: center;
   border: 1px solid rgba(255,255,255,0.12);
   background: rgba(255,255,255,0.04);
-  color: rgba(255,255,255,0.5); font-size: 12px; cursor: pointer;
+  color: rgba(255,255,255,0.5); font-size: 11.5px; cursor: pointer;
   transition: all 0.2s; font-family: inherit; font-weight: 500;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  width: 100%; box-sizing: border-box;
 }
 .lock-tab.active {
   background: var(--gold); color: var(--navy);
@@ -615,6 +617,7 @@ tr:hover td { background: #F0F7FF; }
       <button class="lock-tab active" onclick="setLockModule('socio')" id="tab-socio">Sociodemográfico</button>
       <button class="lock-tab" onclick="setLockModule('seg')" id="tab-seg">Seguimiento</button>
       <button class="lock-tab" onclick="setLockModule('ats')" id="tab-ats" style="border-color:rgba(255,199,44,0.4);color:rgba(255,199,44,0.7)">ATS</button>
+      <button class="lock-tab" onclick="setLockModule('licit')" id="tab-licit" style="border-color:rgba(0,163,224,0.4);color:rgba(0,163,224,0.8)">Licitación/Propuestas</button>
     </div>
     <input type="password" class="lock-input" id="lock-input" placeholder="••••" maxlength="10" autocomplete="off" onkeydown="if(event.key==='Enter')tryUnlock()" oninput="(function(el){var e=document.getElementById('lock-err');if(e)e.textContent='';})(this)">
     <button class="lock-btn" onclick="tryUnlock()">Ingresar →</button>
@@ -638,6 +641,7 @@ tr:hover td { background: #F0F7FF; }
       <button class="nav-tab active" onclick="showSection('socio')" id="navbtn-socio">Sociodemográfico</button>
       <button class="nav-tab" onclick="showSection('seguimiento')" id="navbtn-seguimiento">Seguimiento de Proyectos</button>
       <button class="nav-tab" onclick="showSection('ats')" id="navbtn-ats" style="background:rgba(255,199,44,0.12);color:var(--gold);border-color:rgba(255,199,44,0.25)">ATS</button>
+      <button class="nav-tab" onclick="showSection('licit')" id="navbtn-licit" style="background:rgba(0,163,224,0.12);color:#00A3E0;border-color:rgba(0,163,224,0.25)">📊 Licitación/Propuestas</button>
     </div>
     <div class="topbar-actions">
       <span class="session-badge" id="session-timer">--:--</span>
@@ -816,7 +820,23 @@ tr:hover td { background: #F0F7FF; }
             <div class="form-row-3">
               <div class="form-group"><label class="form-label">Estado</label><select class="form-input" id="s-estado"><option>ACTIVO</option><option>INACTIVO</option></select></div>
               <div class="form-group"><label class="form-label">Turno de trabajo</label><select class="form-input" id="s-turno"><option>DIURNO</option><option>NOCTURNO</option><option>ROTATIVO</option></select></div>
-              <div class="form-group"><label class="form-label">EPS</label><input class="form-input" id="s-eps" placeholder="EPS"></div>
+              <div class="form-group"><label class="form-label">EPS</label>
+  <select class="form-input" id="s-eps" onchange="epsSelectChange('s-eps','s-eps-custom')">
+    <option value="">Seleccionar EPS...</option>
+<option>Nueva EPS</option>
+<option>Coosalud</option>
+<option>Mutual Ser</option>
+<option>Salud Total</option>
+<option>EPS Sanitas</option>
+<option>EPS Sura</option>
+<option>Famisanar</option>
+<option>Compensar</option>
+<option>Cajacopi</option>
+<option>SOS</option>
+<option value="OTRAS">Otras...</option>
+  </select>
+  <input class="form-input" id="s-eps-custom" placeholder="Especificar EPS..." style="display:none;margin-top:5px">
+</div>
             </div>
             <div class="form-section">Datos personales</div>
             <div class="form-row-3">
@@ -1759,6 +1779,2267 @@ tr:hover td { background: #F0F7FF; }
   </div>
 </div>
 
+
+<!-- ===== LICITACIÓN/PROPUESTAS SECTION ===== -->
+<div class="section" id="section-licit" style="background:#F5F7FA">
+  <div style="padding:24px 32px 32px;background:#F5F7FA">
+
+    <!-- HEADER ROW -->
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+      <div>
+        <h2 style="color:var(--navy);font-size:21px;font-weight:800;margin-bottom:3px;letter-spacing:-0.3px">📊 Licitación / Propuestas</h2>
+        <small style="color:var(--gray1);font-size:12px">Módulo Comercial · Registro de Pujas y Propuestas-Cotizaciones · Indicadores de Desempeño</small>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button onclick="licitOpenAddModal('pujas')" style="padding:9px 18px;border-radius:8px;background:var(--navy);color:white;border:none;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px">
+          ➕ Nueva Puja
+        </button>
+        <button onclick="licitOpenAddModal('prop')" style="padding:9px 18px;border-radius:8px;background:var(--sky);color:white;border:none;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">
+          ➕ Nueva Propuesta
+        </button>
+
+      </div>
+    </div>
+
+    <!-- FILTER BAR: YEAR + QUARTER -->
+    <div style="background:var(--off2);border:1.5px solid var(--gray4);border-radius:12px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <span style="font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:0.8px;white-space:nowrap">📅 Período:</span>
+      <div id="licit-year-btns" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+      <div style="width:1px;height:22px;background:var(--gray4);margin:0 4px"></div>
+      <span style="font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:0.8px;white-space:nowrap">Trimestre:</span>
+      <div id="licit-quarter-btns" style="display:flex;gap:6px"></div>
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+        <input id="licit-search" oninput="licitApplyFilters()" placeholder="🔍 Buscar..." 
+          style="padding:7px 12px;border:1.5px solid var(--gray4);border-radius:7px;font-family:inherit;font-size:12px;outline:none;width:200px;background:white">
+        <select id="licit-estado-filter" onchange="licitApplyFilters()" 
+          style="padding:7px 12px;border:1.5px solid var(--gray4);border-radius:7px;font-family:inherit;font-size:12px;outline:none;cursor:pointer;background:white">
+          <option value="">Todos los estados</option>
+          <option value="ADJUDICADA">✅ Adjudicada</option>
+          <option value="NO ADJUDICADA">❌ No Adjudicada</option>
+          <option value="POR DEFINIR">⏳ Por Definir</option>
+          <option value="SIN RESPUESTA">❓ Sin Respuesta</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- KPI CARDS — dynamic -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px" id="licit-kpi-row"></div>
+
+    <!-- TABS for tables -->
+    <div style="display:flex;gap:8px;margin-bottom:16px;border-bottom:2px solid var(--gray4);padding-bottom:0;align-items:center">
+      <button onclick="licitShowTab('pujas')" id="licit-tab-pujas"
+        style="padding:10px 20px;border:none;background:none;font-family:inherit;font-size:13px;font-weight:700;color:var(--navy);cursor:pointer;border-bottom:3px solid var(--navy);margin-bottom:-2px">
+        📋 Registro de Pujas
+      </button>
+      <button onclick="licitShowTab('prop')" id="licit-tab-prop"
+        style="padding:10px 20px;border:none;background:none;font-family:inherit;font-size:13px;font-weight:600;color:var(--gray1);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px">
+        📑 Propuestas / Cotizaciones
+      </button>
+      <span id="licit-count-display" style="font-size:12px;color:var(--gray1);font-weight:600;margin-left:auto;padding-right:4px"></span>
+    </div>
+
+    <!-- PUJAS TABLE -->
+    <div id="licit-panel-pujas" style="overflow-x:auto;border-radius:12px;border:1.5px solid var(--gray4);box-shadow:var(--shadow)">
+      <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+        <thead>
+          <tr style="background:var(--navy);color:white">
+            <th style="padding:11px 14px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-weight:700;white-space:nowrap">Cliente</th>
+            <th style="padding:11px 10px;text-align:center;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-weight:700"># Puja</th>
+            <th style="padding:11px 10px;text-align:center;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-weight:700;white-space:nowrap">F. Solicitud</th>
+            <th style="padding:11px 10px;text-align:center;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-weight:700;white-space:nowrap">F. Adjudicación</th>
+            <th style="padding:11px 14px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-weight:700">Objeto</th>
+            <th style="padding:11px 10px;text-align:center;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-weight:700">Estado</th>
+            <th style="padding:11px 14px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-weight:700">Observaciones</th>
+            <th style="padding:11px 8px;text-align:center;font-size:10px;font-weight:700;text-transform:uppercase">Acc.</th>
+          </tr>
+        </thead>
+        <tbody id="licit-pujas-tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- PROPUESTAS TABLE -->
+    <div id="licit-panel-prop" style="display:none;overflow-x:auto;border-radius:12px;border:1.5px solid var(--gray4);box-shadow:var(--shadow)">
+      <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+        <thead>
+          <tr style="background:var(--navy);color:white">
+            <th style="padding:11px 14px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-weight:700;white-space:nowrap">F. Presentación</th>
+            <th style="padding:11px 14px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-weight:700">Cliente / Propuesta</th>
+            <th style="padding:11px 14px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-weight:700">Objeto</th>
+            <th style="padding:11px 10px;text-align:center;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-weight:700">Estado</th>
+            <th style="padding:11px 14px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-weight:700">Observaciones</th>
+            <th style="padding:11px 10px;text-align:center;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;font-weight:700;white-space:nowrap">F. Adjudicación</th>
+            <th style="padding:11px 8px;text-align:center;font-size:10px;font-weight:700;text-transform:uppercase">Acc.</th>
+          </tr>
+        </thead>
+        <tbody id="licit-prop-tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- ANALYSIS PANEL REMOVED -->
+
+    <!-- ══════════════════════════════════════════════════════════════
+         TABLA DE INDICADORES GERENCIALES — MÓDULO COMERCIAL
+    ══════════════════════════════════════════════════════════════ -->    <!-- ══════════════════════════════════════════════════════════════
+         TABLA DE INDICADORES GERENCIALES — MÓDULO COMERCIAL
+    ══════════════════════════════════════════════════════════════ -->
+    <div id="licit-ind-section" style="margin-top:28px">
+
+      <!-- Header -->
+      <div style="background:var(--navy);background-image:linear-gradient(135deg,#001D3D,#003F7D);border-radius:12px 12px 0 0;padding:14px 20px;display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="color:white;font-size:14px;font-weight:800;letter-spacing:-0.3px">📋 Indicadores Gerenciales — Comercial</div>
+          <div style="color:rgba(255,255,255,0.55);font-size:11px;margin-top:2px">Consulta y diligenciamiento · Gerencia General · Proceso Comercial</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button id="btn-ind-collapse" onclick="licitIndToggle()" style="padding:7px 14px;border-radius:7px;background:rgba(255,255,255,0.1);color:white;border:1px solid rgba(255,255,255,0.2);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer">▼ Colapsar</button>
+          <button onclick="licitIndAutoFill()" style="padding:7px 14px;border-radius:7px;background:var(--gold);color:var(--navy);border:none;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer">⚡ Auto-calcular</button>
+        </div>
+      </div>
+
+
+
+      <!-- Indicators body -->
+      <div id="licit-ind-body" style="border:1px solid #CBD5E1;border-top:none;border-radius:0 0 12px 12px;overflow:hidden">
+
+        <!-- ─── INDICATOR 1: Satisfacción del cliente ─── -->
+        <div class="licit-ind-row" style="border-bottom:2px solid #E2E8F0">
+          <div style="background:#EFF6FF;padding:10px 16px 8px;border-bottom:1px solid #DBEAFE;display:flex;align-items:center;justify-content:space-between">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="background:var(--navy);color:white;font-size:11px;font-weight:800;padding:2px 9px;border-radius:20px">IND 1</span>
+              <span style="font-size:12px;font-weight:700;color:var(--navy)">Satisfacción del Cliente</span>
+              <span style="font-size:10px;color:#64748B;background:#F1F5F9;padding:2px 8px;border-radius:10px">Evaluaciones del Servicio</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="font-size:10px;color:#64748B">Meta: <strong>95%</strong></span>
+              <span style="font-size:10px;color:#64748B">Frecuencia: <strong>Trimestral</strong></span>
+              <span id="ind1-badge" style="font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;background:#F3F4F6;color:#6B7280">Sin datos</span>
+            </div>
+          </div>
+          <!-- Manual inputs + scenario -->
+          <div style="padding:14px 18px;background:white">
+            <div style="font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:10px">
+              ✍ Ingreso manual · Método: Total clientes satisfechos / Total evaluaciones recibidas × 100
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:14px">
+              <div>
+                <div style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;margin-bottom:4px">Total Eval. Recibidas</div>
+                <input id="ind1-total" type="number" min="0" oninput="licitInd1Calc()" placeholder="0"
+                  style="width:100%;padding:8px 10px;border:1.5px solid #E2E8F0;border-radius:7px;font-family:inherit;font-size:13px;font-weight:600;outline:none;box-sizing:border-box">
+              </div>
+              <div>
+                <div style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;margin-bottom:4px">Clientes Satisfechos</div>
+                <input id="ind1-satisfechos" type="number" min="0" oninput="licitInd1Calc()" placeholder="0"
+                  style="width:100%;padding:8px 10px;border:1.5px solid #E2E8F0;border-radius:7px;font-family:inherit;font-size:13px;font-weight:600;outline:none;box-sizing:border-box">
+              </div>
+              <div>
+                <div style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;margin-bottom:4px">Resultado %</div>
+                <div id="ind1-result" style="padding:8px 10px;border:1.5px solid #E2E8F0;border-radius:7px;font-size:16px;font-weight:800;color:var(--navy);background:#F8FAFC;min-height:38px;display:flex;align-items:center">—</div>
+              </div>
+              <div>
+                <div style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;margin-bottom:4px">Escenario</div>
+                <div id="ind1-scenario" style="padding:8px 10px;border-radius:7px;font-size:11px;font-weight:700;background:#F3F4F6;color:#6B7280;min-height:38px;display:flex;align-items:center">—</div>
+              </div>
+            </div>
+            <!-- Scenario legend -->
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+              <div style="background:#D1FAE5;border:1.5px solid #6EE7B7;border-radius:8px;padding:6px 14px;font-size:10px;font-weight:700;color:#059669">🟢 Excelente ≥ 95%</div>
+              <div style="background:#FEF3C7;border:1.5px solid #FCD34D;border-radius:8px;padding:6px 14px;font-size:10px;font-weight:700;color:#D97706">🟡 Bueno 80–94%</div>
+              <div style="background:#FEE2E2;border:1.5px solid #FCA5A5;border-radius:8px;padding:6px 14px;font-size:10px;font-weight:700;color:#DC2626">🔴 Regular &lt; 80%</div>
+            </div>
+            <div style="font-size:10px;color:#94A3B8">Fuente de cálculo: Evaluaciones del Servicio · Frecuencias: Trimestral × 4</div>
+          </div>
+        </div>
+
+        <!-- ─── INDICATOR 2: Presentación de Propuestas ─── -->
+        <div class="licit-ind-row" style="border-bottom:2px solid #E2E8F0">
+          <div style="background:#F0FDF4;padding:10px 16px 8px;border-bottom:1px solid #BBF7D0;display:flex;align-items:center;justify-content:space-between">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="background:#059669;color:white;font-size:11px;font-weight:800;padding:2px 9px;border-radius:20px">IND 2</span>
+              <span style="font-size:12px;font-weight:700;color:#065F46">Presentación de Propuestas</span>
+              <span style="font-size:10px;color:#64748B;background:#F1F5F9;padding:2px 8px;border-radius:10px">Propuestas generadas + Solicitudes de adjudicación</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="font-size:10px;color:#64748B">Meta: <strong>≥ 30%</strong></span>
+              <span style="font-size:10px;color:#64748B">Frecuencia: <strong>Trimestral</strong></span>
+              <span id="ind2-badge" style="font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;background:#F3F4F6;color:#6B7280">Sin datos</span>
+            </div>
+          </div>
+          <div style="padding:14px 18px;background:white">
+            <div style="font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:10px">
+              ⚡ Auto-calculado · Método: N° Proyectos adjudicados / (N° Propuestas + Cotizaciones presentadas) × 100
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px">
+              <div>
+                <div style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;margin-bottom:4px">Propuestas + Cot.</div>
+                <div id="ind2-total" style="padding:8px 10px;border:1.5px solid #E2E8F0;border-radius:7px;font-size:14px;font-weight:700;color:var(--navy);background:#F8FAFC">—</div>
+              </div>
+              <div>
+                <div style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;margin-bottom:4px">Adjudicadas</div>
+                <div id="ind2-adj" style="padding:8px 10px;border:1.5px solid #E2E8F0;border-radius:7px;font-size:14px;font-weight:700;color:#059669;background:#F8FAFC">—</div>
+              </div>
+              <div>
+                <div style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;margin-bottom:4px">Resultado %</div>
+                <div id="ind2-result" style="padding:8px 10px;border:1.5px solid #E2E8F0;border-radius:7px;font-size:16px;font-weight:800;color:var(--navy);background:#F8FAFC">—</div>
+              </div>
+              <div>
+                <div style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;margin-bottom:4px">Estado</div>
+                <div id="ind2-estado" style="padding:8px 10px;border-radius:7px;font-size:11px;font-weight:700;background:#F3F4F6;color:#6B7280">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ─── INDICATOR 3: Presentación de Pujas con Planes ─── -->
+        <div class="licit-ind-row" style="border-bottom:2px solid #E2E8F0">
+          <div style="background:#FFF7ED;padding:10px 16px 8px;border-bottom:1px solid #FED7AA;display:flex;align-items:center;justify-content:space-between">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="background:#EA580C;color:white;font-size:11px;font-weight:800;padding:2px 9px;border-radius:20px">IND 3</span>
+              <span style="font-size:12px;font-weight:700;color:#7C2D12">Presentación de Pujas con Planes</span>
+              <span style="font-size:10px;color:#64748B;background:#F1F5F9;padding:2px 8px;border-radius:10px">Pujas adjudicadas / Pujas presentadas</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="font-size:10px;color:#64748B">Meta: <strong>≥ 30%</strong></span>
+              <span style="font-size:10px;color:#64748B">Frecuencia: <strong>Trimestral</strong></span>
+              <span id="ind3-badge" style="font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;background:#F3F4F6;color:#6B7280">Sin datos</span>
+            </div>
+          </div>
+          <div style="padding:14px 18px;background:white">
+            <div style="font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:10px">
+              ⚡ Auto-calculado · Método: N° Pujas adjudicadas / N° Pujas presentadas × 100
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px">
+              <div>
+                <div style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;margin-bottom:4px">Pujas presentadas</div>
+                <div id="ind3-total" style="padding:8px 10px;border:1.5px solid #E2E8F0;border-radius:7px;font-size:14px;font-weight:700;color:var(--navy);background:#F8FAFC">—</div>
+              </div>
+              <div>
+                <div style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;margin-bottom:4px">Pujas adjudicadas</div>
+                <div id="ind3-adj" style="padding:8px 10px;border:1.5px solid #E2E8F0;border-radius:7px;font-size:14px;font-weight:700;color:#059669;background:#F8FAFC">—</div>
+              </div>
+              <div>
+                <div style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;margin-bottom:4px">Resultado %</div>
+                <div id="ind3-result" style="padding:8px 10px;border:1.5px solid #E2E8F0;border-radius:7px;font-size:16px;font-weight:800;color:var(--navy);background:#F8FAFC">—</div>
+              </div>
+              <div>
+                <div style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;margin-bottom:4px">Estado</div>
+                <div id="ind3-estado" style="padding:8px 10px;border-radius:7px;font-size:11px;font-weight:700;background:#F3F4F6;color:#6B7280">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ─── INDICATOR 4: Cumplimiento del Plan de Gestión ─── -->
+        <div class="licit-ind-row" style="border-bottom:2px solid #E2E8F0">
+          <div style="background:#F5F3FF;padding:10px 16px 8px;border-bottom:1px solid #DDD6FE;display:flex;align-items:center;justify-content:space-between">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="background:#7C3AED;color:white;font-size:11px;font-weight:800;padding:2px 9px;border-radius:20px">IND 4</span>
+              <span style="font-size:12px;font-weight:700;color:#4C1D95">Cumplimiento del Plan de Gestión</span>
+              <span style="font-size:10px;color:#64748B;background:#F1F5F9;padding:2px 8px;border-radius:10px">Plan de Gestión Ejecutado / Plan de Gestión Propuesto × 100</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="font-size:10px;color:#64748B">Meta: <strong>100%</strong></span>
+              <span style="font-size:10px;color:#64748B">Frecuencia: <strong>Anual</strong></span>
+              <span id="ind4-badge" style="font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;background:#F3F4F6;color:#6B7280">Sin datos</span>
+            </div>
+          </div>
+          <div style="padding:14px 18px;background:white">
+            <div style="font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:10px">
+              ⚡ Auto-calculado · Planes de Gestión Ejecutados / Planes Propuestos × 100
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px">
+              <div>
+                <div style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;margin-bottom:4px">Planes Cerrados</div>
+                <div id="ind4-cerrados" style="padding:8px 10px;border:1.5px solid #E2E8F0;border-radius:7px;font-size:14px;font-weight:700;color:#7C3AED;background:#F8FAFC">—</div>
+              </div>
+              <div>
+                <div style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;margin-bottom:4px">Total Planes</div>
+                <div id="ind4-total" style="padding:8px 10px;border:1.5px solid #E2E8F0;border-radius:7px;font-size:14px;font-weight:700;color:var(--navy);background:#F8FAFC">—</div>
+              </div>
+              <div>
+                <div style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;margin-bottom:4px">Resultado %</div>
+                <div id="ind4-result" style="padding:8px 10px;border:1.5px solid #E2E8F0;border-radius:7px;font-size:16px;font-weight:800;color:var(--navy);background:#F8FAFC">—</div>
+              </div>
+              <div>
+                <div style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;margin-bottom:4px">Estado</div>
+                <div id="ind4-estado" style="padding:8px 10px;border-radius:7px;font-size:11px;font-weight:700;background:#F3F4F6;color:#6B7280">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ─── INDICATOR 5: Rentabilidad del Proyecto ─── -->
+        <div class="licit-ind-row">
+          <div style="background:#FFF1F2;padding:10px 16px 8px;border-bottom:1px solid #FECDD3;display:flex;align-items:center;justify-content:space-between">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="background:#BE123C;color:white;font-size:11px;font-weight:800;padding:2px 9px;border-radius:20px">IND 5</span>
+              <span style="font-size:12px;font-weight:700;color:#881337">Rentabilidad del Proyecto</span>
+              <span style="font-size:10px;color:#64748B;background:#F1F5F9;padding:2px 8px;border-radius:10px">Información de cada propuesta generada en el área contable</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="font-size:10px;color:#64748B">Meta: <strong>40%</strong></span>
+              <span style="font-size:10px;color:#64748B">Frecuencia: <strong>Anual</strong></span>
+              <span id="ind5-badge" style="font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;background:#F3F4F6;color:#6B7280">Sin datos</span>
+            </div>
+          </div>
+          <!-- T4-only notice -->
+          <div id="ind5-t4-notice" style="padding:16px 18px;background:#F8FAFC;border-top:1px solid #E2E8F0;display:flex;align-items:center;gap:10px">
+            <span style="font-size:22px">📅</span>
+            <div>
+              <div style="font-size:12px;font-weight:700;color:#475569">Este indicador se evalúa únicamente en el <strong>Trimestre 4 (T4)</strong></div>
+              <div style="font-size:11px;color:#94A3B8;margin-top:2px">Selecciona T4 en el filtro de período para ingresar y ver los datos de Rentabilidad del Proyecto</div>
+            </div>
+          </div>
+
+          <div id="ind5-inputs-body" style="padding:14px 18px;background:white">
+            <div style="font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:12px">
+              ✍ Ingreso manual anual · Método: 1 − (Valor Contratos − Valor Ejecutado) / Valor Contratos × 100
+            </div>
+
+            <!-- Year selector for IND 5 -->
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+              <span style="font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.5px">Año de reporte:</span>
+              <div id="ind5-year-btns" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+              <button onclick="licitInd5AddYear()" style="padding:4px 12px;border-radius:20px;border:1.5px dashed #CBD5E1;background:transparent;color:var(--sky2);font-family:inherit;font-size:11px;font-weight:600;cursor:pointer">+ Año</button>
+            </div>
+
+            <!-- Input fields for selected year -->
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:16px">
+              <div>
+                <div style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;margin-bottom:4px">Año</div>
+                <div id="ind5-year-label" style="padding:8px 10px;border:1.5px solid #E2E8F0;border-radius:7px;font-size:14px;font-weight:800;color:var(--navy);background:#F0F4F8">—</div>
+              </div>
+              <div>
+                <div style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;margin-bottom:4px">Valor Contratos ($)</div>
+                <input id="ind5-contratos" type="number" min="0" oninput="licitInd5Calc()" placeholder="0"
+                  style="width:100%;padding:8px 10px;border:1.5px solid #E2E8F0;border-radius:7px;font-family:inherit;font-size:13px;font-weight:600;outline:none;box-sizing:border-box">
+              </div>
+              <div>
+                <div style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;margin-bottom:4px">Valor Ejecutado ($)</div>
+                <input id="ind5-ejecutado" type="number" min="0" oninput="licitInd5Calc()" placeholder="0"
+                  style="width:100%;padding:8px 10px;border:1.5px solid #E2E8F0;border-radius:7px;font-family:inherit;font-size:13px;font-weight:600;outline:none;box-sizing:border-box">
+              </div>
+              <div>
+                <div style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;margin-bottom:4px">Resultado %</div>
+                <div id="ind5-result" style="padding:8px 10px;border:1.5px solid #E2E8F0;border-radius:7px;font-size:16px;font-weight:800;color:var(--navy);background:#F8FAFC;min-height:38px;display:flex;align-items:center">—</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+              <div style="flex:1">
+                <div style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;margin-bottom:4px">Estado del año</div>
+                <div id="ind5-estado" style="padding:8px 10px;border-radius:7px;font-size:11px;font-weight:700;background:#F3F4F6;color:#6B7280;min-height:36px;display:flex;align-items:center">—</div>
+              </div>
+              <div style="display:flex;align-items:flex-end;padding-bottom:0">
+                <button onclick="licitInd5SaveYear()" style="padding:9px 18px;border-radius:8px;background:var(--navy);color:white;border:none;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;margin-top:16px">💾 Guardar año</button>
+              </div>
+            </div>
+
+            <!-- Annual historical table -->
+            <div id="ind5-history-wrap" style="display:none">
+              <div style="font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:8px;padding-top:8px;border-top:1px solid #E2E8F0">
+                📊 Histórico Anual de Rentabilidad
+              </div>
+              <div style="overflow-x:auto;border-radius:8px;border:1px solid #E2E8F0">
+                <table style="width:100%;border-collapse:collapse;font-size:12px">
+                  <thead>
+                    <tr style="background:#F8FAFC">
+                      <th style="padding:8px 14px;text-align:left;font-size:9px;text-transform:uppercase;color:#64748B;font-weight:700;border-bottom:1px solid #E2E8F0">Año</th>
+                      <th style="padding:8px 14px;text-align:right;font-size:9px;text-transform:uppercase;color:#64748B;font-weight:700;border-bottom:1px solid #E2E8F0">Valor Contratos</th>
+                      <th style="padding:8px 14px;text-align:right;font-size:9px;text-transform:uppercase;color:#64748B;font-weight:700;border-bottom:1px solid #E2E8F0">Valor Ejecutado</th>
+                      <th style="padding:8px 14px;text-align:center;font-size:9px;text-transform:uppercase;color:#64748B;font-weight:700;border-bottom:1px solid #E2E8F0">Rentabilidad %</th>
+                      <th style="padding:8px 14px;text-align:center;font-size:9px;text-transform:uppercase;color:#64748B;font-weight:700;border-bottom:1px solid #E2E8F0">Estado</th>
+                      <th style="padding:6px;border-bottom:1px solid #E2E8F0"></th>
+                    </tr>
+                  </thead>
+                  <tbody id="ind5-history-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div><!-- /ind5-inputs-body -->
+        </div>
+
+      </div><!-- /licit-ind-body -->
+    </div><!-- /licit-ind-section -->
+
+    <!-- ══════════════════════════════════════════════════════
+         PDF TRIMESTRAL — EXPORTAR Y GUARDAR INFORMES
+    ══════════════════════════════════════════════════════ -->
+    <div style="border:1px solid #CBD5E1;border-radius:10px;overflow:hidden;margin-top:28px">
+      <div style="background:linear-gradient(135deg,#1E3A5F,#2D5986);padding:12px 18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:18px">📄</span>
+          <div>
+            <div style="color:white;font-size:13px;font-weight:800;letter-spacing:-0.2px">Informe Trimestral PDF</div>
+            <div style="color:rgba(255,255,255,0.55);font-size:10px">Exporta y guarda el informe del período activo para consulta futura</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <!-- Period badge — always synced with Indicadores Gerenciales filter -->
+          <span id="licit-pdf-period-badge" style="padding:6px 14px;border-radius:20px;background:rgba(255,255,255,0.15);color:white;font-size:11px;font-weight:700;border:1px solid rgba(255,255,255,0.3)">📅 —</span>
+          <button onclick="licitSaveReport()" style="padding:7px 16px;border-radius:7px;background:#F59E0B;color:#1E3A5F;border:none;font-family:inherit;font-size:11px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:5px">
+            💾 Guardar en plantilla
+          </button>
+          <button onclick="licitPreviewPDF()" style="padding:7px 16px;border-radius:7px;background:rgba(255,255,255,0.18);color:white;border:1px solid rgba(255,255,255,0.35);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer">
+            👁 Vista previa
+          </button>
+          <button onclick="licitExportPDF()" style="padding:7px 16px;border-radius:7px;background:white;color:#1E3A5F;border:none;font-family:inherit;font-size:11px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:5px">
+            ⬇ Descargar PDF
+          </button>
+        </div>
+      </div>
+
+      <!-- Planes de acción integrado -->
+      <div style="padding:14px 18px;border-bottom:1px solid #E2E8F0;background:white">
+        <div style="background:var(--navy);padding:10px 16px;border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:space-between">
+          <span style="color:white;font-size:12px;font-weight:800;display:flex;align-items:center;gap:6px">
+            <span style="color:var(--gold)">★</span> Planes de Acción
+            <span id="licit-plan-counter" style="background:var(--gold);color:var(--navy);font-size:10px;font-weight:800;padding:2px 8px;border-radius:10px">0 PLANES</span>
+          </span>
+          <button onclick="licitAddPlanRow()" style="padding:5px 14px;border-radius:6px;background:var(--gold);color:var(--navy);border:none;font-family:inherit;font-size:11px;font-weight:800;cursor:pointer">+ Agregar Plan de Acción</button>
+        </div>
+        <div id="licit-plan-tbody" style="padding:12px 16px;display:flex;flex-direction:column;gap:10px;background:#FAFBFC;min-height:52px;border:1px solid #E2E8F0;border-top:none;border-radius:0 0 8px 8px">
+          <div id="licit-plan-empty-msg" style="text-align:center;font-size:12px;color:#94A3B8;padding:8px 0">Sin planes de acción registrados</div>
+        </div>
+        <div style="padding:8px 0 2px;text-align:center">
+          <button onclick="licitAddPlanRow()" style="padding:6px 18px;border-radius:8px;border:2px dashed var(--sky);background:transparent;color:var(--sky2);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">+ Agregar Plan de Acción</button>
+        </div>
+      </div>
+
+      <!-- Fecha de elaboración y firma -->
+      <div style="padding:16px 18px;background:#FFFBF0;border-bottom:1px solid #FDE68A">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:14px">
+          <span style="font-size:13px">🔖</span>
+          <span style="font-size:10px;font-weight:700;color:#92400E;text-transform:uppercase;letter-spacing:0.6px">Fecha de Elaboración y Firma</span>
+        </div>
+        <!-- Row 1: Fecha + Responsable -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:12px">
+          <div>
+            <div style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:5px">Fecha de Elaboración</div>
+            <input id="licit-eval-fecha" type="date" style="width:100%;padding:9px 12px;border:1.5px solid #FDE68A;border-radius:7px;font-family:inherit;font-size:13px;outline:none;box-sizing:border-box;background:white;color:#1E3A5F">
+          </div>
+          <div>
+            <div style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:5px">Responsable del Informe</div>
+            <input id="licit-eval-responsable" placeholder="Nombre completo" style="width:100%;padding:9px 12px;border:1.5px solid #FDE68A;border-radius:7px;font-family:inherit;font-size:13px;outline:none;box-sizing:border-box;background:white;color:#1E3A5F">
+          </div>
+        </div>
+        <!-- Row 2: Cargo -->
+        <div>
+          <div style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:5px">Cargo</div>
+          <input id="licit-eval-cargo" placeholder="Cargo del responsable" style="width:100%;padding:9px 12px;border:1.5px solid #FDE68A;border-radius:7px;font-family:inherit;font-size:13px;outline:none;box-sizing:border-box;background:white;color:#1E3A5F">
+        </div>
+      </div>
+
+      <!-- Saved reports list -->
+      <div style="background:#F8FAFC;padding:16px 18px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:14px">📁</span>
+            <span style="font-size:11px;font-weight:700;color:#1E3A5F;text-transform:uppercase;letter-spacing:0.6px">Informes Guardados</span>
+            <span id="licit-saved-count" style="font-size:10px;font-weight:700;color:#64748B;background:#E2E8F0;padding:2px 8px;border-radius:10px"></span>
+          </div>
+          <button onclick="licitOpenSavedPanel()" style="padding:5px 14px;border-radius:7px;background:#1E3A5F;color:white;border:none;font-family:inherit;font-size:10px;font-weight:700;cursor:pointer">
+            📂 Ver todos
+          </button>
+        </div>
+        <div id="licit-saved-reports" style="display:flex;flex-direction:column;gap:6px;min-height:28px">
+          <div style="font-size:12px;color:#94A3B8;text-align:center;padding:8px 0" id="licit-saved-empty">No hay informes guardados aún</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         TABLA DE INDICADORES GERENCIALES
+
+    <!-- ══════════════════════════════════════════════════════
+         3. ANÁLISIS DE LOS INDICADORES / OBSERVACIONES
+    ══════════════════════════════════════════════════════ -->
+    <div style="border:1px solid #C8DDD3;border-radius:10px;overflow:hidden;margin-top:24px">
+      <div style="background:var(--off2);padding:9px 16px;font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:0.6px;border-left:4px solid var(--gold);display:flex;align-items:center;justify-content:space-between">
+        <span>3. Análisis de los Indicadores / Observaciones</span>
+
+      </div>
+      <div style="padding:12px 14px">
+        <textarea id="licit-analisis-text" rows="5"
+          style="width:100%;border:1px solid #C8DDD3;border-radius:8px;padding:10px 12px;font-family:inherit;font-size:12.5px;line-height:1.65;resize:vertical;color:#0D3B2E;background:#fff;box-sizing:border-box"
+          placeholder="Ingresa el análisis o las observaciones del período..."></textarea>
+      </div>
+    </div>
+
+
+
+    <!-- Timestamp -->
+    <div style="text-align:right;font-size:10px;color:#7A9C8A;padding:6px 2px" id="licit-gen-date"></div>
+
+  </div>
+</div>
+
+<!-- PDF PREVIEW MODAL -->
+<div id="licit-preview-modal" style="display:none;position:fixed;inset:0;z-index:900;background:rgba(0,0,0,0.75);overflow-y:auto;padding:20px">
+  <div style="max-width:820px;margin:0 auto;background:white;border-radius:14px;overflow:hidden;box-shadow:0 30px 90px rgba(0,0,0,0.4)">
+    <!-- Modal header -->
+    <div style="background:#1E3A5F;padding:14px 20px;display:flex;align-items:center;justify-content:space-between">
+      <div style="color:white">
+        <div style="font-size:14px;font-weight:800">👁 Vista Previa — Informe Trimestral</div>
+        <div id="licit-preview-label" style="font-size:11px;opacity:0.6;margin-top:2px"></div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button onclick="licitPreviewPrint()" style="padding:7px 16px;border-radius:7px;background:#F59E0B;color:#1E3A5F;border:none;font-family:inherit;font-size:11px;font-weight:800;cursor:pointer">⬇ Imprimir / Guardar PDF</button>
+        <button onclick="document.getElementById('licit-preview-modal').style.display='none'" style="padding:7px 14px;border-radius:7px;background:rgba(255,255,255,0.15);color:white;border:none;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer">✕ Cerrar</button>
+      </div>
+    </div>
+    <!-- Preview content -->
+    <div style="padding:0;background:#E8ECF0;min-height:400px">
+      <div id="licit-preview-content" style="max-width:760px;margin:24px auto;background:white;box-shadow:0 2px 20px rgba(0,0,0,0.12);padding:32px 36px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5;color:#1E293B"></div>
+    </div>
+  </div>
+</div>
+
+
+<!-- SAVED REPORTS FULL PANEL MODAL -->
+<div id="licit-saved-panel-modal" style="display:none;position:fixed;inset:0;z-index:950;background:rgba(0,0,0,0.7);overflow-y:auto;padding:20px">
+  <div style="max-width:900px;margin:0 auto;background:white;border-radius:14px;overflow:hidden;box-shadow:0 30px 90px rgba(0,0,0,0.4)">
+    <!-- Header -->
+    <div style="background:#1E3A5F;padding:16px 22px;display:flex;align-items:center;justify-content:space-between">
+      <div style="color:white">
+        <div style="font-size:15px;font-weight:800">📁 Informes Trimestrales Guardados</div>
+        <div style="font-size:11px;opacity:0.6;margin-top:2px">Consulta, previsualiza y descarga los informes guardados en esta sesión</div>
+      </div>
+      <button onclick="document.getElementById('licit-saved-panel-modal').style.display='none'"
+        style="padding:7px 14px;border-radius:7px;background:rgba(255,255,255,0.15);color:white;border:none;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer">✕ Cerrar</button>
+    </div>
+    <!-- Stats bar -->
+    <div style="background:#F0F4F8;padding:10px 22px;border-bottom:1px solid #E2E8F0;display:flex;align-items:center;gap:16px">
+      <span id="licit-sp-count" style="font-size:12px;font-weight:700;color:#1E3A5F"></span>
+      <span style="font-size:11px;color:#94A3B8">Los informes se mantienen durante la sesión activa</span>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:6px">
+        <span style="font-size:10px;color:#94A3B8">🔒 Eliminar requiere clave</span>
+      </div>
+    </div>
+    <!-- Reports list -->
+    <div id="licit-sp-list" style="padding:16px 22px;display:flex;flex-direction:column;gap:10px;min-height:100px;background:#FAFBFC">
+      <div id="licit-sp-empty" style="text-align:center;padding:32px;color:#94A3B8;font-size:13px">No hay informes guardados aún.<br>Usa el botón "Guardar en plantilla" para guardar un informe.</div>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE PASSWORD MODAL -->
+<div id="licit-del-pwd-modal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.65);align-items:center;justify-content:center">
+  <div style="background:white;border-radius:14px;padding:28px 32px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.35);text-align:center">
+    <div style="font-size:32px;margin-bottom:10px">🔒</div>
+    <div style="font-size:15px;font-weight:800;color:#1E3A5F;margin-bottom:6px">Confirmar Eliminación</div>
+    <div style="font-size:12px;color:#64748B;margin-bottom:20px">Ingresa la clave de administrador para eliminar este informe. Esta acción no se puede deshacer.</div>
+    <input id="licit-del-pwd-input" type="password" placeholder="Clave de administrador"
+      style="width:100%;padding:11px 14px;border:1.5px solid #E2E8F0;border-radius:8px;font-family:inherit;font-size:14px;outline:none;box-sizing:border-box;text-align:center;letter-spacing:4px;margin-bottom:8px">
+    <div id="licit-del-pwd-error" style="font-size:11px;color:#DC2626;margin-bottom:12px;min-height:16px"></div>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button onclick="licitCancelDelete()" style="padding:10px 22px;border-radius:8px;border:1.5px solid #E2E8F0;background:white;color:#374151;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">Cancelar</button>
+      <button onclick="licitConfirmDelete()" style="padding:10px 22px;border-radius:8px;background:#DC2626;color:white;border:none;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">🗑 Eliminar</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ADD/EDIT LICIT MODAL -->
+<div id="licit-add-modal" style="display:none;position:fixed;inset:0;z-index:800;background:rgba(0,0,0,0.6);overflow-y:auto;padding:20px 16px;align-items:flex-start;justify-content:center">
+  <div style="max-width:620px;margin:0 auto;background:white;border-radius:16px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,0.3)">
+    <div style="background:var(--navy);background-image:linear-gradient(135deg,#001D3D,#003F7D);padding:18px 24px;display:flex;justify-content:space-between;align-items:center">
+      <div style="color:white">
+        <div style="font-size:15px;font-weight:800" id="licit-modal-title">Nueva Puja</div>
+        <div style="font-size:11px;opacity:0.6;margin-top:2px" id="licit-modal-sub">Completar todos los campos requeridos</div>
+      </div>
+      <button onclick="licitCloseModal()" style="background:rgba(255,255,255,0.15);border:none;color:white;border-radius:8px;padding:6px 12px;cursor:pointer;font-family:inherit;font-weight:700">✕</button>
+    </div>
+    <div style="padding:24px" id="licit-modal-body"></div>
+    <div style="padding:0 24px 20px;display:flex;justify-content:flex-end;gap:10px">
+      <button onclick="licitCloseModal()" style="padding:10px 20px;border-radius:8px;border:1.5px solid var(--gray4);background:white;color:var(--txt2);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer">Cancelar</button>
+      <button onclick="licitSaveRecord()" style="padding:10px 24px;border-radius:8px;background:var(--navy);color:white;border:none;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer" id="licit-save-btn">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== LICITACION MODULE =====
+var LICIT_PUJAS_BASE = [{"CLIENTE": "CENIT", "PUJA": 37, "FECHA DE  SOLICITUD": "17/01/2023", "FECHA DE  ADJUDICACION": "14/04/2023", "OBJETO_SHORT": "ELABORACIÓN DE DOCUMENTOS TÉCNICOS PARA LA SOLICITUD DE 80 PERMISOS DE OCUPACIÓN DE CAUCE Y 20 PERMI", "ESTADO": "ADJUDICADA", "OBSERVACIONES": "ODS 20 # 4700197294"}, {"CLIENTE": "CENIT", "PUJA": 38, "FECHA DE  SOLICITUD": "17/01/2023", "FECHA DE  ADJUDICACION": "22/08/2023", "OBJETO_SHORT": "ELABORACIÓN DE 20 DOCUMENTOS TÉCNICOS PARA LA SOLICITUD DE PERMISOS AMBIENTALES DE OCUPACIÓN DE CAUC", "ESTADO": "ADJUDICADA", "OBSERVACIONES": "ODS 26 # 4700204521"}, {"CLIENTE": "CENIT", "PUJA": 39, "FECHA DE  SOLICITUD": "17/01/2023", "FECHA DE  ADJUDICACION": "-", "OBJETO_SHORT": "EJECUCIÓN DE ESTUDIOS AMBIENTALES PARA LA VERIFICACIÓN DE LOS INVENTARIOS FORESTALES Y LA ELABORACIÓ", "ESTADO": "ADJUDICADA", "OBSERVACIONES": "ODS # 21 # 4700197031"}, {"CLIENTE": "OLEODUCTO DE COLOMBIA", "PUJA": 1, "FECHA DE  SOLICITUD": "20/02/2023", "FECHA DE  ADJUDICACION": "13/04/2023", "OBJETO_SHORT": "Estudios para la presentación de solicitud a permisos de captación y vertimientos de la Base Remedio", "ESTADO": "ADJUDICADA", "OBSERVACIONES": "ODS 1 # 4700197129"}, {"CLIENTE": "CENIT", "PUJA": 40, "FECHA DE  SOLICITUD": "10/04/2023", "FECHA DE  ADJUDICACION": "-", "OBJETO_SHORT": "Elaborar los estudios ambientales necesarios para adelantar el trámite de licenciamiento ambiental d", "ESTADO": "NO ADJUDICADA", "OBSERVACIONES": "-"}, {"CLIENTE": "CENIT", "PUJA": 41, "FECHA DE  SOLICITUD": "08/05/2023", "FECHA DE  ADJUDICACION": "-", "OBJETO_SHORT": "Monitoreo y seguimiento de Fauna Silvestre existente a lo largo del Derecho de vía del Poliducto Sal", "ESTADO": "NO ADJUDICADA", "OBSERVACIONES": "-"}, {"CLIENTE": "CENIT", "PUJA": 42, "FECHA DE  SOLICITUD": "05/07/2023", "FECHA DE  ADJUDICACION": "-", "OBJETO_SHORT": "Elaboración de los documentos técnicos requeridos para la solicitud de 50 permisos de ocupación de c", "ESTADO": "NO ADJUDICADA", "OBSERVACIONES": "CANCELADA POR FALTA DE PRESUPUESTO DE CENIT"}, {"CLIENTE": "CENIT", "PUJA": 43, "FECHA DE  SOLICITUD": "29/06/2023", "FECHA DE  ADJUDICACION": "-", "OBJETO_SHORT": "Ejecución de estudios ambientales para elaboración y actualización de los documentos de trámite de r", "ESTADO": "NO ADJUDICADA", "OBSERVACIONES": "-"}, {"CLIENTE": "CENIT", "PUJA": 44, "FECHA DE  SOLICITUD": "26/06/2023", "FECHA DE  ADJUDICACION": "-", "OBJETO_SHORT": "Presentar estrategias de respuesta para el control de derrames de hidrocarburos en el punto de contr", "ESTADO": "NO ADJUDICADA", "OBSERVACIONES": "-"}, {"CLIENTE": "CENIT", "PUJA": 45, "FECHA DE  SOLICITUD": "26/06/2023", "FECHA DE  ADJUDICACION": "-", "OBJETO_SHORT": "Presentar estrategias de respuesta para el control de derrames de hidrocarburos en el punto de contr", "ESTADO": "NO ADJUDICADA", "OBSERVACIONES": "-"}, {"CLIENTE": "CENIT", "PUJA": 46, "FECHA DE  SOLICITUD": "26/06/2023", "FECHA DE  ADJUDICACION": "-", "OBJETO_SHORT": "Actualizar las matrices de Aspectos e Impactos Ambientales (AIA)", "ESTADO": "NO ADJUDICADA", "OBSERVACIONES": "-"}, {"CLIENTE": "CENIT", "PUJA": 47, "FECHA DE  SOLICITUD": "04/07/2023", "FECHA DE  ADJUDICACION": "22/08/2023", "OBJETO_SHORT": "Actualización del Plan de Manejo Ambiental del Poliducto Salgar_Cartago_Yumbo, según requerimiento N", "ESTADO": "ADJUDICADA", "OBSERVACIONES": "ODS 27 # 4700205080"}, {"CLIENTE": "CENIT", "PUJA": 48, "FECHA DE  SOLICITUD": "27/07/2023", "FECHA DE  ADJUDICACION": "-", "OBJETO_SHORT": "Ajuste del Plan de Emergencia y Contingencia (PEC) y del Estudio de Conocimiento del Riesgo (ECR) de", "ESTADO": "NO ADJUDICADA", "OBSERVACIONES": "-"}, {"CLIENTE": "CENIT", "PUJA": 49, "FECHA DE  SOLICITUD": "31/07/2023", "FECHA DE  ADJUDICACION": "-", "OBJETO_SHORT": "ELABORACIÓN DE ESTUDIO DE IMPACTO AMBIENTAL PARA LA OBTENCIÓN DE LICENCIA AMBIENTAL DEL PROYECTO VAR", "ESTADO": "NO ADJUDICADA", "OBSERVACIONES": "CANCELADA POR FALTA DE PRESUPUESTO DE CENIT"}, {"CLIENTE": "CENIT", "PUJA": 50, "FECHA DE  SOLICITUD": "24/08/2023", "FECHA DE  ADJUDICACION": "-", "OBJETO_SHORT": "EJECUCIÓN DE ESTUDIOS AMBIENTALES PARA ELABORACIÓN Y ACTUALIZACION DE LOS DOCUMETOS REQUERIDOS EN EL", "ESTADO": "NO ADJUDICADA", "OBSERVACIONES": "-"}, {"CLIENTE": "OLEODUCTO DE COLOMBIA", "PUJA": 2, "FECHA DE  SOLICITUD": "18/09/2023", "FECHA DE  ADJUDICACION": "20/10/2023", "OBJETO_SHORT": "Estudios para la presentación de solicitud a permisos de captación de agua subterránea y vertimiento", "ESTADO": "ADJUDICADA", "OBSERVACIONES": "ODS 2 # 4700209220"}, {"CLIENTE": "CENIT", "PUJA": 51, "FECHA DE  SOLICITUD": "25/09/2023", "FECHA DE  ADJUDICACION": "-", "OBJETO_SHORT": "Ajuste del Plan de Emergencia y Contingencia (PEC) y del Estudio de Conocimiento del Riesgo (ECR) pa", "ESTADO": "NO ADJUDICADA", "OBSERVACIONES": "CANCELADA POR FALTA DE PRESUPUESTO DE CENIT"}, {"CLIENTE": "CENIT", "PUJA": 52, "FECHA DE  SOLICITUD": "26/10/2023", "FECHA DE  ADJUDICACION": "-", "OBJETO_SHORT": "Ajuste del Plan de Emergencia y Contingencia (PEC) y del Estudio de Conocimiento del Riesgo (ECR) de", "ESTADO": "NO ADJUDICADA", "OBSERVACIONES": "-"}, {"CLIENTE": "CENIT", "PUJA": 53, "FECHA DE  SOLICITUD": "01/11/2023", "FECHA DE  ADJUDICACION": "14/12/2023", "OBJETO_SHORT": "Elaboración del Plan de Emergencia y Contingencia (PEC) y el Estudio de Conocimiento del Riesgo (ECR", "ESTADO": "ADJUDICADA", "OBSERVACIONES": "ODS 28 # 4700211814"}, {"CLIENTE": "CENIT", "PUJA": 54, "FECHA DE  SOLICITUD": "24/10/2023", "FECHA DE  ADJUDICACION": "-", "OBJETO_SHORT": "Elaboración de diagnóstico ambiental de alternativas (DAA) para la construcción y puesta en marcha d", "ESTADO": "NO ADJUDICADA", "OBSERVACIONES": "CANCELADA POR FALTA DE PRESUPUESTO DE CENIT"}, {"CLIENTE": "OLEODUCTO DE COLOMBIA", "PUJA": 3, "FECHA DE  SOLICITUD": "31/10/2023", "FECHA DE  ADJUDICACION": "20/12/2023", "OBJETO_SHORT": "Estudios para la actualización de línea Base Ambiental Oleoducto de Colombia ODC", "ESTADO": "ADJUDICADA", "OBSERVACIONES": "ODS 3 # 4700211843"}, {"CLIENTE": "CENIT", "PUJA": 55, "FECHA DE  SOLICITUD": "17/11/2023", "FECHA DE  ADJUDICACION": "14/12/2023", "OBJETO_SHORT": "Ajuste del Plan de Emergencia y Contingencia (PEC) y del Estudio de Conocimiento del Riesgo (ECR) de", "ESTADO": "ADJUDICADA", "OBSERVACIONES": "ODS 29 # 4700211816"}, {"CLIENTE": "CENIT", "PUJA": 56, "FECHA DE  SOLICITUD": "24/11/2023", "FECHA DE  ADJUDICACION": "01/03/2024", "OBJETO_SHORT": "ELABORACIÓN DE DOCUMENTOS TÉCNICOS PARA LA SOLICITUD DE PERMISOS AMBIENTALES DE OCUPACIÓN DE CAUCE Y", "ESTADO": "ADJUDICADA", "OBSERVACIONES": "ODS 32 # 4700217594"}, {"CLIENTE": "CENIT", "PUJA": 57, "FECHA DE  SOLICITUD": "24/11/2023", "FECHA DE  ADJUDICACION": "14/12/2023", "OBJETO_SHORT": "ELABORACIÓN DE ESTUDIO PARA EL ESTABLECIMIENTO DE MEDIDAS DE MANEJO AMBIENTAL DE LA LÍNEA SALGAR – L", "ESTADO": "ADJUDICADA", "OBSERVACIONES": "ODS 30 # 470022134"}, {"CLIENTE": "CENIT", "PUJA": 58, "FECHA DE  SOLICITUD": "01/12/2023", "FECHA DE  ADJUDICACION": "14/12/2023", "OBJETO_SHORT": "EJECUCIÓN DE ESTUDIOS AMBIENTALES PARA ELABORACIÓN DE LOS DOCUMENTOS SOLICITADOS EN EL MARCO DE LA I", "ESTADO": "ADJUDICADA", "OBSERVACIONES": "ODS 31 # 470022136"}, {"CLIENTE": "CENIT", "PUJA": 59, "FECHA DE  SOLICITUD": "11/12/2023", "FECHA DE  ADJUDICACION": "18/03/2024", "OBJETO_SHORT": "AJUSTE EN LA VALORACIÓN ECONOMICA AMBIENTAL DEL PROYECTO EN CUMPLIMIENTO DEL ARTICULO DECIMO SEXTO D", "ESTADO": "ADJUDICADA", "OBSERVACIONES": "ODS 33 # 4700218040"}, {"CLIENTE": "CENIT", "PUJA": 60, "FECHA DE  SOLICITUD": "11/12/2023", "FECHA DE  ADJUDICACION": "-", "OBJETO_SHORT": "ELABORACIÓN DE DOCUMENTOS TÉCNICOS PARA LA SOLICITUD DE PERMISOS AMBIENTALES DE OCUPACIÓN DE CAUCE Y", "ESTADO": "NO ADJUDICADA", "OBSERVACIONES": "-"}, {"CLIENTE": "CENIT", "PUJA": 61, "FECHA DE  SOLICITUD": "17/01/2024", "FECHA DE  ADJUDICACION": "-", "OBJETO_SHORT": "MODELO HIDROGEOLÓGICO DETALLADO DEL ÁREA DONDE PUDO EXISTIR ALGUNA VARIACIÓN PRODUCTO DE LA REALIZAC", "ESTADO": "NO ADJUDICADA", "OBSERVACIONES": "CANCELADA POR CAMBIO DE ALCANCE"}, {"CLIENTE": "CENIT", "PUJA": 62, "FECHA DE  SOLICITUD": "07/03/2024", "FECHA DE  ADJUDICACION": "-", "OBJETO_SHORT": "ELABORACIÓN DE PERMISOS AMBIENTALES DE OCUPACIÓN DE CAUCE Y APROVECHAMIENTO FORESTAL", "ESTADO": "POR DEFINIR", "OBSERVACIONES": "AUN NO HAN DADO RESPUESTA "}, {"CLIENTE": "CENIT", "PUJA": 63, "FECHA DE  SOLICITUD": "07/03/2024", "FECHA DE  ADJUDICACION": "-", "OBJETO_SHORT": "DOCUMENTOS TÉCNICOS NECESARIOS PARA DAR CUMPLIMIENTO A LOS REQUERIMIENTOS DEL COMUNICADO NO 500.29.1", "ESTADO": "ADJUDICADA", "OBSERVACIONES": "ODS 35 # 4700220819"}, {"CLIENTE": "CENIT", "PUJA": 64, "FECHA DE  SOLICITUD": "07/03/2024", "FECHA DE  ADJUDICACION": "-", "OBJETO_SHORT": "ELABORACIÓN DE UN MODELO HIDROGEOLÓGICO DETALLADO DEL ÁREA DE CONSTRUCCIÓN DE LOS PHD EN LOS SECTORE", "ESTADO": "ADJUDICADA", "OBSERVACIONES": "ODS 34 # 4700218829"}, {"CLIENTE": "CENIT", "PUJA": 65, "FECHA DE  SOLICITUD": "07/03/2024", "FECHA DE  ADJUDICACION": "-", "OBJETO_SHORT": "CUANTIFICACIÓN BIOFÍSICA DE LOS IMPACTOS POSITIVOS Y NEGATIVOS DEL SISTEMA DE TRANSPORTE PROPANODUCT", "ESTADO": "POR DEFINIR", "OBSERVACIONES": "AUN NO HAN DADO RESPUESTA "}, {"CLIENTE": "CENIT", "PUJA": 66, "FECHA DE  SOLICITUD": "20/05/2024", "FECHA DE  ADJUDICACION": "-", "OBJETO_SHORT": "AJUSTE EN LA EVALUACIÓN ECONÓMICA AMBIENTAL DEL PROYECTO \"CONSTRUCCIÓN DE UNA VARIANTE DE 15 KM DEL ", "ESTADO": "ADJUDICADA", "OBSERVACIONES": "ODS 37 # 4700222143"}, {"CLIENTE": "CENIT", "PUJA": 67, "FECHA DE  SOLICITUD": "13/06/2024", "FECHA DE  ADJUDICACION": "-", "OBJETO_SHORT": "ELABORAR LOS DOCUMENTOS TÉCNICOS PARA LA SOLICITUD DE PERMISOS AMBIENTALES DE APROVECHAMIENTO FOREST", "ESTADO": "ADJUDICADA", "OBSERVACIONES": "ODS 38 # 4700223418"}, {"CLIENTE": "CENIT", "PUJA": 68, "FECHA DE  SOLICITUD": "19/06/2024", "FECHA DE  ADJUDICACION": "15/08/2024", "OBJETO_SHORT": "ELABORACIÓN DE UN DIAGNÓSTICO AMBIENTAL DE ALTERNATIVAS (DAA) PARA LA CONSTRUCCIÓN Y PUESTA EN MARCH", "ESTADO": "ADJUDICADA", "OBSERVACIONES": "ODS 39 # 4700225919"}, {"CLIENTE": "CENIT", "PUJA": 69, "FECHA DE  SOLICITUD": "11/07/2024", "FECHA DE  ADJUDICACION": "15/08/2024", "OBJETO_SHORT": "EJECUCIÓN DE ESTUDIOS AMBIENTALES PARA ELABORACIÓN Y ACTUALIZACIÓN DE LOS DOCUMENTOS REQUERIDOS EN E", "ESTADO": "ADJUDICADA", "OBSERVACIONES": "ODS 40 # 4700231839"}, {"CLIENTE": "CENIT", "PUJA": 70, "FECHA DE  SOLICITUD": "08/08/2024", "FECHA DE  ADJUDICACION": "-", "OBJETO_SHORT": "ELABORACIÓN DE LOS ESTUDIOS AMBIENTALES NECESARIOS PARA EL TRÁMITE DE RENOVACIÓN DEL PERMISO DE VERT", "ESTADO": "NO ADJUDICADA", "OBSERVACIONES": "CANCELADA POR FALTA DEPRESUPUESTO DE CENIT"}, {"CLIENTE": "CENIT", "PUJA": 71, "FECHA DE  SOLICITUD": "08/08/2024", "FECHA DE  ADJUDICACION": "-", "OBJETO_SHORT": "ELABORAR LOS DOCUMENTOS TÉCNICOS PARA LA SOLICITUD DE PERMISOS AMBIENTALES DE OCUPACIÓN DE CAUCE, AP", "ESTADO": "NO ADJUDICADA", "OBSERVACIONES": "CANCELADA POR FALTA DE PRESUPUESTO DE CENIT"}, {"CLIENTE": "CENIT", "PUJA": 72, "FECHA DE  SOLICITUD": "30/09/2024", "FECHA DE  ADJUDICACION": "22/10/2024", "OBJETO_SHORT": "Elaborar el estudio de la hidráulica fluvial del Caño Las Pavas en el Pk115+250 Oleoducto Vasconia C", "ESTADO": "ADJUDICADA", "OBSERVACIONES": "ODS 42 # 4700233144"}, {"CLIENTE": "CENIT", "PUJA": 73, "FECHA DE  SOLICITUD": "17/10/2024", "FECHA DE  ADJUDICACION": "-", "OBJETO_SHORT": "ELABORACIÓN DEL ESTUDIO DE EVALUACIÓN AMBIENTAL DEL VERTIMIENTO DE AGUAS RESIDUALES NO DOMESTICAS AR", "ESTADO": "POR DEFINIR", "OBSERVACIONES": "AUN NO HAN DADO RESPUESTA "}, {"CLIENTE": "CENIT", "PUJA": 74, "FECHA DE  SOLICITUD": "18/10/2024", "FECHA DE  ADJUDICACION": "05/11/2024", "OBJETO_SHORT": "Elaborar un documento técnico ambiental que respalde la justificación de una única alternativa para ", "ESTADO": "ADJUDICADA", "OBSERVACIONES": "ODS 43 # 4700232802"}, {"CLIENTE": "CENIT", "PUJA": 75, "FECHA DE  SOLICITUD": "18/11/2024", "FECHA DE  ADJUDICACION": "27/11/2024", "OBJETO_SHORT": "Elaborar el documento técnico para la solicitud de un (1) permiso aprovechamiento forestal para 9 ár", "ESTADO": "ADJUDICADA", "OBSERVACIONES": "ODS 44 # 4700234219"}, {"CLIENTE": "CENIT", "PUJA": 76, "FECHA DE  SOLICITUD": "30/12/2024", "FECHA DE  ADJUDICACION": "-", "OBJETO_SHORT": "Elaborar el censo de personas que se están beneficiando del recurso hídrico captado en la Estación S", "ESTADO": "POR DEFINIR", "OBSERVACIONES": "AUN NO HAN DADO RESPUESTA "}, {"CLIENTE": "CENIT", "PUJA": 78, "FECHA DE  SOLICITUD": "30/12/2024", "FECHA DE  ADJUDICACION": "21/01/2025", "OBJETO_SHORT": "Elaborar documentos técnicos para la solicitud del permiso ambiental de aprovechamiento forestal e i", "ESTADO": "ADJUDICADA", "OBSERVACIONES": "ODS 45 PUJA 78 # 4700238777"}, {"CLIENTE": "CENIT", "PUJA": 79, "FECHA DE  SOLICITUD": "30/12/2024", "FECHA DE  ADJUDICACION": "-", "OBJETO_SHORT": "Elaborar los documentos técnicos para la solicitud de permisos ambientales de ocupación de cauce par", "ESTADO": "POR DEFINIR", "OBSERVACIONES": "AUN NO HAN DADO RESPUESTA "}, {"CLIENTE": "CENIT", "PUJA": 80, "FECHA DE  SOLICITUD": "18/02/2025", "FECHA DE  ADJUDICACION": "-", "OBJETO_SHORT": "Elaboración de permisos ambientales de ocupación de cauce y aprovechamiento forestal Troncal Central", "ESTADO": "POR DEFINIR", "OBSERVACIONES": "AUN NO HAN DADO RESPUESTA "}, {"CLIENTE": "CENIT", "PUJA": 81, "FECHA DE  SOLICITUD": "18/02/2025", "FECHA DE  ADJUDICACION": "-", "OBJETO_SHORT": "Elaboración de permisos ambientales de ocupación de cauce y aprovechamiento forestal Troncal Occiden", "ESTADO": "POR DEFINIR", "OBSERVACIONES": "AUN NO HAN DADO RESPUESTA "}, {"CLIENTE": "CENIT", "PUJA": 82, "FECHA DE  SOLICITUD": "19/02/2025", "FECHA DE  ADJUDICACION": "-", "OBJETO_SHORT": "Elaboración de permisos ambientales de ocupación de cauce y aprovechamiento forestal Troncal Sur", "ESTADO": "POR DEFINIR", "OBSERVACIONES": "AUN NO HAN DADO RESPUESTA "}, {"CLIENTE": "CENIT", "PUJA": 83, "FECHA DE  SOLICITUD": "31/03/2025", "FECHA DE  ADJUDICACION": "-", "OBJETO_SHORT": "Elaborar los documentos técnicos para la solicitud de permisos ambientales de aprovechamiento forest", "ESTADO": "POR DEFINIR", "OBSERVACIONES": "AUN NO HAN DADO RESPUESTA "}, {"CLIENTE": "CENIT", "PUJA": 84, "FECHA DE  SOLICITUD": "02/04/2025", "FECHA DE  ADJUDICACION": "-", "OBJETO_SHORT": "Realizar la elaboración de los documentos técnicos requeridos por las Autoridades Ambientales Region", "ESTADO": "POR DEFINIR", "OBSERVACIONES": "AUN NO HAN DADO RESPUESTA "}, {"CLIENTE": "CENIT", "PUJA": 86, "FECHA DE  SOLICITUD": "04/04/2025", "FECHA DE  ADJUDICACION": "-", "OBJETO_SHORT": "Elaboración del documento técnico para la solicitud de permisos ambientales de ocupación de cauce, c", "ESTADO": "POR DEFINIR", "OBSERVACIONES": "AUN NO HAN DADO RESPUESTA "}, {"CLIENTE": "CENIT", "PUJA": 87, "FECHA DE  SOLICITUD": "11/04/2025", "FECHA DE  ADJUDICACION": "-", "OBJETO_SHORT": "Elaboración de permisos ambientales de ocupación de cauce y aprovechamiento forestal Zona Llanos", "ESTADO": "POR DEFINIR", "OBSERVACIONES": "AUN NO HAN DADO RESPUESTA "}, {"CLIENTE": "CENIT", "PUJA": 88, "FECHA DE  SOLICITUD": "28/04/2025", "FECHA DE  ADJUDICACION": "20/05/2025", "OBJETO_SHORT": " Elaborar los documentos técnicos para la solicitud de los permisos ambientales de ocupaciones de ca", "ESTADO": "ADJUDICADA", "OBSERVACIONES": "ODS 46 # 4700245996 , junio 4 de 2025"}, {"CLIENTE": "CENIT", "PUJA": 89, "FECHA DE  SOLICITUD": "12/05/2025", "FECHA DE  ADJUDICACION": "28/05/2025", "OBJETO_SHORT": "Elaborar documentos técnicos para la solicitud del permiso ambiental de aprovechamiento forestal e i", "ESTADO": "ADJUDICADA", "OBSERVACIONES": "ODS 47 # 4700246822, junio 17 de 2025"}, {"CLIENTE": "CENIT", "PUJA": 90, "FECHA DE  SOLICITUD": "19/05/2025", "FECHA DE  ADJUDICACION": "-", "OBJETO_SHORT": "Elaborar los permisos ambientales de ocupación de cauce y aprovechamiento forestal requeridos para v", "ESTADO": "POR DEFINIR", "OBSERVACIONES": "AUN NO HAN DADO RESPUESTA "}, {"CLIENTE": "CENIT", "PUJA": 91, "FECHA DE  SOLICITUD": "27/05/2025", "FECHA DE  ADJUDICACION": "-", "OBJETO_SHORT": "Elaborar los documentos técnicos para la solicitud de permisos ambientales de ocupación de cauce, re", "ESTADO": "NO ADJUDICADA", "OBSERVACIONES": "La cancelación obedece a la necesidad de realizar un ajuste en el alcance del estudio, situación que requiere la apertura de un nuevo proceso de puja con los lineamientos actualizados"}, {"CLIENTE": "CENIT", "PUJA": 92, "FECHA DE  SOLICITUD": "09/06/2025", "FECHA DE  ADJUDICACION": "-", "OBJETO_SHORT": "ELABORACIÓN DE UN DOCUMENTO TÉCNICO AMBIENTAL DE JUSTIFICACIÓN DE UNA ÚNICA ALTERNATIVA (NO DAA) PAR", "ESTADO": "POR DEFINIR", "OBSERVACIONES": "-"}, {"CLIENTE": "CENIT", "PUJA": 93, "FECHA DE  SOLICITUD": "09/06/2025", "FECHA DE  ADJUDICACION": "02/07/2025", "OBJETO_SHORT": "ELABORACIÓN DE UN DOCUMENTO TÉCNICO AMBIENTAL DE JUSTIFICACIÓN DE UNA ÚNICA ALTERNATIVA (NO DAA) PAR", "ESTADO": "ADJUDICADA", "OBSERVACIONES": "ODS 49 # 4700248051"}, {"CLIENTE": "CENIT", "PUJA": 94, "FECHA DE  SOLICITUD": "01/07/2025", "FECHA DE  ADJUDICACION": "-", "OBJETO_SHORT": "Elaborar los documentos técnicos para la solicitud de permisos ambientales de ocupación de cauce y l", "ESTADO": "POR DEFINIR", "OBSERVACIONES": "AUN NO HAN DADO RESPUESTA "}, {"CLIENTE": "CENIT", "PUJA": 95, "FECHA DE  SOLICITUD": "09/07/2025", "FECHA DE  ADJUDICACION": "-", "OBJETO_SHORT": "Elaborar los documentos técnicos para la solicitud de permisos ambientales de aprovechamiento forest", "ESTADO": "POR DEFINIR", "OBSERVACIONES": "AUN NO HAN DADO RESPUESTA "}, {"CLIENTE": "CENIT", "PUJA": 96, "FECHA DE  SOLICITUD": "08/07/2025", "FECHA DE  ADJUDICACION": "-", "OBJETO_SHORT": "Ejecución de la prospección arqueológica para el programa de arqueología preventiva de la variante l", "ESTADO": "POR DEFINIR", "OBSERVACIONES": "AUN NO HAN DADO RESPUESTA "}, {"CLIENTE": "CENIT ", "PUJA": 97, "FECHA DE  SOLICITUD": "08/08/2025", "FECHA DE  ADJUDICACION": "-", "OBJETO_SHORT": "Generar un Render 3D y animación que permita visualizar la dimensión de las obras planteadas entre e", "ESTADO": "NO ADJUDICADA", "OBSERVACIONES": "CANCELADA POR EL AREA USUARIA CORREO ENVIADO EL 3 DE SEPTIEMBRE "}, {"CLIENTE": "CENIT", "PUJA": 98, "FECHA DE  SOLICITUD": "05/09/2025", "FECHA DE  ADJUDICACION": "-", "OBJETO_SHORT": "Elaborar los documentos técnicos para la solicitud de permisos ambientales de ocupación de cauce, re", "ESTADO": "NO ADJUDICADA", "OBSERVACIONES": "NO DIERON RESPUESTA"}, {"CLIENTE": "CENIT", "PUJA": 99, "FECHA DE  SOLICITUD": "05/09/2025", "FECHA DE  ADJUDICACION": "-", "OBJETO_SHORT": "Construcción del Diagnóstico Arqueológico y ejecución de la prospección arqueológica para el program", "ESTADO": "NO ADJUDICADA", "OBSERVACIONES": "NO DIERON RESPUESTA"}];
+var LICIT_PROP_BASE = [{"FECHA DE  PRESENTACION": "11/01/2023", "CLIENTE": "GENIUS ENGINEERING CORP SUCURSAL COLOMBIA", "OBJETO_SHORT": "INVITACIÓN PROCESO “SUSTRACCIÓN DE LA RESERVA DEL DISTRITO ESPECIAL DE MANEJO INTEGRADO DEL ALTO DE ", "ESTADO": "NO ADJUDICADA", "OBSERVACIONES": "VIGENCIA DE 2 MESES A PARTIR DE LA FECHA DE ENTREGA .ENVIARON COMUNICACION DECLARADA DESIERTA FEBRERO 1 DE 2023", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "31/01/2023", "CLIENTE": "DRUMMOND ENERGY INC. ", "OBJETO_SHORT": "LICITACIÓN NÚMERO: DEI-0099 SERVICIO DE ELABORACIÓN DE INFORME DE CUMPLIMIENTO AMBIENTAL PARA LOS AÑ", "ESTADO": "SIN RESPUESTA", "OBSERVACIONES": "VIGENCIA 3 MESES A PARTIR DE LA FECHA DE ENTREGA", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "31/01/2023", "CLIENTE": "LA LUNA", "OBJETO_SHORT": "Elaboración de Medidas de Manejo Ambiental para el Programa Sísmico Corozo 3D y Plan de Manejo Ambie", "ESTADO": "ADJUDICADA", "OBSERVACIONES": "-", "FECHA DE ADJUDICACIÓN": "09/02/2023"}, {"FECHA DE  PRESENTACION": "06/02/2023", "CLIENTE": "PAREX RESOURCES (COLOMBIA) AG SUCURSAL", "OBJETO_SHORT": "INVITACIÓN A OFERTAR PC20230025-RSE- CONSULTA PREVIA NACIONAL", "ESTADO": "SIN RESPUESTA", "OBSERVACIONES": "VIGENCIA 3 MESES A PARTIR DE LA FECHA DE ENTREGA", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "15/02/2023", "CLIENTE": "OPAIN S.A.", "OBJETO_SHORT": "Invitación es la NEGO-02292-23- INSPECCIONES, SEGUIMIENTOS AMBIENTALES, INSPECCIONES POR DEMANDA, VE", "ESTADO": "NO ADJUDICADA", "OBSERVACIONES": "ENVIARON COOREO ELECTRONICO DE NO ADJUDICACION ABRIL 18/23", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "14/04/2023", "CLIENTE": "LA LUNA", "OBJETO_SHORT": "SERVICIO DE ARQUEOLOGÍA PARA LA AMPLIACIÓN DE LA PLATAFORMA DE EL BÚHO-1", "ESTADO": "ADJUDICADA", "OBSERVACIONES": "-", "FECHA DE ADJUDICACIÓN": "15/04/2023"}, {"FECHA DE  PRESENTACION": "16/04/2023", "CLIENTE": "LA LUNA", "OBJETO_SHORT": "Elaboración documento de procedencia APE SN-26 y la Determinación de área de influencia preliminar A", "ESTADO": "ADJUDICADA", "OBSERVACIONES": "-", "FECHA DE ADJUDICACIÓN": "24/04/2023"}, {"FECHA DE  PRESENTACION": "19/04/2023", "CLIENTE": "DRUMMOND ENERGY INC. ", "OBJETO_SHORT": "Proceso 1701043 - Arqueologia Cañahuate IMPLEMENTACIÓN DEL PLAN DE MANEJO ARQUEOLÓGICO CAÑAHUATE I Y", "ESTADO": "NO ADJUDICADA", "OBSERVACIONES": "VIGENCIA 2 MESES A PARTIR DE LA FECHA DE ENTREGA", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "20/04/2023", "CLIENTE": "DRUMMOND ENERGY INC. ", "OBJETO_SHORT": "AJUSTES COMPLEMENTARIOS A LOS PLANES DE CONTINGENCIA SIGUIENDO LOS LINEAMIENTOS DEL DECRETO 2157 DEL", "ESTADO": "SIN RESPUESTA", "OBSERVACIONES": "VIGENCIA 2 MESES A PARTIR DE LA FECHA DE ENTREGA", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "31/05/2023", "CLIENTE": "NEW GRANADA", "OBJETO_SHORT": "INTERVENTORÍA HSE - CAMPAÑA WORKOVER 2023", "ESTADO": "SIN RESPUESTA", "OBSERVACIONES": "VIGENCIA 3 MESES A PARTIR DE LA FECHA DE ENTREGA", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "23/06/2023", "CLIENTE": "CENIT", "OBJETO_SHORT": "SERVICIO DE CONSOLIDACIÓN Y ELABORACIÓN DE INFORMES DE CUMPLIMIENTO AMBIENTAL – ICA", "ESTADO": "NO ADJUDICADA", "OBSERVACIONES": "ENVIARON CORREO ELECTRONICO DE NO ADJUDICACION AGOSTO 11/23", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "25/07/2023", "CLIENTE": "MANSAROVAR ENERGY COLOMBIA LTD", "OBJETO_SHORT": "ESTUDIO DE IMPACTO AMBIENTAL EN LOS BAJOS INUNDABLES QUE LIMITAN CON LA CIÉNAGA PALAGUA, SECTORES \"E", "ESTADO": "SIN RESPUESTA", "OBSERVACIONES": "VIGENCIA 120 DIAS A PARTIR DE LA FECHA DE ENTREGA", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "08/08/2023", "CLIENTE": "CONSORCIO VIAL MHC 063 ", "OBJETO_SHORT": "ELABORACIÓN DEL EIA DEL CORREDOR VIAL DE 7 KM DE MHC PARA LA MODIFICACIÓN DE LICENCIA AMBIENTAL OTOR", "ESTADO": "SIN RESPUESTA", "OBSERVACIONES": "-", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "24/08/2023", "CLIENTE": "AES COLOMBIA", "OBJETO_SHORT": "ELABORACIÓN DEL ESTUDIO DE IMPACTO AMBIENTAL - EIA PARQUE SOLAR AES GIRASOLES 100 MW", "ESTADO": "SIN RESPUESTA", "OBSERVACIONES": "VIGENCIA 3 MESES A PARTIR DE LA FECHA DE ENTREGA", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "05/09/2023", "CLIENTE": "CEPSA", "OBJETO_SHORT": "SONDEO DE MERCADO SOPORTE A CIERRE DE ACTIVIDADES AMBIENTALES Y SOCIALES BLOQUES CASANARE", "ESTADO": "NO ADJUDICADA", "OBSERVACIONES": "ENVIARON CORREO ELECTRONICO DE NO ADJUDICACION NOVIEMBRE 2/23", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "11/09/2023", "CLIENTE": "MANSAROVAR ENERGY", "OBJETO_SHORT": "ESTUDIO DE IMPACTO AMBIENTAL EN LOS BAJOS INUNDABLES QUE LIMITAN CON LA CIÉNAGA PALAGUA, SECTORES \"E", "ESTADO": "NO ADJUDICADA", "OBSERVACIONES": "VIGENCIA 4 MESES A PARTIR DE LA FECHA DE ENTREGA", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "30/08/2023", "CLIENTE": "CARRAO ENERGY", "OBJETO_SHORT": "ELABORACIÓN DEL INFORME DE CUMPLIMIENTO AMBIENTAL - ICA DEL CAMPO DE PRODUCCIÓN BLOQUE TAPIR, PARA E", "ESTADO": "NO ADJUDICADA", "OBSERVACIONES": "ENVIARON CORREO ELECTRONICO DE NO ADJUDICACION SEPTIEMBRE 20/23", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "11/09/2023", "CLIENTE": "MANSAROVAR ENERGY", "OBJETO_SHORT": "SERVICIO DE RESPUESTA A REQUERIMIENTOS LEGALES DE LOS PROGRAMAS DE INVERSIÓN DE 1% Y COMPENSACIÓN FO", "ESTADO": "SIN RESPUESTA", "OBSERVACIONES": "VIGENCIA 4 MESES A PARTIR DE LA FECHA DE ENTREGA", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "14/09/2023", "CLIENTE": "DRUMMOND ENERGY", "OBJETO_SHORT": "SERVICIO DE MONITOREO DE CALIDAD DEL AIRE DE ACUERDO LOS MÉTODOS Y PROTOCOLOS RECOMENDADOS Y VIGENTE", "ESTADO": "SIN RESPUESTA", "OBSERVACIONES": "VIGENCIA 90 DIAS A PARTIR DFE ", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "28/09/2023", "CLIENTE": "CARRAO ENERGY", "OBJETO_SHORT": "PMA PARA LA PLATAFORMA MULTIPOZOS MATEGUAFA ATTIC EN EL CAMPO DE PRODUCCIÓN BLOQUE TAPIR", "ESTADO": "NO ADJUDICADA", "OBSERVACIONES": "VIGENCIA 3 MESES A PARTIR DE LA FECHA DE ENTREGA. ENVIARON CORREO ELECTRONICO DE NO ADJUDICACION OCTUBRE 10/20/23", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "09/10/2023", "CLIENTE": "MANSAROVAR ENERGY", "OBJETO_SHORT": "DIMENSIONAMIENTO DE ÁREAS Y VOLÚMENES DE SUELOS AFECTADOS POR PRESENCIA DE HIDROCARBUROS EN UNA ZONA", "ESTADO": "SIN RESPUESTA", "OBSERVACIONES": "VIGENCIA 4 MESES A PARTIR DE LA FECHA DE ENTREGA", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "12/10/2023", "CLIENTE": "CONSORCIO MHC", "OBJETO_SHORT": "FASE DE PROSPECCIÓN Y APROBACIÓN DEL PLAN DE MANEJO ARQUEOLÓGICO DEL PROGRAMA DE ARQUEOLOGÍA PREVENT", "ESTADO": "SIN RESPUESTA", "OBSERVACIONES": "VIGENCIA 3 MESES A PARTIR DE LA FECHA DE ENTREGA", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "27/10/2023", "CLIENTE": "GRAN TIERRA ENERGY", "OBJETO_SHORT": "SERVICIO DE CONSULTORÍA, CONTROL OPERATIVO PARA LOS PLANES DE INVERSIÓN FORZOSA DE NO MENOS DEL 1% Y", "ESTADO": "NO ADJUDICADA", "OBSERVACIONES": "VIGENCIA 5 MESES A PARTIR DE LA FECHA DE ENTREGA, ENVIARON COMUNICACIÓN DE NO ADJUDICACION FEBRERO 28 DE 2024.", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "20/10/2023", "CLIENTE": "NEW GRANADA ENERGY", "OBJETO_SHORT": "SERVICIO DE INTERVENTORÍA HSE PARA LAS ACTIVIDADES WORKOVER EN NEW GRANADA ENERGY CORPORATION SUCURS", "ESTADO": "SIN RESPUESTA", "OBSERVACIONES": "VIGENCIA 3 MESES A PARTIR DE LA FECHA DE ENTREGA", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "23/11/2023", "CLIENTE": "DRUMMOND ENERGY INC.", "OBJETO_SHORT": "LICITACIÓN / COTIZACIÓN No. DEI-0120. SERVICIO DE MANTENIMIENTO A INDIVIDUOS DE LAS ESPECIES PIÑUELA", "ESTADO": "SIN RESPUESTA", "OBSERVACIONES": "VIGENCIA 90 DIAS A PARTIR DE LA FECHA DE ENTREGA", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "17/11/2023", "CLIENTE": "CARRAO ENERGY", "OBJETO_SHORT": "DOS (2) PLANES DE MANEJO AMBIENTAL (PMA) PARA LAS PLATAFORMAS: CARRIZALES NORTE 2 – CONSTRUCCIÓN DE ", "ESTADO": "SIN RESPUESTA", "OBSERVACIONES": "VIGENCIA 3 MESES A PARTIR DE LA FECHA DE ENTREGA", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "10/01/2024", "CLIENTE": "DRUMMOND ENERGY", "OBJETO_SHORT": "DEI-0127 - SERVICIO DE ELABORACIÓN DEL DOCUMENTO PLAN DE MANEJO AMBIENTAL Y DEL PROGRAMA DE ARQUEOLO", "ESTADO": "SIN RESPUESTA", "OBSERVACIONES": "VIGENCIA 90 DIAS A PARTIR DE LA FECHA DE ENTREGA", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "07/03/2024", "CLIENTE": "GRAN TIERRA ENERGY", "OBJETO_SHORT": "SOLICITUD DE COTIZACIÓN SO-042-24 PARA EL SERVICIO DE CONSULTORÍA PARA IMPLEMENTACIÓN DE ACTIVIDADES", "ESTADO": "NO ADJUDICADA", "OBSERVACIONES": "ENVIARON COMUNICADO DE NO ADJUDICACION MAYO 10 DE 2024", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "19/03/2024", "CLIENTE": "GRAN TIERRA ENERGY", "OBJETO_SHORT": "SOLICITUD DE OFERTA SO 045 SERVICIO ESPECIALIZADO DE CONSULTORÍA PARA LA REVISIÓN AMBIENTAL DE DOSSI", "ESTADO": "NO ADJUDICADA", "OBSERVACIONES": "VIGENCIA 150 DIAS CALENDARIO A PARTIR DE LA FECHA DE ENTREGA.  / ENVIARON COMUNICACIÓN DE NO ADJUCACION JULIO 24/24", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "04/03/2024", "CLIENTE": "PERENCO COLOMBIA", "OBJETO_SHORT": "SERVICIO DE CONSULTA PREVIA PARA ESTUDIO DE IMPACTO AMBIENTAL EN EL BLOQUE GARCERO C. MODIFICACIÓN D", "ESTADO": "SIN RESPUESTA", "OBSERVACIONES": "VIGENCIA DE 60 DIAS A PARTIR DE LA FECHA DE ENTREGA ", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "28/02/2024", "CLIENTE": "NEW GRANADA NGEC", "OBJETO_SHORT": "SERVICIO DE AUDITORÍA AL SISTEMA DE MEDICIÓN Y DE CALIDAD EN LOS CAMPOS DE NGEC – CAMPO DOROTEA", "ESTADO": "SIN RESPUESTA", "OBSERVACIONES": "NO HAN ENVIADO NINGUN COMUNICADO", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "12/04/2024", "CLIENTE": "AES COLOMBIA", "OBJETO_SHORT": "DISEÑOS DE OBRAS HIDRAULICAS PARA OCUPACIONES DE CAUCE PROYECTO PARQUE EOLICO JK4", "ESTADO": "POR DEFINIR", "OBSERVACIONES": "VIGENCIA 90 DIAS A PARTIR DE LA FECHA DE ENTREGA", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "27/03/2024", "CLIENTE": "DRUMMOND ENERGY", "OBJETO_SHORT": "ANÁLISIS DE INTERNALIZACIÓN- EVALUACIÓN ECONÓMICA DE IMPACTOS PROYECTO PARQUE SOLAR FOTOVOLTAICO CAÑ", "ESTADO": "POR DEFINIR", "OBSERVACIONES": "VIGENCIA 3 MESES A PARTIR DE LA FECHA DE ENTREGA", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "03/04/2024", "CLIENTE": "RUTA AL SUR", "OBJETO_SHORT": "AUDITORIA INTEGRAL AL SISTEMA DE GESTIÓN AMBIENTAL DEL CONTRATO DE \nCONCESIÓN No. 012 DE 2015 SANTAN", "ESTADO": "POR DEFINIR", "OBSERVACIONES": "VIGENCIA 3 MESES A PARTIR DE LA FECHA DE ENTREGA", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "17/04/2024", "CLIENTE": "CONSORCIO RUTA 40", "OBJETO_SHORT": "AUDITORIAS AMBIENTALES FINALES PARA LAS  UNIDADES FUNCIONALES UF 3, 5, 6 Y 7  EN LA CONSTRUCCIÓN DEL", "ESTADO": "ADJUDICADA", "OBSERVACIONES": "ORDEN DE SERVICIO 1250 (INICIA JULIO 1/24)", "FECHA DE ADJUDICACIÓN": "01/01/1970"}, {"FECHA DE  PRESENTACION": "10/05/2024", "CLIENTE": "CONCESIONARIA FÉRREA DE OCCIDENTE S.A.S", "OBJETO_SHORT": "ELABORACIÓN DE LOS DOCUMENTOS REQUERIDOS PARA EL LEVANTAMIENTO DE VEDA DE LA VEGETACIÓN CON RÉGIMEN ", "ESTADO": "POR DEFINIR", "OBSERVACIONES": "VIGENCIA 3 MESES A PARTIR DE LA FECHA DE ENTREGA", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "17/05/2024", "CLIENTE": "AES COLOMBIA", "OBJETO_SHORT": "MODIFICACIÓN DE LICENCIA AMBIENTAL PROYECTO LÍNEA DE \nALTA TENSIÓN 500 kV CASA ELÉCTRICA – COLECTORA", "ESTADO": "ADJUDICADA", "OBSERVACIONES": "ORDEN DE PEDIDO # 4501282426", "FECHA DE ADJUDICACIÓN": "01/01/1970"}, {"FECHA DE  PRESENTACION": "15/05/2024", "CLIENTE": "MANSAROVAR ENERGY", "OBJETO_SHORT": "7126 – 1300019394 “INTERVENTORÍA AMBIENTAL EXTERNA” CAMPO VELÁSQUEZ Y OLEODUCTO VELÁSQUEZ GALÁN", "ESTADO": "ADJUDICADA", "OBSERVACIONES": "ORDEN DE SERVICIO # 4600013907. EL SERVICIO FUE CANCELADO POR MANSAROVAR EL 29 DE JULIO DE 2024 PARTE DEL ALCANCE CAMBIO Y LOS COSTOS PRESENTADOS EN LA OFERTA INICIAL NO CUBRIAN ESAS ACTIVIDADES RAZON POR LA CUAL EL PROYECTO NO ERA FINANCIARIAMENTE VIABLE.", "FECHA DE ADJUDICACIÓN": "01/01/1970"}, {"FECHA DE  PRESENTACION": "10/05/2024", "CLIENTE": "TECPETROL ", "OBJETO_SHORT": "PR NRO.32071 \"SERVICIO DE ELABORACIÓN DE ESTUDIOS AMBIENTALES CPO13", "ESTADO": "POR DEFINIR", "OBSERVACIONES": "VIGENCIA 3 MESES A PARTIR DE LA FECHA DE ENTREGA", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "04/06/2024", "CLIENTE": "MANSAROVAR ENERGY", "OBJETO_SHORT": "PROCESO DE CONTRATACIÓN NO. 7157\nRFP – SERVICIO DE INTERVENTORÍA AMBIENTAL EXTERNA” OPERACIONES Y EX", "ESTADO": "POR DEFINIR", "OBSERVACIONES": "VIGENCIA 120 DIAS CONTADOS A PARTIR DE LA ENTREGA DE LA OFERTA ", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "06/06/2024", "CLIENTE": "OPAIN S.A.", "OBJETO_SHORT": "NEGO-03572-24 SOLICITUD OFERTA - INSPECCIONES AMBIENTALES AEROPUERTO EL DORADO", "ESTADO": "NO ADJUDICADA", "OBSERVACIONES": "ENVIARON CORREO DE NO ADJUDICACION AGOSTO 1/24", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "04/06/2024", "CLIENTE": "NIKOIL", "OBJETO_SHORT": "ACTUALIZACIÓN DEL PLAN DE CONTINGENCIAS DEL ÁREA DE PERFORACIÓN EXPLORATORIA BLOQUE CÓNDOR – LOCACIÓ", "ESTADO": "POR DEFINIR", "OBSERVACIONES": "VIGENCIA 3 MESES CONTADOS A PARTIR DE LA ENTREGA DE LA OFERTA", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "29/08/2024", "CLIENTE": "PETROLCO", "OBJETO_SHORT": "IP-PT- 275 ELABORACIÓN DE ICAS PARA EL APE TAPIR Y EL BLOQUE TAPIR 2024 Y 2025", "ESTADO": "NO ADJUDICADA", "OBSERVACIONES": "ENVIARON COMUNICACIÓN DE NO ADJUDICACION EL 7 DE OCTUBRE DE 2024", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "09/10/2024", "CLIENTE": "AES COLOMBIA", "OBJETO_SHORT": "DEBIDA DILIGENCIA AMBIENTAL PARA EL PROYECTO LA VIRGINIA (POTENCIA MÁXIMA 127.88 MWP Y CAPACIDAD DE ", "ESTADO": "ADJUDICADA", "OBSERVACIONES": "ORDEN DE PEDIDO 4501456446", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "06/11/2024", "CLIENTE": "PAREX RESOURCES (COLOMBIA) AG SUCURSAL", "OBJETO_SHORT": "PROCESO No. PC10002213  SERVICIOS DE ELABORACIÓN DE INFORMES DE CUMPLIMIENTO AMBIENTAL ICA, PARA LAS", "ESTADO": "NO ADJUDICADA", "OBSERVACIONES": "VIGENCIA 3 MESES CONTADOS A PARTIR DE LA ENTREGA DE LA OFERTA. / ENVIARON COMUNICACIÓN DE NO ADJUDICACION 03 DE FEBRERO 2025", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "07/11/2024", "CLIENTE": "MASSY ENERGY", "OBJETO_SHORT": "RQ 7847 - PRUEBA DE BOMBEO EN UN POZO DE ABASTECIMIENTO DE AGUA EN LA PLANTA CAUCASIA ODC, MUNICIPIO", "ESTADO": "ADJUDICADA", "OBSERVACIONES": "ORDEN DE SERVICIO OS 001 ODC 5483", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "15/01/2025", "CLIENTE": "PAREX RESOURCES (COLOMBIA) AG SUCURSAL", "OBJETO_SHORT": "PROCESO: SE-002-24-  SERVICIO PARA LA ELABORACIÓN DE ESTUDIOS AMBIENTALES PAREX RESOURCES Y VERANO E", "ESTADO": "NO ADJUDICADA", "OBSERVACIONES": "ENVIARON COMUNICACIÓN DE NO ADJUDICACION EL 29 DE MAYO DE 2025", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "06/03/2025", "CLIENTE": "UNIVERSIDAD ANTONIO NARIÑO", "OBJETO_SHORT": "LÍNEA BASE BIÓTICA Y MONITOREOS DE CALIDAD DEL AGUA PARA LA PLATAFORMA COHEMBÍ NORTE Y SU INFRAESTRU", "ESTADO": "NO ADJUDICADA", "OBSERVACIONES": "ENVIARON COMUNICACIÓN DE NO ADJUDICACION EL 15 DE ABRIL DE 2025", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "20/03/2025", "CLIENTE": "TGI SA ESP", "OBJETO_SHORT": "ELABORAR LOS ESTUDIOS Y TRÁMITES AMBIENTALES NECESARIOS PARA LA GESTIÓN ASOCIADA A CAMBIOS MENORES, ", "ESTADO": "SIN RESPUESTA", "OBSERVACIONES": "VIGENCIA DE LA OFERTA 3 MESES CONTADOS A PARTIR DE LA FECHA DE ENTREGA ", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "27/03/2025", "CLIENTE": "TGI S.A. ESP", "OBJETO_SHORT": "ESTUDIOS HIDROLÓGICOS, HIDRÁULICOS Y SOCAVACIÓN QUE CUMPLAN LOS LINEAMIENTOS MÍNIMOS REQUERIDOS POR ", "ESTADO": "SIN RESPUESTA", "OBSERVACIONES": "VIGENCIA DE LA OFERTA 3 MESES CONTADOS A PARTIR DE LA FECHA DE ENTREGA", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "07/05/2025", "CLIENTE": "AES COLOMBIA & CIA SCA ESP", "OBJETO_SHORT": "ELABORACIÓN ESTUDIO DE IMPACTO AMBIENTAL PROYECTO PARQUE EÓLICO JK3", "ESTADO": "NO ADJUDICADA", "OBSERVACIONES": "ENVIARON COMUNICACIÓN DE NO ADJUDICACION EL 19 DE JUNIO DE 2025", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "20/06/2025", "CLIENTE": "AES COLOMBIA ", "OBJETO_SHORT": "MODIFICACIÓN DE LICENCIA AMBIENTAL PROYECTO LÍNEA DE ALTA TENSIÓN 500 kV CASA ELÉCTRICA – COLECTORA ", "ESTADO": "ADJUDICADA", "OBSERVACIONES": "ORDEN DE PEDIDO 4501688460", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "02/07/2025", "CLIENTE": "CENIT", "OBJETO_SHORT": "CEN1-20254251 - SERVICIOS DE ESTUDIOS AMBIENTALES ESPECIALIZADOS", "ESTADO": "NO ADJUDICADA", "OBSERVACIONES": "VIGENCIA DE LA OFERTA DE 3 MESES CONTADOS A PARTIR DE LA FECHA DE ENTREGA DE LA OFERTA. NO FUE ADJUDICADA COMUNICACIÓN ENVIADA EL 8 DE SEPTIEMBRE A TRAVES DE LA PLATAFORMA DE SUPLOS.", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "23/07/2025", "CLIENTE": "MANSAROVAR ENERGY", "OBJETO_SHORT": "PROCESO 7887. SERVICIO PARA LA ELABORACIÓN DE ESTUDIOS AMBIENTALES PARA LAS ACTIVIDADES DESARROLLADA", "ESTADO": "POR DEFINIR", "OBSERVACIONES": "VIGENCIA DE LA OFERTA 120 DIAS CONTADOS A PARTIR DE LA FECHA DE ENTREGA DE LA OFERTA", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "28/08/2025", "CLIENTE": "CONCESIONARIA RUTA AL SUR", "OBJETO_SHORT": "AUDITORIA INTEGRAL AL SISTEMA DE GESTIÓN AMBIENTAL DEL CONTRATO DE CONCESIÓN No. 012 DE 2015 SANTANA", "ESTADO": "POR DEFINIR", "OBSERVACIONES": "VIGENCIA DE LA OFERTA DE 3 MESES CONTADOS A PARTIR DE LA FECHA DE ENTREGA DE LA OFERTA", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "07/11/2025", "CLIENTE": "FRONTERA ENERGY - PETROSUD", "OBJETO_SHORT": "SANEAMIENTO AMBIENTAL 100FEC QUIFA PETROSUD", "ESTADO": "POR DEFINIR", "OBSERVACIONES": "VIGENCIA DE LA OFERTA 150 DIAS CONTADOS A  PARTIR DE LA FECHA DE ENTREGA", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "16/12/2025", "CLIENTE": "OLEODUCTO DE COLOMBIA ", "OBJETO_SHORT": "Servicio para la Atención a requerimientos establecido por Corpoboyacá en el marco del proceso renov", "ESTADO": "ADJUDICADA", "OBSERVACIONES": "ADJUDICADA CARTA DE ASIGNACION DICIMBRE 23 DE 2025", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "26/12/2025", "CLIENTE": "PROMIGAS", "OBJETO_SHORT": "ELABORACION DE INFORMES ICA", "ESTADO": "NO ADJUDICADA", "OBSERVACIONES": "VIGENCIA DE LA OFERTA 120 DIAS CONTADOS A PARTIR DE LA FECHA DE ENTREGA DE LA OFERTA, PROCESO DECLARADO DESIERO COMUNICACIÓN ENVIADA ABRIL 14 DE 2026", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "21/01/2026", "CLIENTE": "OIKOS", "OBJETO_SHORT": "SERVICIOS DE AUDITORÍA ISO 14001 ", "ESTADO": "SIN RESPUESTA", "OBSERVACIONES": "VIGENICIA 2 MESES", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "27/01/2026", "CLIENTE": "CONSTRUCCIONES AR", "OBJETO_SHORT": "Medidas de manejo ambiental para el permiso de ocupación de cauce puente metálico Parque Central de ", "ESTADO": "SIN RESPUESTA", "OBSERVACIONES": "VIGENCIA 2 MESES A PARTIR DE LA FECHA DE ENTREGA", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "02/02/2026", "CLIENTE": "UG21 ", "OBJETO_SHORT": "ALQUILER PERMISO DE INVESTIGACION", "ESTADO": "ADJUDICADA", "OBSERVACIONES": "SE GENERO ORDEN DE SERVICIO", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "28/03/2026", "CLIENTE": "INVERCOLSA", "OBJETO_SHORT": "AUDITORÍA DE ASEGURAMIENTO DEL SISTEMA DE GESTIÓN AMBIENTAL (SGA)\nPARA CADA UNA DE LAS EMPRESAS FILI", "ESTADO": "NO ADJUDICADA", "OBSERVACIONES": "VIGENCIA 3 MESES. ENVIARON COMUNICACIÓN DE NO ADJUDICACION ABRIL 14 DE 2026", "FECHA DE ADJUDICACIÓN": "-"}, {"FECHA DE  PRESENTACION": "10/04/2026", "CLIENTE": "AMBIPAR", "OBJETO_SHORT": "Evaluación de afectación de Flora y Fauna para la emergencia de la Válvula San Jorge del proyecto Ol", "ESTADO": "ADJUDICADA", "OBSERVACIONES": "ENVIARON ORDEN DE COMPRA PARA DAR INICIO ", "FECHA DE ADJUDICACIÓN": "-"}];
+
+// Working copies (may include new records added this session)
+var LICIT_PUJAS = JSON.parse(JSON.stringify(LICIT_PUJAS_BASE));
+var LICIT_PROP  = JSON.parse(JSON.stringify(LICIT_PROP_BASE));
+
+var licitCurrentTab = 'pujas';
+var licitFilterYear = 'ALL';
+var licitFilterQuarter = 'ALL';
+var licitEditIdx = null;  // null = new, number = edit index
+var licitEditType = 'pujas';
+
+// ── HELPERS ──────────────────────────────────────────────
+function _licitGetYear(dateStr) {
+  if (!dateStr || dateStr === '-') return null;
+  var p = dateStr.split('/');
+  return p.length === 3 ? p[2] : null;
+}
+function _licitGetQuarter(dateStr) {
+  if (!dateStr || dateStr === '-') return null;
+  var p = dateStr.split('/');
+  if (p.length !== 3) return null;
+  var m = parseInt(p[1]);
+  return 'T' + (Math.floor((m-1)/3)+1);
+}
+function _licitDateKey(r, type) {
+  return type === 'pujas' ? r['FECHA DE  SOLICITUD'] : r['FECHA DE  PRESENTACION'];
+}
+
+// ── YEAR / QUARTER BUTTONS ────────────────────────────────
+function licitBuildFilters() {
+  var yearsSet = new Set();
+  LICIT_PUJAS.forEach(function(r){ var y=_licitGetYear(r['FECHA DE  SOLICITUD']); if(y) yearsSet.add(y); });
+  LICIT_PROP.forEach(function(r){ var y=_licitGetYear(r['FECHA DE  PRESENTACION']); if(y) yearsSet.add(y); });
+  var years = Array.from(yearsSet).sort();
+
+  var yContainer = document.getElementById('licit-year-btns');
+  var qContainer = document.getElementById('licit-quarter-btns');
+  if(!yContainer || !qContainer) return;
+
+  yContainer.innerHTML = '';
+  ['ALL'].concat(years).forEach(function(val) {
+    var btn = document.createElement('button');
+    btn.textContent = val === 'ALL' ? 'Todos' : val;
+    btn.id = 'licit-yr-' + val;
+    btn.setAttribute('style', _licitYrStyle(licitFilterYear === val));
+    (function(v){ btn.addEventListener('click', function(){ licitSetYear(v); }); })(val);
+    yContainer.appendChild(btn);
+  });
+
+  qContainer.innerHTML = '';
+  var quarters = ['ALL','T1','T2','T3','T4'];
+  var qLabels = {'ALL':'Todos','T1':'T1 Ene-Mar','T2':'T2 Abr-Jun','T3':'T3 Jul-Sep','T4':'T4 Oct-Dic'};
+  quarters.forEach(function(val) {
+    var btn = document.createElement('button');
+    btn.textContent = qLabels[val];
+    btn.id = 'licit-qr-' + val;
+    btn.setAttribute('style', _licitQrStyle(licitFilterQuarter === val));
+    (function(v){ btn.addEventListener('click', function(){ licitSetQuarter(v); }); })(val);
+    qContainer.appendChild(btn);
+  });
+}
+
+function _licitYrStyle(active) {
+  return active
+    ? 'padding:5px 14px;border-radius:20px;border:none;background:var(--navy);color:white;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer'
+    : 'padding:5px 14px;border-radius:20px;border:1.5px solid var(--gray4);background:white;color:var(--txt2);font-family:inherit;font-size:11px;font-weight:600;cursor:pointer';
+}
+function _licitQrStyle(active) {
+  return active
+    ? 'padding:5px 14px;border-radius:20px;border:none;background:var(--sky);color:white;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer'
+    : 'padding:5px 14px;border-radius:20px;border:1.5px solid var(--gray4);background:white;color:var(--txt2);font-family:inherit;font-size:11px;font-weight:600;cursor:pointer';
+}
+
+function licitSetYear(y) {
+  licitFilterYear = y;
+  licitBuildFilters();
+  licitApplyFilters();
+  // Sync indicators and PDF badge
+  licitIndAutoFill();
+  licitInd5ApplyQuarterRule();
+  licitPdfUpdateBadge();
+}
+function licitSetQuarter(q) {
+  licitFilterQuarter = q;
+  licitBuildFilters();
+  licitApplyFilters();
+  // Sync indicators and PDF badge
+  licitIndAutoFill();
+  licitInd5ApplyQuarterRule();
+  licitPdfUpdateBadge();
+}
+
+// ── FILTER DATA ───────────────────────────────────────────
+function _licitPassesFilter(r, type) {
+  var dateKey = type === 'pujas' ? 'FECHA DE  SOLICITUD' : 'FECHA DE  PRESENTACION';
+  var d = r[dateKey];
+  if (licitFilterYear !== 'ALL' && _licitGetYear(d) !== licitFilterYear) return false;
+  if (licitFilterQuarter !== 'ALL' && _licitGetQuarter(d) !== licitFilterQuarter) return false;
+  var q = (document.getElementById('licit-search') ? document.getElementById('licit-search').value || '' : '').toLowerCase();
+  if (q && (r.CLIENTE + ' ' + r.OBJETO_SHORT).toLowerCase().indexOf(q) < 0) return false;
+  var ef = document.getElementById('licit-estado-filter') ? document.getElementById('licit-estado-filter').value : '';
+  if (ef && r.ESTADO !== ef) return false;
+  return true;
+}
+
+function _licitGetFiltered(type) {
+  var data = type === 'pujas' ? LICIT_PUJAS : LICIT_PROP;
+  return data.filter(function(r){ return _licitPassesFilter(r, type); });
+}
+
+// ── KPI COMPUTATION ───────────────────────────────────────
+function licitComputeKPIs(pujasFilt, propFilt) {
+  var tp = pujasFilt.length;
+  var adjP = pujasFilt.filter(function(r){ return r.ESTADO === 'ADJUDICADA'; }).length;
+  var noAdjP = pujasFilt.filter(function(r){ return r.ESTADO === 'NO ADJUDICADA'; }).length;
+  var pctPujas = tp > 0 ? (adjP/tp*100).toFixed(1) : '0.0';
+
+  var tq = propFilt.length;
+  var adjQ = propFilt.filter(function(r){ return r.ESTADO === 'ADJUDICADA'; }).length;
+  var noAdjQ = propFilt.filter(function(r){ return r.ESTADO === 'NO ADJUDICADA'; }).length;
+  var pctProp = tq > 0 ? (adjQ/tq*100).toFixed(1) : '0.0';
+
+  // Rentabilidad: only evaluated in T4; read from ind5YearData
+  var rentabilidad = '—';
+  if (licitFilterQuarter === 'T4' || licitFilterQuarter === 'ALL') {
+    if (typeof ind5YearData !== 'undefined') {
+      var rentYear = (typeof ind5SelYear !== 'undefined') ? ind5SelYear : null;
+      var rentEntry = rentYear ? ind5YearData[rentYear] : null;
+      if (!rentEntry) {
+        var savedYears = Object.keys(ind5YearData).sort();
+        if (savedYears.length > 0) rentEntry = ind5YearData[savedYears[savedYears.length - 1]];
+      }
+      if (rentEntry && rentEntry.pct !== undefined) rentabilidad = String(rentEntry.pct);
+    }
+    if (rentabilidad === '—') rentabilidad = '0.0';
+  }
+
+  // Plan de acción KPI
+  var activePlans = licitPlanRows.filter(function(r){ return !r._deleted; });
+  var planPendiente  = activePlans.filter(function(r){ return (r.estado||'Pendiente') === 'Pendiente'; }).length;
+  var planEnProgreso = activePlans.filter(function(r){ return r.estado === 'En Progreso'; }).length;
+  var planCerrado    = activePlans.filter(function(r){ return r.estado === 'Cerrado'; }).length;
+  var planTotal      = activePlans.length;
+
+  return { tp, adjP, noAdjP, pctPujas, tq, adjQ, noAdjQ, pctProp, rentabilidad,
+           planPendiente, planEnProgreso, planCerrado, planTotal };
+}
+
+function licitRenderKPIs(k) {
+  var row = document.getElementById('licit-kpi-row');
+  if (!row) return;
+
+  // KPI 1 — Tasa Adj. Pujas
+  var kpi1 = '<div style="background:var(--navy);background-image:linear-gradient(135deg,#001D3D,#003F7D);color:white;border-radius:14px;padding:18px 20px;box-shadow:0 4px 20px rgba(0,46,93,0.25)">' +
+    '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;opacity:0.65;margin-bottom:6px">Tasa Adj. Pujas</div>' +
+    '<div style="font-size:34px;font-weight:800;color:var(--gold);line-height:1">'+k.pctPujas+'%</div>' +
+    '<div style="font-size:10px;opacity:0.55;margin-top:4px">N° adj. / N° presentadas</div>' +
+    '<div style="margin-top:10px;display:flex;align-items:center;gap:6px">' +
+    '<div style="flex:1;height:4px;background:rgba(255,255,255,0.15);border-radius:2px"><div style="width:'+Math.min(k.pctPujas,100)+'%;height:100%;background:'+(parseFloat(k.pctPujas)>=30?'#059669':'#DC2626')+';border-radius:2px"></div></div>' +
+    '<span style="font-size:10px;font-weight:700;color:'+(parseFloat(k.pctPujas)>=30?'#6EE7B7':'#FCA5A5')+'">Meta ≥ 30%</span></div>' +
+    '<div style="margin-top:8px;font-size:11px"><span style="color:#6EE7B7;font-weight:700">'+k.adjP+' adj.</span><span style="opacity:0.45"> / '+k.tp+' total</span></div></div>';
+
+  // KPI 2 — Tasa Adj. Propuestas
+  var kpi2 = '<div style="background:white;border:1.5px solid var(--gray4);border-radius:14px;padding:18px 20px;box-shadow:var(--shadow)">' +
+    '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--gray1);margin-bottom:6px">Tasa Adj. Propuestas+Cot.</div>' +
+    '<div style="font-size:34px;font-weight:800;color:var(--navy);line-height:1">'+k.pctProp+'%</div>' +
+    '<div style="font-size:10px;color:var(--gray2);margin-top:4px">Proyectos adj. / Total × 100</div>' +
+    '<div style="margin-top:10px;display:flex;align-items:center;gap:6px">' +
+    '<div style="flex:1;height:4px;background:var(--gray4);border-radius:2px"><div style="width:'+Math.min(k.pctProp,100)+'%;height:100%;background:'+(parseFloat(k.pctProp)>=30?'var(--success)':'var(--danger)')+';border-radius:2px"></div></div>' +
+    '<span style="font-size:10px;font-weight:700;color:'+(parseFloat(k.pctProp)>=30?'var(--success)':'var(--danger)')+'">Meta ≥ 30%</span></div>' +
+    '<div style="margin-top:8px;font-size:11px"><span style="color:var(--success);font-weight:700">'+k.adjQ+' adj.</span><span style="color:var(--gray2)"> / '+k.tq+' total</span></div></div>';
+
+  // KPI 3 — Rentabilidad del Proyecto (imagen 3: 1-(contratos-ejecutados)/contratos * 100, meta 40%)
+  var isT4Active = (licitFilterQuarter === 'T4' || licitFilterQuarter === 'ALL');
+  var rentColor = !isT4Active ? '#94A3B8' : (parseFloat(k.rentabilidad)>=40 ? '#059669' : '#D97706');
+  var rentMeta  = !isT4Active ? 'var(--gray4)' : (parseFloat(k.rentabilidad)>=40 ? 'var(--success)' : 'var(--warn)');
+  var rentLabel = !isT4Active ? 'Solo T4' : (parseFloat(k.rentabilidad)>=40 ? 'CUMPLE' : 'REVISAR');
+  var kpi3 = '<div style="background:white;border:1.5px solid var(--gray4);border-radius:14px;padding:18px 20px;box-shadow:var(--shadow)">' +
+    '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--gray1);margin-bottom:6px">Rentabilidad del Proyecto</div>' +
+    '<div style="font-size:34px;font-weight:800;color:'+rentColor+';line-height:1">'+k.rentabilidad+'%</div>' +
+    '<div style="font-size:10px;color:var(--gray2);margin-top:4px">1-(Contratos−Ejecutados)/Contratos×100</div>' +
+    '<div style="margin-top:10px;display:flex;align-items:center;gap:6px">' +
+    '<div style="flex:1;height:4px;background:var(--gray4);border-radius:2px"><div style="width:'+Math.min(k.rentabilidad,100)+'%;height:100%;background:'+rentMeta+';border-radius:2px"></div></div>' +
+    '<span style="font-size:10px;font-weight:700;color:'+rentMeta+'">Meta ≥ 40%</span></div>' +
+    '<div style="margin-top:8px;font-size:11px;color:'+rentColor+';font-weight:700">'+rentLabel+'</div></div>';
+
+  // KPI 4 — Resumen Comercial
+  var kpi4 = '<div style="background:linear-gradient(135deg,#EFF8FF,#DBEAFE);border:1.5px solid #93C5FD;border-radius:14px;padding:18px 20px;box-shadow:var(--shadow)">' +
+    '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--sky2);margin-bottom:8px">Resumen Comercial</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
+    '<div style="text-align:center;background:white;border-radius:8px;padding:8px 4px"><div style="font-size:20px;font-weight:800;color:var(--navy)">'+k.tp+'</div><div style="font-size:9px;color:var(--gray1);font-weight:600;text-transform:uppercase">Pujas</div></div>' +
+    '<div style="text-align:center;background:white;border-radius:8px;padding:8px 4px"><div style="font-size:20px;font-weight:800;color:var(--navy)">'+k.tq+'</div><div style="font-size:9px;color:var(--gray1);font-weight:600;text-transform:uppercase">Propuestas</div></div>' +
+    '<div style="text-align:center;background:white;border-radius:8px;padding:8px 4px"><div style="font-size:20px;font-weight:800;color:#059669">'+(k.adjP+k.adjQ)+'</div><div style="font-size:9px;color:var(--gray1);font-weight:600;text-transform:uppercase">Adj. Total</div></div>' +
+    '<div style="text-align:center;background:white;border-radius:8px;padding:8px 4px"><div style="font-size:20px;font-weight:800;color:#D97706">'+(k.noAdjP+k.noAdjQ)+'</div><div style="font-size:9px;color:var(--gray1);font-weight:600;text-transform:uppercase">No Adj.</div></div></div></div>';
+
+  // KPI 5 — Plan de Acción por Estado
+  var pctCerrado = k.planTotal > 0 ? Math.round(k.planCerrado/k.planTotal*100) : 0;
+  var kpi5 = '<div style="background:white;border:1.5px solid var(--gray4);border-radius:14px;padding:18px 20px;box-shadow:var(--shadow)">' +
+    '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--gray1);margin-bottom:10px">Plan de Acción</div>' +
+    '<div style="display:flex;flex-direction:column;gap:7px">' +
+    '<div style="display:flex;align-items:center;justify-content:space-between">' +
+    '<span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:#D97706;background:#FEF3C7;padding:3px 10px;border-radius:20px;border:1.5px solid #FCD34D">● Pendiente</span>' +
+    '<span style="font-size:14px;font-weight:800;color:#92400E">'+k.planPendiente+'</span></div>' +
+    '<div style="display:flex;align-items:center;justify-content:space-between">' +
+    '<span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:#1D4ED8;background:#DBEAFE;padding:3px 10px;border-radius:20px;border:1.5px solid #93C5FD">● En Progreso</span>' +
+    '<span style="font-size:14px;font-weight:800;color:#1D4ED8">'+k.planEnProgreso+'</span></div>' +
+    '<div style="display:flex;align-items:center;justify-content:space-between">' +
+    '<span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:#059669;background:#D1FAE5;padding:3px 10px;border-radius:20px;border:1.5px solid #6EE7B7">● Cerrado</span>' +
+    '<span style="font-size:14px;font-weight:800;color:#059669">'+k.planCerrado+'</span></div>' +
+    '<div style="margin-top:4px;font-size:10px;color:var(--gray2);text-align:right">'+pctCerrado+'% completado · '+k.planTotal+' acciones</div>' +
+    '</div></div>';
+
+  // Render: 5 KPIs in 5 cols
+  row.style.gridTemplateColumns = 'repeat(5,1fr)';
+  row.innerHTML = kpi1 + kpi2 + kpi3 + kpi4 + kpi5;
+}
+
+// ── APPLY ALL FILTERS ────────────────────────────────────
+function licitApplyFilters() {
+  var pFilt = _licitGetFiltered('pujas');
+  var qFilt = _licitGetFiltered('prop');
+  var k = licitComputeKPIs(pFilt, qFilt);
+  licitRenderKPIs(k);
+  licitRenderTable(licitCurrentTab, licitCurrentTab === 'pujas' ? pFilt : qFilt);
+  var total = (licitCurrentTab === 'pujas' ? pFilt : qFilt).length;
+  var el = document.getElementById('licit-count-display');
+  if(el) el.textContent = total + ' registro' + (total !== 1 ? 's' : '');
+}
+
+// ── RENDER TABLE ─────────────────────────────────────────
+function estadoBadge(estado) {
+  var cfg = {
+    'ADJUDICADA': ['#D1FAE5','#059669','✅'],
+    'NO ADJUDICADA': ['#FEE2E2','#DC2626','❌'],
+    'POR DEFINIR': ['#FEF3C7','#D97706','⏳'],
+    'SIN RESPUESTA': ['#F3F4F6','#6B7280','❓']
+  };
+  var c = cfg[estado] || ['#F3F4F6','#6B7280','•'];
+  return '<span style="background:'+c[0]+';color:'+c[1]+';padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap">'+c[2]+' '+estado+'</span>';
+}
+
+function licitRenderTable(type, rows) {
+  if (type === 'pujas') {
+    var tbody = document.getElementById('licit-pujas-tbody');
+    tbody.innerHTML = rows.map(function(r, i) {
+      var origIdx = LICIT_PUJAS.indexOf(r);
+      return '<tr style="background:'+(i%2===0?'white':'var(--off)')+';border-bottom:1px solid var(--gray4)">' +
+        '<td style="padding:10px 14px;font-weight:600;color:var(--navy);white-space:nowrap;max-width:140px;overflow:hidden;text-overflow:ellipsis">'+r.CLIENTE+'</td>'+
+        '<td style="padding:10px;text-align:center;font-weight:700;color:var(--sky2)">'+r.PUJA+'</td>'+
+        '<td style="padding:10px;text-align:center;white-space:nowrap;font-size:11px">'+r['FECHA DE  SOLICITUD']+'</td>'+
+        '<td style="padding:10px;text-align:center;white-space:nowrap;font-size:11px">'+r['FECHA DE  ADJUDICACION']+'</td>'+
+        '<td style="padding:10px 14px;max-width:240px;color:var(--txt2);font-size:11.5px;line-height:1.4">'+r.OBJETO_SHORT+'</td>'+
+        '<td style="padding:10px;text-align:center">'+estadoBadge(r.ESTADO)+'</td>'+
+        '<td style="padding:10px 14px;font-size:11px;color:var(--gray1);max-width:160px">'+r.OBSERVACIONES+'</td>'+
+        '<td style="padding:6px;text-align:center"><button data-type="pujas" data-idx="'+origIdx+'" class="licit-edit-btn" title="Editar" style="border:none;background:rgba(0,46,93,0.08);color:var(--navy);border-radius:5px;padding:3px 8px;cursor:pointer;font-size:11px">✏</button></td>'+
+      '</tr>';
+    }).join('') || '<tr><td colspan="8" style="padding:24px;text-align:center;color:var(--gray2)">No se encontraron registros para este período</td></tr>';
+  } else {
+    var tbody2 = document.getElementById('licit-prop-tbody');
+    tbody2.innerHTML = rows.map(function(r, i) {
+      var origIdx = LICIT_PROP.indexOf(r);
+      return '<tr style="background:'+(i%2===0?'white':'var(--off)')+';border-bottom:1px solid var(--gray4)">' +
+        '<td style="padding:10px 14px;white-space:nowrap;font-size:11px">'+r['FECHA DE  PRESENTACION']+'</td>'+
+        '<td style="padding:10px 14px;font-weight:600;color:var(--navy);max-width:160px;overflow:hidden;text-overflow:ellipsis;font-size:12px">'+r.CLIENTE+'</td>'+
+        '<td style="padding:10px 14px;max-width:240px;color:var(--txt2);font-size:11.5px;line-height:1.4">'+r.OBJETO_SHORT+'</td>'+
+        '<td style="padding:10px;text-align:center">'+estadoBadge(r.ESTADO)+'</td>'+
+        '<td style="padding:10px 14px;font-size:11px;color:var(--gray1);max-width:160px">'+r.OBSERVACIONES+'</td>'+
+        '<td style="padding:10px;text-align:center;white-space:nowrap;font-size:11px">'+r['FECHA DE ADJUDICACIÓN']+'</td>'+
+        '<td style="padding:6px;text-align:center"><button data-type="prop" data-idx="'+origIdx+'" class="licit-edit-btn" title="Editar" style="border:none;background:rgba(0,46,93,0.08);color:var(--navy);border-radius:5px;padding:3px 8px;cursor:pointer;font-size:11px">✏</button></td>'+
+      '</tr>';
+    }).join('') || '<tr><td colspan="7" style="padding:24px;text-align:center;color:var(--gray2)">No se encontraron registros para este período</td></tr>';
+  }
+}
+function licitShowTab(tab) {
+  licitCurrentTab = tab;
+  document.getElementById('licit-panel-pujas').style.display = tab === 'pujas' ? '' : 'none';
+  document.getElementById('licit-panel-prop').style.display = tab === 'prop' ? '' : 'none';
+  var tabPujas = document.getElementById('licit-tab-pujas');
+  var tabProp = document.getElementById('licit-tab-prop');
+  if(tab === 'pujas') {
+    tabPujas.style.color = 'var(--navy)'; tabPujas.style.borderBottomColor = 'var(--navy)'; tabPujas.style.fontWeight = '700';
+    tabProp.style.color = 'var(--gray1)'; tabProp.style.borderBottomColor = 'transparent'; tabProp.style.fontWeight = '600';
+  } else {
+    tabProp.style.color = 'var(--navy)'; tabProp.style.borderBottomColor = 'var(--navy)'; tabProp.style.fontWeight = '700';
+    tabPujas.style.color = 'var(--gray1)'; tabPujas.style.borderBottomColor = 'transparent'; tabPujas.style.fontWeight = '600';
+  }
+  licitApplyFilters();
+}
+
+// ── ADD / EDIT MODAL ──────────────────────────────────────
+function licitOpenAddModal(type, idx) {
+  licitEditType = type;
+  licitEditIdx = (idx !== undefined && idx !== null) ? idx : null;
+  var modal = document.getElementById('licit-add-modal');
+  var title = document.getElementById('licit-modal-title');
+  var sub = document.getElementById('licit-modal-sub');
+  var body = document.getElementById('licit-modal-body');
+
+  var isEdit = licitEditIdx !== null;
+  title.textContent = isEdit ? (type === 'pujas' ? 'Editar Puja' : 'Editar Propuesta/Cotización') : (type === 'pujas' ? 'Nueva Puja' : 'Nueva Propuesta/Cotización');
+  sub.textContent = isEdit ? 'Modifica los campos y guarda los cambios' : 'Completa los campos del nuevo registro';
+
+  var rec = isEdit ? (type === 'pujas' ? LICIT_PUJAS[licitEditIdx] : LICIT_PROP[licitEditIdx]) : {};
+
+  var inputStyle = 'width:100%;padding:9px 12px;border:1.5px solid var(--gray4);border-radius:8px;font-family:inherit;font-size:13px;outline:none;box-sizing:border-box';
+  var labelStyle = 'font-size:10px;font-weight:700;color:var(--gray1);text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:5px';
+  var fieldDiv = 'margin-bottom:16px';
+
+  if (type === 'pujas') {
+    body.innerHTML =
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">'+
+      '<div style="'+fieldDiv+'"><label style="'+labelStyle+'">Cliente *</label><input id="lf-cliente" value="'+  (rec.CLIENTE||'')+'" style="'+inputStyle+'" placeholder="Nombre del cliente"></div>'+
+      '<div style="'+fieldDiv+'"><label style="'+labelStyle+'"># Puja *</label><input id="lf-puja" type="number" value="'+  (rec.PUJA||'')+'" style="'+inputStyle+'" placeholder="Número"></div>'+
+      '<div style="'+fieldDiv+'"><label style="'+labelStyle+'">Fecha de Solicitud *</label><input id="lf-fsol" type="date" value="'+_licitToInputDate(rec['FECHA DE  SOLICITUD'])+'" style="'+inputStyle+'"></div>'+
+      '<div style="'+fieldDiv+'"><label style="'+labelStyle+'">Fecha de Adjudicación</label><input id="lf-fadj" type="date" value="'+_licitToInputDate(rec['FECHA DE  ADJUDICACION'])+'" style="'+inputStyle+'"></div>'+
+      '</div>'+
+      '<div style="'+fieldDiv+'"><label style="'+labelStyle+'">Objeto *</label><textarea id="lf-objeto" rows="3" style="'+inputStyle+';resize:vertical" placeholder="Descripción del objeto">'+  (rec.OBJETO_SHORT||'')+'</textarea></div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">'+
+      '<div style="'+fieldDiv+'"><label style="'+labelStyle+'">Estado *</label>'+
+      '<select id="lf-estado" style="'+inputStyle+'"><option value="ADJUDICADA"'+  (rec.ESTADO==='ADJUDICADA'?' selected':'')+'>✅ Adjudicada</option><option value="NO ADJUDICADA"'+  (rec.ESTADO==='NO ADJUDICADA'?' selected':'')+'>❌ No Adjudicada</option><option value="POR DEFINIR"'+  (rec.ESTADO==='POR DEFINIR'?' selected':'')+'>⏳ Por Definir</option><option value="SIN RESPUESTA"'+  (rec.ESTADO==='SIN RESPUESTA'?' selected':'')+'>❓ Sin Respuesta</option></select></div>'+
+      '<div style="'+fieldDiv+'"><label style="'+labelStyle+'">Observaciones</label><input id="lf-obs" value="'+  (rec.OBSERVACIONES==='-'?'':(rec.OBSERVACIONES||'')).replace(/"/g,'&quot;')+'" style="'+inputStyle+'" placeholder="Observaciones opcionales"></div></div>';
+  } else {
+    body.innerHTML =
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">'+
+      '<div style="'+fieldDiv+'"><label style="'+labelStyle+'">Fecha Presentación *</label><input id="lf-fpres" type="date" value="'+_licitToInputDate(rec['FECHA DE  PRESENTACION'])+'" style="'+inputStyle+'"></div>'+
+      '<div style="'+fieldDiv+'"><label style="'+labelStyle+'">Cliente / Propuesta *</label><input id="lf-cliente" value="'+  (rec.CLIENTE||'')+'" style="'+inputStyle+'" placeholder="Cliente o nombre propuesta"></div>'+
+      '</div>'+
+      '<div style="'+fieldDiv+'"><label style="'+labelStyle+'">Objeto *</label><textarea id="lf-objeto" rows="3" style="'+inputStyle+';resize:vertical" placeholder="Descripción del objeto">'+  (rec.OBJETO_SHORT||'')+'</textarea></div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">'+
+      '<div style="'+fieldDiv+'"><label style="'+labelStyle+'">Estado *</label>'+
+      '<select id="lf-estado" style="'+inputStyle+'"><option value="ADJUDICADA"'+  (rec.ESTADO==='ADJUDICADA'?' selected':'')+'>✅ Adjudicada</option><option value="NO ADJUDICADA"'+  (rec.ESTADO==='NO ADJUDICADA'?' selected':'')+'>❌ No Adjudicada</option><option value="POR DEFINIR"'+  (rec.ESTADO==='POR DEFINIR'?' selected':'')+'>⏳ Por Definir</option><option value="SIN RESPUESTA"'+  (rec.ESTADO==='SIN RESPUESTA'?' selected':'')+'>❓ Sin Respuesta</option></select></div>'+
+      '<div style="'+fieldDiv+'"><label style="'+labelStyle+'">F. Adjudicación</label><input id="lf-fadj" type="date" value="'+_licitToInputDate(rec['FECHA DE ADJUDICACIÓN'])+'" style="'+inputStyle+'"></div>'+
+      '<div style="'+fieldDiv+'"><label style="'+labelStyle+'">Observaciones</label><input id="lf-obs" value="'+  (rec.OBSERVACIONES==='-'?'':(rec.OBSERVACIONES||'')).replace(/"/g,'&quot;')+'" style="'+inputStyle+'" placeholder="Opcionales"></div></div>';
+  }
+
+  modal.style.display = 'flex';
+  setTimeout(function(){ modal.scrollTop = 0; }, 0);
+}
+
+function licitCloseModal() {
+  document.getElementById('licit-add-modal').style.display = 'none';
+  licitEditIdx = null;
+}
+
+function _licitToInputDate(dateStr) {
+  if (!dateStr || dateStr === '-') return '';
+  var p = dateStr.split('/');
+  if (p.length === 3) return p[2]+'-'+p[1]+'-'+p[0];
+  return '';
+}
+function _licitFromInputDate(val) {
+  if (!val) return '-';
+  var p = val.split('-');
+  if (p.length === 3) return p[2]+'/'+p[1]+'/'+p[0];
+  return '-';
+}
+
+function licitSaveRecord() {
+  var tipo = licitEditType;
+  var cliente = (document.getElementById('lf-cliente')||{}).value || '';
+  var objeto = (document.getElementById('lf-objeto')||{}).value || '';
+  var estado = (document.getElementById('lf-estado')||{}).value || 'POR DEFINIR';
+  var obs = (document.getElementById('lf-obs')||{}).value || '-';
+  if (!obs) obs = '-';
+
+  if (!cliente.trim() || !objeto.trim()) {
+    alert('Por favor completa los campos obligatorios (Cliente y Objeto).');
+    return;
+  }
+
+  if (tipo === 'pujas') {
+    var puja = (document.getElementById('lf-puja')||{}).value || '';
+    var fsol = _licitFromInputDate((document.getElementById('lf-fsol')||{}).value);
+    var fadj = _licitFromInputDate((document.getElementById('lf-fadj')||{}).value);
+    var rec = {
+      CLIENTE: cliente.trim().toUpperCase(),
+      PUJA: puja ? parseInt(puja) : (LICIT_PUJAS.length + 100),
+      'FECHA DE  SOLICITUD': fsol,
+      'FECHA DE  ADJUDICACION': fadj,
+      OBJETO_SHORT: objeto.trim().substring(0, 100),
+      ESTADO: estado,
+      OBSERVACIONES: obs || '-'
+    };
+    if (licitEditIdx !== null) {
+      LICIT_PUJAS[licitEditIdx] = rec;
+    } else {
+      LICIT_PUJAS.push(rec);
+    }
+  } else {
+    var fpres = _licitFromInputDate((document.getElementById('lf-fpres')||{}).value);
+    var fadj2 = _licitFromInputDate((document.getElementById('lf-fadj')||{}).value);
+    var rec2 = {
+      'FECHA DE  PRESENTACION': fpres,
+      CLIENTE: cliente.trim().toUpperCase(),
+      OBJETO_SHORT: objeto.trim().substring(0, 100),
+      ESTADO: estado,
+      OBSERVACIONES: obs || '-',
+      'FECHA DE ADJUDICACIÓN': fadj2
+    };
+    if (licitEditIdx !== null) {
+      LICIT_PROP[licitEditIdx] = rec2;
+    } else {
+      LICIT_PROP.push(rec2);
+    }
+  }
+  licitCloseModal();
+  licitBuildFilters();
+  licitApplyFilters();
+}
+
+// ── AUTO-ANALYSIS ─────────────────────────────────────────
+function licitAutoAnalysis() {
+  var pFilt = _licitGetFiltered('pujas');
+  var qFilt = _licitGetFiltered('prop');
+  var k = licitComputeKPIs(pFilt, qFilt);
+
+  var periodLabel = licitFilterYear === 'ALL' ? 'Todo el período' : licitFilterYear;
+  if (licitFilterQuarter !== 'ALL') periodLabel += ' · ' + licitFilterQuarter;
+
+  var el = document.getElementById('licit-analysis-period');
+  if(el) el.textContent = periodLabel;
+
+  // Build analysis text
+  var lines = [];
+
+  // Intro
+  lines.push('<b>Resumen del período:</b> ' + periodLabel);
+  lines.push('<br>');
+
+  // KPI 1: Pujas
+  var statusPujas = parseFloat(k.pctPujas) >= 30 ? '✅ <span style="color:#059669;font-weight:700">CUMPLE</span>' : '❌ <span style="color:#DC2626;font-weight:700">NO CUMPLE</span>';
+  lines.push('📌 <b>Tasa de Adjudicación de Pujas:</b> ' + k.pctPujas + '% — ' + statusPujas + ' (meta ≥ 30%)');
+  lines.push('&nbsp;&nbsp;&nbsp;De ' + k.tp + ' pujas presentadas, ' + k.adjP + ' fueron adjudicadas y ' + k.noAdjP + ' no adjudicadas.');
+  if (parseFloat(k.pctPujas) < 30) {
+    lines.push('&nbsp;&nbsp;&nbsp;⚠ <i>Se recomienda revisar la estrategia de oferta y las causales de no adjudicación para identificar oportunidades de mejora.</i>');
+  } else {
+    lines.push('&nbsp;&nbsp;&nbsp;✔ <i>El nivel de adjudicación es satisfactorio. Mantener la estrategia actual de presentación de pujas.</i>');
+  }
+
+  lines.push('<br>');
+
+  // KPI 2: Propuestas
+  var statusProp = parseFloat(k.pctProp) >= 30 ? '✅ <span style="color:#059669;font-weight:700">CUMPLE</span>' : '❌ <span style="color:#DC2626;font-weight:700">NO CUMPLE</span>';
+  lines.push('📌 <b>Tasa de Adjudicación de Propuestas/Cotizaciones:</b> ' + k.pctProp + '% — ' + statusProp + ' (meta ≥ 30%)');
+  lines.push('&nbsp;&nbsp;&nbsp;De ' + k.tq + ' propuestas presentadas, ' + k.adjQ + ' resultaron adjudicadas.');
+  if (parseFloat(k.pctProp) < 30) {
+    lines.push('&nbsp;&nbsp;&nbsp;⚠ <i>La tasa de conversión de propuestas es inferior a la meta. Se recomienda fortalecer el proceso comercial de cotizaciones y propuestas técnicas.</i>');
+  } else {
+    lines.push('&nbsp;&nbsp;&nbsp;✔ <i>El desempeño comercial en propuestas está dentro del objetivo establecido.</i>');
+  }
+
+  lines.push('<br>');
+
+  // KPI 3: Eficiencia
+  var statusEfic = parseFloat(k.eficiencia) >= 40 ? '✅ <span style="color:#059669;font-weight:700">CUMPLE</span>' : '⚠ <span style="color:#D97706;font-weight:700">REVISAR</span>';
+  lines.push('📌 <b>Eficiencia de Contratos:</b> ' + k.eficiencia + '% — ' + statusEfic + ' (meta ≥ 40%)');
+  lines.push('&nbsp;&nbsp;&nbsp;El índice refleja que el ' + k.eficiencia + '% del proceso de pujas no resultó en rechazo definitivo.');
+
+  lines.push('<br>');
+
+  // General diagnosis
+  var cumple = [parseFloat(k.pctPujas)>=30, parseFloat(k.pctProp)>=30, parseFloat(k.eficiencia)>=40];
+  var numCumple = cumple.filter(Boolean).length;
+  lines.push('<b>📊 Diagnóstico general:</b> ' + numCumple + '/3 indicadores cumplen la meta.');
+  if (numCumple === 3) {
+    lines.push('<span style="color:#059669;font-weight:700">El área comercial presenta un desempeño óptimo en todos los indicadores del período.</span>');
+  } else if (numCumple === 2) {
+    lines.push('<span style="color:#D97706;font-weight:700">El área comercial presenta desempeño aceptable con oportunidades de mejora en los indicadores que no cumplen.</span>');
+  } else if (numCumple === 1) {
+    lines.push('<span style="color:#DC2626;font-weight:700">Se detectan brechas importantes. Se requieren acciones correctivas en el proceso comercial.</span>');
+  } else {
+    lines.push('<span style="color:#DC2626;font-weight:700">Todos los indicadores están por debajo de la meta. Se recomienda una revisión profunda de la estrategia comercial.</span>');
+  }
+
+  // Distribution of statuses
+  if (k.tp > 0) {
+    var pendP = pFilt.filter(function(r){ return r.ESTADO === 'POR DEFINIR'; }).length;
+    var sinRespP = pFilt.filter(function(r){ return r.ESTADO === 'SIN RESPUESTA'; }).length;
+    lines.push('<br>');
+    lines.push('<b>Distribución de estados (Pujas):</b> ' + k.adjP + ' adj. · ' + k.noAdjP + ' no adj. · ' + pendP + ' por definir · ' + sinRespP + ' sin respuesta');
+    if (pendP > 0) {
+      lines.push('&nbsp;&nbsp;&nbsp;ℹ Hay ' + pendP + ' pujas aún por definir. Hacer seguimiento para actualizar su estado.');
+    }
+  }
+
+  var content = document.getElementById('licit-analysis-content');
+  if (content) content.innerHTML = lines.join('<br>');
+
+  var panel = document.getElementById('licit-analysis-panel');
+  if (panel) {
+    panel.style.display = '';
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+// ── INIT ─────────────────────────────────────────────────
+// ── PLAN DE ACCIÓN ──────────────────────────────────────
+var licitPlanRows = [];
+
+function licitUpdatePlanCounter() {
+  var counter = document.getElementById('licit-plan-counter');
+  if (counter) counter.textContent = licitPlanRows.length + ' PLANES';
+}
+
+function licitSetPlanEstado(idx, estado) {
+  if (!licitPlanRows[idx]) return;
+  licitPlanRows[idx].estado = estado;
+  // Update buttons visually
+  var estados = ['Pendiente','En Progreso','Cerrado'];
+  var colors = {
+    'Pendiente':  { bg:'#FEF3C7', color:'#D97706', border:'#FCD34D' },
+    'En Progreso':{ bg:'#DBEAFE', color:'#1D4ED8', border:'#93C5FD' },
+    'Cerrado':    { bg:'#D1FAE5', color:'#059669', border:'#6EE7B7' }
+  };
+  estados.forEach(function(e) {
+    var btn = document.getElementById('licit-estado-btn-'+idx+'-'+e.replace(' ','-'));
+    if (!btn) return;
+    var active = e === estado;
+    var cfg = colors[e];
+    btn.style.background = active ? cfg.bg : 'transparent';
+    btn.style.color = active ? cfg.color : '#9CA3AF';
+    btn.style.border = active ? ('1.5px solid ' + cfg.border) : '1.5px solid #E5E7EB';
+    btn.style.fontWeight = active ? '700' : '500';
+  });
+  // Refresh KPI
+  licitApplyFilters();
+}
+
+function licitAddPlanRow() {
+  var container = document.getElementById('licit-plan-tbody');
+  if (!container) return;
+  var idx = licitPlanRows.length;
+  licitPlanRows.push({ actividad:'', responsable:'', fecha:'', observacion:'', estado:'Pendiente' });
+
+  var card = document.createElement('div');
+  card.id = 'licit-plan-card-' + idx;
+  card.style.cssText = 'background:white;border:1.5px solid #E5E7EB;border-radius:10px;padding:14px 16px;position:relative;box-shadow:0 1px 4px rgba(0,46,93,0.07)';
+
+  // Header: number + delete
+  var header = document.createElement('div');
+  header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px';
+  header.innerHTML =
+    '<div style="display:flex;align-items:center;gap:8px">' +
+    '<span style="background:var(--navy);color:white;font-size:11px;font-weight:800;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center">' + (idx+1) + '</span>' +
+    '<span style="font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:0.5px">Actividad / Acción Correctiva</span>' +
+    '</div>' +
+    '<button class="licit-plan-del" data-row="'+idx+'" style="background:none;border:none;color:#9CA3AF;font-size:16px;cursor:pointer;padding:0 4px;line-height:1" title="Eliminar">✕</button>';
+  card.appendChild(header);
+
+  // Textarea: actividad
+  var ta = document.createElement('textarea');
+  ta.setAttribute('data-plan', idx);
+  ta.setAttribute('data-field', 'actividad');
+  ta.placeholder = 'Descripción de la acción...';
+  ta.rows = 2;
+  ta.style.cssText = 'width:100%;border:1.5px solid #E5E7EB;border-radius:7px;padding:9px 12px;font-family:inherit;font-size:12.5px;resize:vertical;outline:none;box-sizing:border-box;margin-bottom:12px;color:#374151';
+  card.appendChild(ta);
+
+  // Fields row: responsable + fecha + observacion
+  var fieldsRow = document.createElement('div');
+  fieldsRow.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px';
+  fieldsRow.innerHTML =
+    '<div>' +
+    '<div style="font-size:9px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:4px">Responsable</div>' +
+    '<input data-plan="'+idx+'" data-field="responsable" placeholder="Nombre" style="width:100%;border:1.5px solid #E5E7EB;border-radius:7px;padding:8px 10px;font-family:inherit;font-size:12px;outline:none;box-sizing:border-box"></div>' +
+    '<div>' +
+    '<div style="font-size:9px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:4px">Fecha Seguimiento</div>' +
+    '<input type="date" data-plan="'+idx+'" data-field="fecha" style="width:100%;border:1.5px solid #E5E7EB;border-radius:7px;padding:8px 10px;font-family:inherit;font-size:12px;outline:none;box-sizing:border-box"></div>' +
+    '<div>' +
+    '<div style="font-size:9px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:4px">Observación de Cierre</div>' +
+    '<input data-plan="'+idx+'" data-field="observacion" placeholder="Resultado / evidencia..." style="width:100%;border:1.5px solid #E5E7EB;border-radius:7px;padding:8px 10px;font-family:inherit;font-size:12px;outline:none;box-sizing:border-box"></div>';
+  card.appendChild(fieldsRow);
+
+  // Estado buttons
+  var estadoRow = document.createElement('div');
+  estadoRow.style.cssText = 'display:flex;align-items:center;gap:8px';
+  estadoRow.innerHTML = '<span style="font-size:10px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:0.5px">Estado</span>';
+
+  var estados = [
+    { label:'Pendiente',   bg:'#FEF3C7', color:'#D97706', border:'#FCD34D' },
+    { label:'En Progreso', bg:'#DBEAFE', color:'#1D4ED8', border:'#93C5FD' },
+    { label:'Cerrado',     bg:'#D1FAE5', color:'#059669', border:'#6EE7B7' }
+  ];
+  estados.forEach(function(e) {
+    var btn = document.createElement('button');
+    btn.id = 'licit-estado-btn-'+idx+'-'+e.label.replace(' ','-');
+    btn.textContent = e.label;
+    btn.style.cssText = 'padding:4px 14px;border-radius:20px;font-family:inherit;font-size:11px;cursor:pointer;transition:all 0.15s;' +
+      (e.label === 'Pendiente'
+        ? 'background:'+e.bg+';color:'+e.color+';border:1.5px solid '+e.border+';font-weight:700'
+        : 'background:transparent;color:#9CA3AF;border:1.5px solid #E5E7EB;font-weight:500');
+    (function(lbl){ btn.addEventListener('click', function(){ licitSetPlanEstado(idx, lbl); }); })(e.label);
+    estadoRow.appendChild(btn);
+  });
+  card.appendChild(estadoRow);
+  container.appendChild(card);
+  licitUpdatePlanCounter();
+  licitUpdatePlanEmpty();
+  licitApplyFilters();
+}
+
+// ── AUTO-ANALYSIS TO FIELD ────────────────────────────────
+function licitAutoAnalysisToField() {
+  var pFilt = _licitGetFiltered('pujas');
+  var qFilt = _licitGetFiltered('prop');
+  var k = licitComputeKPIs(pFilt, qFilt);
+
+  var periodLabel = licitFilterYear === 'ALL' ? 'Todo el período' : licitFilterYear;
+  if (licitFilterQuarter !== 'ALL') periodLabel += ' · ' + licitFilterQuarter;
+
+  var lines = [];
+  lines.push('ANÁLISIS DE INDICADORES — ' + periodLabel);
+  lines.push('');
+
+  var statusPujas = parseFloat(k.pctPujas) >= 30 ? 'CUMPLE' : 'NO CUMPLE';
+  lines.push('1. Tasa Adjudicación Pujas: ' + k.pctPujas + '% (' + statusPujas + ' · meta ≥ 30%)');
+  lines.push('   ' + k.adjP + ' adjudicadas de ' + k.tp + ' pujas presentadas. ' + k.noAdjP + ' no adjudicadas.');
+  if (parseFloat(k.pctPujas) < 30) {
+    lines.push('   ⚠ Se recomienda revisar la estrategia de oferta e identificar causales de no adjudicación.');
+  } else {
+    lines.push('   ✔ Nivel de adjudicación satisfactorio. Mantener la estrategia actual.');
+  }
+  lines.push('');
+
+  var statusProp = parseFloat(k.pctProp) >= 30 ? 'CUMPLE' : 'NO CUMPLE';
+  lines.push('2. Tasa Adj. Propuestas/Cotizaciones: ' + k.pctProp + '% (' + statusProp + ' · meta ≥ 30%)');
+  lines.push('   ' + k.adjQ + ' adjudicadas de ' + k.tq + ' propuestas presentadas.');
+  if (parseFloat(k.pctProp) < 30) {
+    lines.push('   ⚠ Tasa inferior a la meta. Fortalecer el proceso comercial de cotizaciones.');
+  } else {
+    lines.push('   ✔ Desempeño comercial dentro del objetivo establecido.');
+  }
+  lines.push('');
+
+  var statusEfic = parseFloat(k.eficiencia) >= 40 ? 'CUMPLE' : 'REVISAR';
+  lines.push('3. Eficiencia de Contratos: ' + k.eficiencia + '% (' + statusEfic + ' · meta ≥ 40%)');
+  lines.push('   El ' + k.eficiencia + '% del proceso de pujas no resultó en rechazo definitivo.');
+  lines.push('');
+
+  var cumple = [parseFloat(k.pctPujas)>=30, parseFloat(k.pctProp)>=30, parseFloat(k.eficiencia)>=40];
+  var numCumple = cumple.filter(Boolean).length;
+  lines.push('DIAGNÓSTICO GENERAL: ' + numCumple + '/3 indicadores cumplen la meta.');
+  if (numCumple === 3) lines.push('Desempeño óptimo en todos los indicadores del período.');
+  else if (numCumple === 2) lines.push('Desempeño aceptable con oportunidades de mejora en los indicadores que no cumplen.');
+  else if (numCumple === 1) lines.push('Se detectan brechas importantes. Se requieren acciones correctivas.');
+  else lines.push('Todos los indicadores por debajo de la meta. Revisar estrategia comercial.');
+
+  var pendP = pFilt.filter(function(r){ return r.ESTADO === 'POR DEFINIR'; }).length;
+  if (pendP > 0) {
+    lines.push('');
+    lines.push('ℹ Hay ' + pendP + ' puja(s) aún por definir. Actualizar estado con seguimiento.');
+  }
+
+  var ta = document.getElementById('licit-analisis-text');
+  if (ta) {
+    ta.value = lines.join('\n');
+    ta.focus();
+    ta.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+function licitInit() {
+  licitBuildFilters();
+  licitApplyFilters();
+
+  // Set today as default evaluation date
+  var fechaEl = document.getElementById('licit-eval-fecha');
+  if (fechaEl && !fechaEl.value) {
+    fechaEl.value = new Date().toISOString().split('T')[0];
+  }
+
+  // Timestamp
+  var genDate = document.getElementById('licit-gen-date');
+  if (genDate) {
+    var d = new Date();
+    genDate.textContent = 'Generado: ' + d.getDate() + '/' + (d.getMonth()+1) + '/' + d.getFullYear();
+  }
+
+  // No default plan row - user adds manually
+
+  // Init indicators table
+  // licitIndBuildPeriod() no longer needed — driven by main filter
+  setTimeout(function() { licitIndAutoFill(); licitInd5ApplyQuarterRule(); licitPdfUpdateBadge(); }, 100);
+  // Init IND 5 annual
+  licitInd5BuildYearBtns();
+  licitInd5LoadYear();
+  // Init PDF panel
+  licitBuildPdfYearSelector();
+  licitLoadSavedReports();
+  licitPdfUpdateBadge();
+
+  // Event delegation for edit buttons
+  document.addEventListener('click', function(e) {
+    var editBtn = e.target.closest ? e.target.closest('.licit-edit-btn') : null;
+    if (editBtn) {
+      var type = editBtn.getAttribute('data-type');
+      var idx = parseInt(editBtn.getAttribute('data-idx'), 10);
+      licitOpenAddModal(type, idx);
+      return;
+    }
+    // IND 5 history row delete
+    var ind5Del = e.target.closest ? e.target.closest('.ind5-del-row') : null;
+    if (ind5Del) {
+      var yr = ind5Del.getAttribute('data-year');
+      if (yr && ind5YearData[yr]) {
+        delete ind5YearData[yr];
+        licitInd5BuildYearBtns();
+        licitInd5RenderHistory();
+        licitInd5UpdateBadge();
+        if (ind5SelYear === yr) {
+          var remaining = Object.keys(ind5YearData).sort();
+          ind5SelYear = remaining.length ? remaining[remaining.length-1] : String(new Date().getFullYear());
+          licitInd5LoadYear();
+        }
+      }
+      return;
+    }
+    // Plan card delete
+    var delBtn = e.target.closest ? e.target.closest('.licit-plan-del') : null;
+    if (delBtn) {
+      var rowIdx2 = parseInt(delBtn.getAttribute('data-row'), 10);
+      var card = document.getElementById('licit-plan-card-' + rowIdx2);
+      if (card) card.remove();
+      if (licitPlanRows[rowIdx2]) licitPlanRows[rowIdx2]._deleted = true;
+      licitUpdatePlanCounter();
+      licitUpdatePlanEmpty();
+      licitApplyFilters();
+    }
+  });
+
+  // Plan row input live sync
+  document.addEventListener('input', function(e) {
+    var inp = e.target;
+    if (!inp || !inp.hasAttribute('data-plan')) return;
+    var rowIdx = parseInt(inp.getAttribute('data-plan'), 10);
+    var field = inp.getAttribute('data-field');
+    if (licitPlanRows[rowIdx]) licitPlanRows[rowIdx][field] = inp.value;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// INDICADORES GERENCIALES — MÓDULO COMERCIAL
+// ═══════════════════════════════════════════════════════════
+// indFilter* aliased to licitFilter* for unified sync
+// licitFilterYear and licitFilterQuarter are computed properties below
+var indCollapsed     = false;
+
+function licitIndToggle() {
+  indCollapsed = !indCollapsed;
+  var body = document.getElementById('licit-ind-body');
+  var btn  = document.getElementById('btn-ind-collapse');
+  if (!body) return;
+  body.style.display = indCollapsed ? 'none' : '';
+  if (btn) btn.textContent = indCollapsed ? '▶ Expandir' : '▼ Colapsar';
+}
+
+function licitIndBuildPeriod() {
+  // Period now driven by main licitFilter — just update badge
+  licitPdfUpdateBadge();
+}
+
+function _indGetPujas() {
+  return LICIT_PUJAS.filter(function(r) {
+    var d = r['FECHA DE  SOLICITUD'];
+    if (licitFilterYear!=='ALL' && _licitGetYear(d)!==licitFilterYear) return false;
+    if (licitFilterQuarter!=='ALL' && _licitGetQuarter(d)!==licitFilterQuarter) return false;
+    return true;
+  });
+}
+function _indGetProp() {
+  return LICIT_PROP.filter(function(r) {
+    var d = r['FECHA DE  PRESENTACION'];
+    if (licitFilterYear!=='ALL' && _licitGetYear(d)!==licitFilterYear) return false;
+    if (licitFilterQuarter!=='ALL' && _licitGetQuarter(d)!==licitFilterQuarter) return false;
+    return true;
+  });
+}
+
+function _setIndBadge(id, val, meta, metaLabel) {
+  var el = document.getElementById(id); if (!el) return;
+  var ok = parseFloat(val) >= meta;
+  el.style.background = ok ? '#D1FAE5' : '#FEE2E2';
+  el.style.color = ok ? '#059669' : '#DC2626';
+  el.textContent = (ok ? '✅ ' : '❌ ') + val + '% · ' + (ok ? 'CUMPLE' : 'NO CUMPLE') + ' (' + metaLabel + ')';
+}
+function _setResult(id, val, color) {
+  var el = document.getElementById(id); if (!el) return;
+  el.textContent = (val===null||val===undefined) ? '—' : val + '%';
+  if (color) el.style.color = color;
+}
+function _setDisplay(id, val) {
+  var el = document.getElementById(id); if (el) el.textContent = (val===null||val===undefined) ? '—' : val;
+}
+function _setEstado(id, val, meta) {
+  var el = document.getElementById(id); if (!el) return;
+  if (val===null) { el.textContent='—'; el.style.background='#F3F4F6'; el.style.color='#6B7280'; el.style.borderRadius='7px'; return; }
+  var ok = parseFloat(val) >= meta;
+  el.style.background = ok ? '#D1FAE5' : '#FEE2E2';
+  el.style.color = ok ? '#059669' : '#DC2626';
+  el.style.borderRadius = '7px';
+  el.textContent = ok ? '✅ CUMPLE' : '❌ NO CUMPLE';
+}
+
+function licitInd1Calc() {
+  var total = parseFloat((document.getElementById('ind1-total')||{}).value) || 0;
+  var satis = parseFloat((document.getElementById('ind1-satisfechos')||{}).value) || 0;
+  var b = document.getElementById('ind1-badge');
+  if (total <= 0) {
+    _setResult('ind1-result', null);
+    var sc = document.getElementById('ind1-scenario');
+    if (sc) { sc.textContent='—'; sc.style.background='#F3F4F6'; sc.style.color='#6B7280'; }
+    if (b) { b.textContent='Sin datos'; b.style.background='#F3F4F6'; b.style.color='#6B7280'; }
+    return;
+  }
+  var pct = Math.min(satis/total*100, 100);
+  var pctStr = pct.toFixed(1);
+  var color, bg, label;
+  if (pct >= 95)       { color='#059669'; bg='#D1FAE5'; label='🟢 Excelente'; }
+  else if (pct >= 80)  { color='#D97706'; bg='#FEF3C7'; label='🟡 Bueno'; }
+  else                 { color='#DC2626'; bg='#FEE2E2'; label='🔴 Regular'; }
+  var rEl = document.getElementById('ind1-result');
+  if (rEl) { rEl.textContent = pctStr + '%'; rEl.style.color = color; }
+  var sc = document.getElementById('ind1-scenario');
+  if (sc)  { sc.textContent = label; sc.style.background = bg; sc.style.color = color; }
+  _setIndBadge('ind1-badge', pctStr, 95, 'meta 95%');
+}
+
+function licitInd2Fill(prop) {
+  var total = prop.length;
+  var adj = prop.filter(function(r){ return r.ESTADO==='ADJUDICADA'; }).length;
+  var pct = total > 0 ? (adj/total*100).toFixed(1) : null;
+  _setDisplay('ind2-total', total || '—');
+  _setDisplay('ind2-adj', adj || '—');
+  _setResult('ind2-result', pct);
+  _setEstado('ind2-estado', pct, 30);
+  if (pct!==null) _setIndBadge('ind2-badge', pct, 30, 'meta ≥30%');
+  else { var b=document.getElementById('ind2-badge'); if(b){b.textContent='Sin datos';b.style.background='#F3F4F6';b.style.color='#6B7280';} }
+}
+
+function licitInd3Fill(pujas) {
+  var total = pujas.length;
+  var adj = pujas.filter(function(r){ return r.ESTADO==='ADJUDICADA'; }).length;
+  var pct = total > 0 ? (adj/total*100).toFixed(1) : null;
+  _setDisplay('ind3-total', total || '—');
+  _setDisplay('ind3-adj', adj || '—');
+  _setResult('ind3-result', pct);
+  _setEstado('ind3-estado', pct, 30);
+  if (pct!==null) _setIndBadge('ind3-badge', pct, 30, 'meta ≥30%');
+  else { var b=document.getElementById('ind3-badge'); if(b){b.textContent='Sin datos';b.style.background='#F3F4F6';b.style.color='#6B7280';} }
+}
+
+function licitInd4Fill() {
+  var active   = licitPlanRows.filter(function(r){ return !r._deleted; });
+  var total    = active.length;
+  var cerrados = active.filter(function(r){ return r.estado==='Cerrado'; }).length;
+  var pct = total > 0 ? (cerrados/total*100).toFixed(1) : null;
+  _setDisplay('ind4-cerrados', cerrados);
+  _setDisplay('ind4-total', total || '—');
+  _setResult('ind4-result', pct);
+  _setEstado('ind4-estado', pct, 100);
+  if (pct!==null) _setIndBadge('ind4-badge', pct, 100, 'meta 100%');
+  else { var b=document.getElementById('ind4-badge'); if(b){b.textContent='Sin datos';b.style.background='#F3F4F6';b.style.color='#6B7280';} }
+}
+
+// ── IND 5: Rentabilidad anual ────────────────────────────
+var ind5YearData   = {};   // { '2023': { contratos, ejecutado, pct }, ... }
+var ind5SelYear    = String(new Date().getFullYear());
+
+function licitInd5BuildYearBtns() {
+  // Collect years from PUJAS + stored ind5 data
+  var yearsSet = new Set(Object.keys(ind5YearData));
+  LICIT_PUJAS.forEach(function(r){ var y=_licitGetYear(r['FECHA DE  SOLICITUD']); if(y) yearsSet.add(y); });
+  LICIT_PROP.forEach(function(r){ var y=_licitGetYear(r['FECHA DE  PRESENTACION']); if(y) yearsSet.add(y); });
+  // Always include current year
+  yearsSet.add(String(new Date().getFullYear()));
+  var years = Array.from(yearsSet).sort();
+
+  var c = document.getElementById('ind5-year-btns');
+  if (!c) return;
+  c.innerHTML = '';
+  years.forEach(function(y) {
+    var btn = document.createElement('button');
+    btn.textContent = y;
+    var saved = !!ind5YearData[y];
+    var active = y === ind5SelYear;
+    btn.style.cssText = active
+      ? 'padding:4px 14px;border-radius:20px;border:none;background:#BE123C;color:white;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer'
+      : saved
+        ? 'padding:4px 14px;border-radius:20px;border:1.5px solid #FECDD3;background:#FFF1F2;color:#BE123C;font-family:inherit;font-size:11px;font-weight:600;cursor:pointer'
+        : 'padding:4px 14px;border-radius:20px;border:1.5px solid #CBD5E1;background:white;color:#374151;font-family:inherit;font-size:11px;cursor:pointer';
+    (function(yr){ btn.addEventListener('click', function(){ ind5SelYear=yr; licitInd5LoadYear(); licitInd5BuildYearBtns(); }); })(y);
+    c.appendChild(btn);
+  });
+
+  // Year label
+  var lbl = document.getElementById('ind5-year-label');
+  if (lbl) lbl.textContent = ind5SelYear;
+}
+
+function licitInd5AddYear() {
+  var y = prompt('Ingresa el año a agregar (ej: 2022):');
+  if (!y || !/^\d{4}$/.test(y.trim())) return;
+  ind5SelYear = y.trim();
+  licitInd5LoadYear();
+  licitInd5BuildYearBtns();
+}
+
+function licitInd5LoadYear() {
+  var lbl = document.getElementById('ind5-year-label');
+  if (lbl) lbl.textContent = ind5SelYear;
+  var saved = ind5YearData[ind5SelYear];
+  var cEl = document.getElementById('ind5-contratos');
+  var eEl = document.getElementById('ind5-ejecutado');
+  if (cEl) cEl.value = saved ? saved.contratos : '';
+  if (eEl) eEl.value = saved ? saved.ejecutado : '';
+  licitInd5Calc();
+}
+
+function licitInd5SaveYear() {
+  var contratos = parseFloat((document.getElementById('ind5-contratos')||{}).value) || 0;
+  var ejecutado = parseFloat((document.getElementById('ind5-ejecutado')||{}).value) || 0;
+  if (contratos <= 0) { alert('Ingresa el Valor de Contratos para guardar.'); return; }
+  var pct = Math.max(0, (1 - (contratos - ejecutado) / contratos) * 100).toFixed(1);
+  ind5YearData[ind5SelYear] = { contratos: contratos, ejecutado: ejecutado, pct: pct };
+  licitInd5BuildYearBtns();
+  licitInd5RenderHistory();
+  licitInd5UpdateBadge();
+  // Refresh KPI card 3 with new rentabilidad value
+  licitApplyFilters();
+  // Flash save confirmation
+  var btn = event && event.target ? event.target : null;
+  if (btn) { btn.textContent = '✅ Guardado'; setTimeout(function(){ btn.textContent = '💾 Guardar año'; }, 1400); }
+}
+
+function licitInd5Calc() {
+  var contratos = parseFloat((document.getElementById('ind5-contratos')||{}).value) || 0;
+  var ejecutado = parseFloat((document.getElementById('ind5-ejecutado')||{}).value) || 0;
+  if (contratos <= 0) {
+    _setResult('ind5-result', null);
+    _setEstado('ind5-estado', null, 40);
+    return;
+  }
+  var pct = Math.max(0, (1 - (contratos - ejecutado) / contratos) * 100).toFixed(1);
+  var color = parseFloat(pct) >= 40 ? '#059669' : '#DC2626';
+  _setResult('ind5-result', pct, color);
+  _setEstado('ind5-estado', pct, 40);
+}
+
+function licitInd5UpdateBadge() {
+  // Badge shows the latest saved year result
+  var years = Object.keys(ind5YearData).sort();
+  if (!years.length) {
+    var b = document.getElementById('ind5-badge');
+    if (b) { b.textContent='Sin datos'; b.style.background='#F3F4F6'; b.style.color='#6B7280'; }
+    return;
+  }
+  var latest = ind5YearData[years[years.length - 1]];
+  _setIndBadge('ind5-badge', latest.pct, 40, 'meta 40% · ' + years[years.length-1]);
+}
+
+function licitInd5RenderHistory() {
+  var wrap  = document.getElementById('ind5-history-wrap');
+  var tbody = document.getElementById('ind5-history-tbody');
+  if (!wrap || !tbody) return;
+  var years = Object.keys(ind5YearData).sort();
+  if (!years.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+
+  tbody.innerHTML = years.map(function(y, i) {
+    var d = ind5YearData[y];
+    var ok = parseFloat(d.pct) >= 40;
+    var bar = Math.min(parseFloat(d.pct), 100);
+    var fmtNum = function(n) { return Number(n).toLocaleString('es-CO', {minimumFractionDigits:0, maximumFractionDigits:0}); };
+    return '<tr style="background:'+(i%2===0?'white':'#FAFAFA')+';border-bottom:1px solid #E2E8F0">' +
+      '<td style="padding:9px 14px;font-weight:800;color:var(--navy);font-size:13px">' + y + '</td>' +
+      '<td style="padding:9px 14px;text-align:right;color:#374151;font-size:12px">$ ' + fmtNum(d.contratos) + '</td>' +
+      '<td style="padding:9px 14px;text-align:right;color:#374151;font-size:12px">$ ' + fmtNum(d.ejecutado) + '</td>' +
+      '<td style="padding:9px 14px;text-align:center">' +
+        '<div style="display:flex;align-items:center;gap:8px;justify-content:center">' +
+          '<div style="width:80px;height:6px;background:#F1F5F9;border-radius:3px"><div style="width:'+bar+'%;height:100%;background:'+(ok?'#059669':'#DC2626')+';border-radius:3px;transition:width 0.4s"></div></div>' +
+          '<span style="font-size:14px;font-weight:800;color:'+(ok?'#059669':'#DC2626')+'">'+d.pct+'%</span>' +
+        '</div>' +
+      '</td>' +
+      '<td style="padding:9px 14px;text-align:center">' +
+        '<span style="background:'+(ok?'#D1FAE5':'#FEE2E2')+';color:'+(ok?'#059669':'#DC2626')+';padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700">' +
+        (ok?'✅ CUMPLE':'❌ NO CUMPLE') + '</span>' +
+      '</td>' +
+      '<td style="padding:6px;text-align:center">' +
+        '<button class="ind5-del-row" data-year="'+y+'" style="border:none;background:none;color:#94A3B8;cursor:pointer;font-size:13px;padding:2px 6px" title="Eliminar">✕</button>' +
+      '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+function licitIndAutoFill() {
+  var pujas = _indGetPujas();
+  var prop  = _indGetProp();
+  licitInd2Fill(prop);
+  licitInd3Fill(pujas);
+  licitInd4Fill();
+  licitInd1Calc();
+  // IND 5 — only evaluated in T4
+  licitInd5ApplyQuarterRule();
+}
+
+function licitInd5ApplyQuarterRule() {
+  var isT4 = (licitFilterQuarter === 'T4');
+  var ind5Row = document.querySelector('.licit-ind-row:last-child');
+  var badge   = document.getElementById('ind5-badge');
+  // Show/hide the IND 5 inputs body
+  var ind5Body = document.getElementById('ind5-inputs-body');
+  if (ind5Body) ind5Body.style.display = isT4 ? '' : 'none';
+  // Show T4-only notice
+  var ind5Notice = document.getElementById('ind5-t4-notice');
+  if (ind5Notice) ind5Notice.style.display = isT4 ? 'none' : '';
+  // Update badge
+  if (!isT4) {
+    if (badge) {
+      badge.textContent = '📅 Solo se evalúa en T4';
+      badge.style.background = '#F1F5F9';
+      badge.style.color = '#64748B';
+    }
+  } else {
+    licitInd5UpdateBadge();
+    licitInd5RenderHistory();
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════
+// PDF TRIMESTRAL — GUARDAR Y EXPORTAR INFORMES
+// ═══════════════════════════════════════════════════════════
+
+// ── Storage helpers ──────────────────────────────────────
+// ── Storage: window.storage with localStorage fallback ──────
+var _licitUseLocal = false;  // set true if window.storage unavailable
+
+async function licitStorageGet(key) {
+  // Try window.storage first
+  if (!_licitUseLocal) {
+    try {
+      var r = await window.storage.get(key);
+      return r ? JSON.parse(r.value) : null;
+    } catch(e) { _licitUseLocal = true; }
+  }
+  // localStorage fallback
+  try {
+    var raw = localStorage.getItem('__licit__' + key);
+    return raw ? JSON.parse(raw) : null;
+  } catch(e) { return null; }
+}
+
+async function licitStorageSet(key, val) {
+  var json = JSON.stringify(val);
+  // Try window.storage first
+  if (!_licitUseLocal) {
+    try {
+      await window.storage.set(key, json);
+      return true;
+    } catch(e) { _licitUseLocal = true; }
+  }
+  // localStorage fallback
+  try {
+    localStorage.setItem('__licit__' + key, json);
+    // Maintain an index of licit keys
+    var idx = JSON.parse(localStorage.getItem('__licit__idx') || '[]');
+    if (idx.indexOf(key) === -1) { idx.push(key); localStorage.setItem('__licit__idx', JSON.stringify(idx)); }
+    return true;
+  } catch(e) { return false; }
+}
+
+async function licitStorageList(prefix) {
+  if (!_licitUseLocal) {
+    try {
+      var r = await window.storage.list(prefix);
+      return r ? r.keys : [];
+    } catch(e) { _licitUseLocal = true; }
+  }
+  // localStorage fallback — use index
+  try {
+    var idx = JSON.parse(localStorage.getItem('__licit__idx') || '[]');
+    return idx.filter(function(k){ return k.indexOf(prefix) === 0; });
+  } catch(e) { return []; }
+}
+
+async function licitStorageDel(key) {
+  if (!_licitUseLocal) {
+    try { await window.storage.delete(key); return true; }
+    catch(e) { _licitUseLocal = true; }
+  }
+  // localStorage fallback
+  try {
+    localStorage.removeItem('__licit__' + key);
+    var idx = JSON.parse(localStorage.getItem('__licit__idx') || '[]');
+    idx = idx.filter(function(k){ return k !== key; });
+    localStorage.setItem('__licit__idx', JSON.stringify(idx));
+    return true;
+  } catch(e) { return false; }
+}
+
+// ── Collect current report snapshot ──────────────────────
+function licitCollectSnapshot(year, quarter) {
+  var pFilt = _licitGetFiltered('pujas');
+  var qFilt = _licitGetFiltered('prop');
+  var k = licitComputeKPIs(pFilt, qFilt);
+
+  return {
+    year: year,
+    quarter: quarter,
+    generado: new Date().toISOString(),
+    kpis: {
+      pctPujas:    k.pctPujas,
+      pctProp:     k.pctProp,
+      rentabilidad: (function() {
+        if (typeof ind5YearData !== 'undefined') {
+          var yr = typeof ind5SelYear !== 'undefined' ? ind5SelYear : null;
+          var entry = yr ? ind5YearData[yr] : null;
+          if (!entry) {
+            var ys = Object.keys(ind5YearData).sort();
+            if (ys.length) entry = ind5YearData[ys[ys.length-1]];
+          }
+          if (entry && entry.pct !== undefined) return String(entry.pct);
+        }
+        return k.rentabilidad;
+      })(),
+      planTotal:   k.planTotal,
+      planCerrado: k.planCerrado,
+      tp: k.tp, adjP: k.adjP,
+      tq: k.tq, adjQ: k.adjQ
+    },
+    indicadores: {
+      ind1: { total: (document.getElementById('ind1-total')||{}).value||'', satis: (document.getElementById('ind1-satisfechos')||{}).value||'' },
+      ind5: ind5YearData
+    },
+    analisis:    (document.getElementById('licit-analisis-text')||{}).value || '',
+    planes:      licitPlanRows.filter(function(r){ return !r._deleted; }),
+    org:          (document.getElementById('licit-pdf-org')||{}).value         || 'Auditoria Ambiental S.A.S.',
+    responsable:  (document.getElementById('licit-pdf-responsable')||{}).value || '',
+    obs:          (document.getElementById('licit-pdf-obs')||{}).value         || '',
+    lugar:        (document.getElementById('licit-pdf-lugar')||{}).value       || 'Bogotá, Colombia',
+    evaluador: {
+      nombre: (document.getElementById('licit-eval-responsable')||{}).value || '',
+      cargo:  (document.getElementById('licit-eval-cargo')||{}).value || '',
+      fecha:  (document.getElementById('licit-eval-fecha')||{}).value  || '',
+      tipo:   'COMERCIAL - LICITACIÓN'
+    }
+  };
+}
+
+
+// ── PDF period sync helpers ───────────────────────────────
+function licitPdfGetYear() {
+  return (licitFilterYear !== 'ALL') ? licitFilterYear : String(new Date().getFullYear());
+}
+function licitPdfGetQuarter() {
+  return (licitFilterQuarter !== 'ALL') ? licitFilterQuarter : 'T1';
+}
+function licitPdfUpdateBadge() {
+  var badge = document.getElementById('licit-pdf-period-badge');
+  if (!badge) return;
+  var y = licitPdfGetYear();
+  var q = licitPdfGetQuarter();
+  var ql = {T1:'T1 · Ene–Mar', T2:'T2 · Abr–Jun', T3:'T3 · Jul–Sep', T4:'T4 · Oct–Dic'};
+  badge.textContent = '📅 ' + y + ' — ' + (ql[q] || q);
+}
+// ── Save report to storage ────────────────────────────────
+async function licitSaveReport() {
+  var year    = licitPdfGetYear();
+  var quarter = licitPdfGetQuarter();
+  var key     = 'licit-report:' + year + '-' + quarter;
+  var snap    = licitCollectSnapshot(year, quarter);
+
+  // Visual: saving state
+  var btn = document.querySelector('[onclick="licitSaveReport()"]');
+  var origText = btn ? btn.innerHTML : '';
+  if (btn) { btn.innerHTML = '⏳ Guardando...'; btn.style.opacity = '0.7'; btn.disabled = true; }
+
+  var ok = await licitStorageSet(key, snap);
+
+  if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+
+  if (ok) {
+    await licitLoadSavedReports();
+    if (btn) {
+      btn.innerHTML = '✅ Guardado';
+      btn.style.background = '#059669';
+      setTimeout(function(){
+        btn.innerHTML = origText;
+        btn.style.background = '#F59E0B';
+      }, 2000);
+    }
+    // Also refresh the panel if open
+    var panel = document.getElementById('licit-saved-panel-modal');
+    if (panel && panel.style.display !== 'none') licitOpenSavedPanel();
+  } else {
+    if (btn) btn.innerHTML = origText;
+    // Show a clear error in the UI instead of an alert
+    var errDiv = document.getElementById('licit-save-error');
+    if (!errDiv) {
+      errDiv = document.createElement('div');
+      errDiv.id = 'licit-save-error';
+      errDiv.style.cssText = 'margin-top:8px;padding:8px 14px;background:#FEE2E2;border-radius:7px;font-size:11px;color:#DC2626;font-weight:600';
+      if (btn && btn.parentNode) btn.parentNode.appendChild(errDiv);
+    }
+    errDiv.textContent = '❌ No se pudo guardar. El almacenamiento no está disponible en este navegador.';
+    errDiv.style.display = '';
+    setTimeout(function(){ if(errDiv) errDiv.style.display = 'none'; }, 5000);
+  }
+}
+
+// ── Load and render saved reports list ───────────────────
+async function licitLoadSavedReports() {
+  var keys = await licitStorageList('licit-report:');
+  var container = document.getElementById('licit-saved-reports');
+  var emptyEl   = document.getElementById('licit-saved-empty');
+  var countEl   = document.getElementById('licit-saved-count');
+  if (!container) return;
+  if (countEl) countEl.textContent = keys.length + ' informe' + (keys.length !== 1 ? 's' : '');
+  if (!keys.length) {
+    if (emptyEl) emptyEl.style.display = '';
+    Array.from(container.querySelectorAll('.licit-saved-card')).forEach(function(c){ c.remove(); });
+    return;
+  }
+  if (emptyEl) emptyEl.style.display = 'none';
+  Array.from(container.querySelectorAll('.licit-saved-card')).forEach(function(c){ c.remove(); });
+  keys.sort().reverse();
+  for (var i = 0; i < keys.length; i++) {
+    var snap = await licitStorageGet(keys[i]);
+    if (!snap) continue;
+    var card = licitBuildSavedCard(snap, keys[i], 'compact');
+    container.appendChild(card);
+  }
+}
+
+// ── Generate PDF from snapshot ────────────────────────────
+function licitBuildPDF(snap) {
+  var year    = snap.year;
+  var quarter = snap.quarter;
+  var qLabels = {T1:'T1 · Enero–Marzo',T2:'T2 · Abril–Junio',T3:'T3 · Julio–Septiembre',T4:'T4 · Octubre–Diciembre'};
+  var qLabel  = qLabels[quarter] || quarter;
+  var genDate = new Date(snap.generado);
+  var genStr  = genDate.getDate() + '/' + (genDate.getMonth()+1) + '/' + genDate.getFullYear();
+  var k       = snap.kpis;
+  var ev      = snap.evaluador || {};
+  var analisis = (snap.analisis || 'Sin observaciones registradas.').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  // ── Helpers ──
+  var cumpleBadge = function(val, meta) {
+    var ok = parseFloat(val) >= meta;
+    return '<span style="display:inline-block;padding:2px 10px;border-radius:4px;font-size:9px;font-weight:700;letter-spacing:0.3px;background:'+(ok?'#E8F5E9':'#FFEBEE')+';color:'+(ok?'#1B5E20':'#B71C1C')+';border:1px solid '+(ok?'#A5D6A7':'#EF9A9A')+';">'+(ok?'CUMPLE':'NO CUMPLE')+'</span>';
+  };
+  var resultCell = function(val, meta) {
+    var ok = parseFloat(val) >= meta;
+    return '<td style="padding:7px 10px;text-align:center;font-weight:700;font-size:12px;color:'+(ok?'#1B5E20':'#B71C1C')+'">'+val+'%</td>';
+  };
+
+  // ── Indicadores rows ──
+  var ind1Pct = '—';
+  if (snap.indicadores && snap.indicadores.ind1) {
+    var t = parseFloat(snap.indicadores.ind1.total)||0;
+    var s2 = parseFloat(snap.indicadores.ind1.satis)||0;
+    if (t>0) ind1Pct = (s2/t*100).toFixed(1)+'%';
+  }
+  var ind4Pct = k.planTotal>0 ? (k.planCerrado/k.planTotal*100).toFixed(1) : '—';
+  var ind4Ok  = k.planTotal>0 && parseFloat(ind4Pct)>=100;
+
+  var isT4 = (quarter === 'T4');
+
+  // IND 5 only evaluated in T4
+  var ind5Row;
+  if (isT4) {
+    var rent = k.rentabilidad;
+    var rentOk = parseFloat(rent) >= 40;
+    var rentRes = (rent === '—' || rent === '0.0') ? '—' : rent + '%';
+    ind5Row = {n:'5. Rentabilidad del Proyecto', metodo:'1-(Valor Contratos − Valor ejecutados / Valor del contratos) × 100', meta:'40%', frec:'Anual (T4)', va:'—', vb:'—', res: rentRes, ok: rentOk, naOnly: false};
+  } else {
+    ind5Row = {n:'5. Rentabilidad del Proyecto', metodo:'1-(Valor Contratos − Valor ejecutados / Valor del contratos) × 100', meta:'40%', frec:'Anual (T4)', va:'N/A', vb:'N/A', res:'N/A', ok: false, naOnly: true};
+  }
+
+  var indRows = [
+    {n:'1. Satisfacción del Cliente', metodo:'Total clientes satisfechos / No. Total solicitudes × 100', meta:'90%', frec:'Final Proyecto', va: snap.indicadores&&snap.indicadores.ind1?snap.indicadores.ind1.satis:'—', vb: snap.indicadores&&snap.indicadores.ind1?snap.indicadores.ind1.total:'—', res: ind1Pct, ok: ind1Pct!=='—'&&parseFloat(ind1Pct)>=90, naOnly: false},
+    {n:'2. Presentación de Propuestas', metodo:'N° adj. / (Propuestas + Cot.) × 100', meta:'≥ 30%', frec:'Trimestral', va: k.adjQ, vb: k.tq, res: k.pctProp+'%', ok: parseFloat(k.pctProp)>=30, naOnly: false},
+    {n:'3. Presentación de Pujas', metodo:'N° Pujas adj. / N° Pujas presentadas × 100', meta:'≥ 30%', frec:'Trimestral', va: k.adjP, vb: k.tp, res: k.pctPujas+'%', ok: parseFloat(k.pctPujas)>=30, naOnly: false},
+    {n:'4. Cumplimiento del Plan de Gestión', metodo:'Planes Ejecutados / Planes Propuestos × 100', meta:'100%', frec:'Anual', va: k.planCerrado, vb: k.planTotal, res: ind4Pct==='—'?'—':ind4Pct+'%', ok: ind4Ok, naOnly: false},
+    ind5Row
+  ];
+
+  var indRowsHTML = indRows.map(function(r,i) {
+    var bgColor = i%2===0 ? 'white' : '#F8FAFB';
+    var resColor = r.naOnly ? '#94A3B8' : (r.res==='—' ? '#94A3B8' : (r.ok ? '#15803D' : '#DC2626'));
+    var badgeHTML;
+    if (r.naOnly) {
+      badgeHTML = '<span style="color:#94A3B8;font-size:9px;font-style:italic">Solo T4</span>';
+    } else if (r.res === '—') {
+      badgeHTML = '<span style="color:#94A3B8;font-size:10px">—</span>';
+    } else {
+      badgeHTML = cumpleBadge(parseFloat(r.res), parseFloat(r.meta));
+    }
+    return '<tr style="background:'+bgColor+'">' +
+      '<td style="padding:6px 8px;font-size:10.5px;font-weight:600;color:#1E293B;border-right:1px solid #E2E8F0;min-width:110px">'+r.n+'</td>' +
+      '<td style="padding:6px 8px;font-size:9.5px;color:#475569;border-right:1px solid #E2E8F0">'+r.metodo+'</td>' +
+      '<td style="padding:6px 8px;text-align:center;font-weight:700;font-size:10px;border-right:1px solid #E2E8F0;white-space:nowrap">'+r.meta+'</td>' +
+      '<td style="padding:6px 8px;text-align:center;font-size:9.5px;color:#475569;border-right:1px solid #E2E8F0;white-space:nowrap">'+r.frec+'</td>' +
+      '<td style="padding:6px 8px;text-align:center;font-size:10px;border-right:1px solid #E2E8F0">'+r.va+'</td>' +
+      '<td style="padding:6px 8px;text-align:center;font-size:10px;border-right:1px solid #E2E8F0">'+r.vb+'</td>' +
+      '<td style="padding:6px 8px;text-align:center;font-weight:700;font-size:11px;color:'+resColor+'">'+r.res+'</td>' +
+      '<td style="padding:6px 8px;text-align:center">'+badgeHTML+'</td>' +
+    '</tr>';
+  }).join('');
+
+  // ── Plan de acción rows ──
+  var planesHTML = '';
+  if (snap.planes && snap.planes.length) {
+    planesHTML = snap.planes.map(function(p,i){
+      var eColor = p.estado==='Cerrado'?'#15803D':p.estado==='En Progreso'?'#1D4ED8':'#D97706';
+      var eBg    = p.estado==='Cerrado'?'#DCFCE7':p.estado==='En Progreso'?'#DBEAFE':'#FEF3C7';
+      return '<tr style="background:'+(i%2===0?'white':'#F8FAFB')+'">' +
+        '<td style="padding:6px 10px;font-size:11px">'+(p.actividad||'—')+'</td>' +
+        '<td style="padding:6px 10px;font-size:11px;text-align:center">'+(p.responsable||'—')+'</td>' +
+        '<td style="padding:6px 10px;font-size:11px;text-align:center">'+(p.fecha||'—')+'</td>' +
+        '<td style="padding:6px 10px;font-size:11px">'+(p.observacion||'—')+'</td>' +
+        '<td style="padding:6px 10px;text-align:center"><span style="background:'+eBg+';color:'+eColor+';padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700">'+(p.estado||'Pendiente')+'</span></td>' +
+      '</tr>';
+    }).join('');
+  } else {
+    planesHTML = '<tr><td colspan="5" style="padding:10px;text-align:center;color:#94A3B8;font-size:11px">Sin planes de acción registrados</td></tr>';
+  }
+
+  var docHTML =
+  '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Informe '+quarter+' '+year+'</title>' +
+  '<style>' +
+    'body{margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#1E293B;background:white}' +
+    '.page{width:100%;max-width:960px;margin:0 auto;padding:28px 32px;box-sizing:border-box}' +
+    'table{width:100%;border-collapse:collapse;table-layout:fixed}' +
+    'th{font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;padding:6px 8px;background:#1E3A5F;color:white;text-align:left;word-wrap:break-word;overflow-wrap:break-word}' +
+    'td{border-bottom:1px solid #E2E8F0;vertical-align:top;word-wrap:break-word;overflow-wrap:break-word}' +
+    '.section-title{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#334155;background:#F1F5F9;padding:6px 12px;border-left:3px solid #1E3A5F;margin:14px 0 6px}' +
+    '.meta-label{font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#94A3B8;margin-bottom:2px}' +
+    '.meta-value{font-size:11px;font-weight:600;color:#1E293B;padding-bottom:4px;border-bottom:1px solid #E2E8F0}' +
+    '@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}@page{size:A4 landscape;margin:12mm}.page{max-width:100%;padding:0}}' +
+  '</style></head><body><div class="page">' +
+
+  // ── HEADER ──
+  '<div style="border:1.5px solid #CBD5E1;border-radius:6px;overflow:hidden;margin-bottom:16px">' +
+    '<div style="background:#1E3A5F;padding:10px 16px">' +
+      '<div style="color:rgba(255,255,255,0.65);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px">Auditoria Ambiental</div>' +
+      '<div style="color:white;font-size:15px;font-weight:800;letter-spacing:-0.2px">Formato de Seguimiento y Desarrollo de Proyectos de Consultoría</div>' +
+    '</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;background:white">' +
+      '<div style="padding:10px 14px;border-right:1px solid #E2E8F0"><div class="meta-label">Módulo / Proceso</div><div class="meta-value">Licitación / Propuestas · '+quarter+' '+year+'</div></div>' +
+      '<div style="padding:10px 14px;border-right:1px solid #E2E8F0"><div class="meta-label">Líder / Proceso</div><div class="meta-value">GERENCIA COMERCIAL | CONTRATOS</div></div>' +
+      '<div style="padding:10px 14px"><div class="meta-label">Período</div><div class="meta-value">'+qLabel+' · '+year+'</div></div>' +
+    '</div>' +
+
+  '</div>' +
+
+  // ── SECCIÓN 1: OBJETIVO GENERAL ──
+  '<div class="section-title">1. Objetivo General y Específicos</div>' +
+  '<div style="border:1px solid #E2E8F0;border-radius:5px;overflow:hidden;margin-bottom:4px">' +
+    '<table><thead><tr><th style="width:35%">Objetivo general</th><th>Obj. específico 1</th><th>Obj. específico 2</th><th>Obj. específico 3</th></tr></thead>' +
+    '<tbody><tr style="background:white">' +
+      '<td style="padding:8px 10px;font-size:11px">Diligenciar oportunamente las solicitudes del cliente, garantizando la satisfacción del cliente y el beneficio de la empresa.</td>' +
+      '<td style="padding:8px 10px;font-size:11px">Mantener y mejorar continuamente un sistema de gestión.</td>' +
+      '<td style="padding:8px 10px;font-size:11px">Obtener una rentabilidad satisfactoria que permita un funcionamiento y mejoramiento empresarial constante.</td>' +
+      '<td style="padding:8px 10px;font-size:11px">Garantizar la satisfacción del cliente con un seguimiento específico por proyecto.</td>' +
+    '</tr></tbody></table>' +
+  '</div>' +
+
+  // ── SECCIÓN 2: CÁLCULO DEL INDICADOR ──
+  '<div class="section-title">2. Cálculo del Indicador</div>' +
+  '<div style="border:1px solid #E2E8F0;border-radius:5px;overflow:hidden;margin-bottom:4px">' +
+    '<table>' +
+      '<thead><tr><th style="width:18%">Indicador</th><th style="width:26%">Método de Cálculo</th><th style="width:7%;text-align:center">Meta</th><th style="width:10%;text-align:center">Frecuencia</th><th style="width:7%;text-align:center">Var A</th><th style="width:7%;text-align:center">Var B</th><th style="width:10%;text-align:center">Resultado</th><th style="width:15%;text-align:center">Estado</th></tr></thead>' +
+      '<tbody>'+indRowsHTML+'</tbody>' +
+    '</table>' +
+  '</div>' +
+
+  // ── SECCIÓN 3: ANÁLISIS ──
+  '<div class="section-title" style="display:flex;justify-content:space-between;align-items:center">3. Análisis de los Indicadores / Observaciones</div>' +
+  '<div style="border:1px solid #E2E8F0;border-radius:5px;padding:12px 14px;font-size:11.5px;line-height:1.7;color:#374151;white-space:pre-wrap;min-height:50px;margin-bottom:4px">'+analisis+'</div>' +
+
+  // ── SECCIÓN 4: PLAN DE ACCIÓN ──
+  '<div class="section-title">4. Plan de Acción</div>' +
+  '<div style="border:1px solid #E2E8F0;border-radius:5px;overflow:hidden;margin-bottom:4px">' +
+    '<table><thead><tr><th>Actividad / Acción Correctiva</th><th style="width:18%;text-align:center">Responsable</th><th style="width:16%;text-align:center">Fecha Seguimiento</th><th style="width:20%">Observación de Cierre</th><th style="width:12%;text-align:center">Estado</th></tr></thead>' +
+    '<tbody>'+planesHTML+'</tbody></table>' +
+  '</div>' +
+
+  // ── SECCIÓN 5: EVALUADOR ──
+  '<div class="section-title">5. Evaluador</div>' +
+  '<div style="border:1px solid #E2E8F0;border-radius:5px;overflow:hidden;margin-bottom:4px">' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;background:white">' +
+      '<div style="padding:10px 14px;border-right:1px solid #E2E8F0;border-bottom:1px solid #E2E8F0"><div class="meta-label">Nombre del Evaluador</div><div style="font-size:13px;font-weight:700;padding-top:3px">'+(ev.nombre||'—')+'</div></div>' +
+      '<div style="padding:10px 14px;border-bottom:1px solid #E2E8F0"><div class="meta-label">Cargo</div><div style="font-size:13px;font-weight:700;padding-top:3px">'+(ev.cargo||'—')+'</div></div>' +
+    '</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;background:#FAFAFA">' +
+      '<div style="padding:10px 14px;border-right:1px solid #E2E8F0"><div class="meta-label">Fecha de Evaluación</div><div style="font-size:13px;font-weight:700;padding-top:3px">'+(ev.fecha||'—')+'</div></div>' +
+      '<div style="padding:10px 14px"><div class="meta-label">Tipo de Proceso</div><div style="font-size:13px;font-weight:700;padding-top:3px">'+(ev.tipo||'COMERCIAL – LICITACIÓN')+'</div></div>' +
+    '</div>' +
+  '</div>' +
+
+  // ── FOOTER ──
+  '<div style="margin-top:20px;padding-top:8px;border-top:1px solid #E2E8F0;display:flex;justify-content:space-between;align-items:center">' +
+    '<span style="font-size:9px;color:#94A3B8">Auditoria Ambiental · Plataforma de Indicadores Gerenciales · Módulo Comercial</span>' +
+    '<span style="font-size:9px;color:#94A3B8">Generado: '+genStr+'</span>' +
+  '</div>' +
+
+  '</div></body></html>';
+
+  return docHTML;
+}
+
+
+// ── Quick report shortcuts ───────────────────────────────
+function licitQuickReport(quarter) {
+  // Quick report: set indFilter to the selected quarter
+  licitFilterQuarter = quarter;
+  licitIndBuildPeriod();
+  licitIndAutoFill();
+  // Scroll to buttons
+  var btn = document.querySelector('[onclick="licitPreviewPDF()"]');
+  if (btn) btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+// ── Manage plan empty message ─────────────────────────────
+function licitUpdatePlanEmpty() {
+  var msg = document.getElementById('licit-plan-empty-msg');
+  if (!msg) return;
+  var active = licitPlanRows.filter(function(r){ return !r._deleted; });
+  msg.style.display = active.length === 0 ? '' : 'none';
+}
+
+// ── Preview PDF inline ───────────────────────────────────
+function licitPreviewPDF() {
+  var year    = licitPdfGetYear();
+  var quarter = licitPdfGetQuarter();
+  var snap    = licitCollectSnapshot(year, quarter);
+  var content = licitBuildPDF(snap);
+
+  // Render inside preview modal
+  var modal   = document.getElementById('licit-preview-modal');
+  var preview = document.getElementById('licit-preview-content');
+  var label   = document.getElementById('licit-preview-label');
+  var qLabels = {T1:'T1 · Ene–Mar',T2:'T2 · Abr–Jun',T3:'T3 · Jul–Sep',T4:'T4 · Oct–Dic'};
+  if (label) label.textContent = (qLabels[quarter]||quarter) + ' ' + year;
+
+  if (!preview || !modal) return;
+
+  // Extract just the body content for inline preview
+  var bodyMatch = content.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+  var bodyHTML  = bodyMatch ? bodyMatch[1] : content;
+  // Strip .page div width constraint for inline render
+  bodyHTML = bodyHTML.replace(/width:780px;/g, 'width:100%;');
+  preview.innerHTML = bodyHTML;
+  modal.style.display = 'block';
+  modal.scrollTop = 0;
+}
+
+function licitPreviewPrint() {
+  var year    = licitPdfGetYear();
+  var quarter = licitPdfGetQuarter();
+  var snap    = licitCollectSnapshot(year, quarter);
+  var content = licitBuildPDF(snap);
+  var win = window.open('', '_blank', 'width=900,height=700');
+  if (!win) { alert('Permite las ventanas emergentes para descargar el PDF.'); return; }
+  win.document.write(content);
+  win.document.close();
+  win.onload = function() { setTimeout(function(){ win.focus(); win.print(); }, 400); };
+}
+
+// ── Export PDF (print dialog) ─────────────────────────────
+function licitExportPDF() {
+  var year    = licitPdfGetYear();
+  var quarter = licitPdfGetQuarter();
+  var snap    = licitCollectSnapshot(year, quarter);
+  var content = licitBuildPDF(snap);
+
+  var win = window.open('', '_blank', 'width=900,height=700');
+  if (!win) { alert('Permite las ventanas emergentes para descargar el PDF.'); return; }
+  win.document.write(content);
+  win.document.close();
+  win.onload = function() {
+    setTimeout(function(){ win.focus(); win.print(); }, 400);
+  };
+}
+
+// ── Export PDF from saved snapshot ───────────────────────
+async function licitExportSavedPDF(key) {
+  var snap = await licitStorageGet(key);
+  if (!snap) { alert('No se encontró el informe.'); return; }
+  var content = licitBuildPDF(snap);
+  var win = window.open('', '_blank', 'width=900,height=700');
+  if (!win) { alert('Permite las ventanas emergentes.'); return; }
+  win.document.write(content);
+  win.document.close();
+  win.onload = function(){ setTimeout(function(){ win.focus(); win.print(); }, 400); };
+}
+
+// ── Delete saved report ───────────────────────────────────
+// ── Delete with password ─────────────────────────────────
+var _licitPendingDeleteKey = null;
+
+function licitRequestDelete(key) {
+  _licitPendingDeleteKey = key;
+  var modal = document.getElementById('licit-del-pwd-modal');
+  var input = document.getElementById('licit-del-pwd-input');
+  var err   = document.getElementById('licit-del-pwd-error');
+  if (modal) { modal.style.display = 'flex'; modal.style.alignItems = 'center'; modal.style.justifyContent = 'center'; }
+  if (input) { input.value = ''; input.focus(); }
+  if (err)   { err.textContent = ''; }
+}
+
+function licitCancelDelete() {
+  _licitPendingDeleteKey = null;
+  var modal = document.getElementById('licit-del-pwd-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+async function licitConfirmDelete() {
+  var input = document.getElementById('licit-del-pwd-input');
+  var err   = document.getElementById('licit-del-pwd-error');
+  var pwd   = input ? input.value.trim() : '';
+  if (pwd !== '2025') {
+    if (err) {
+      err.textContent = '❌ Clave incorrecta. Intenta de nuevo.';
+      if (input) { input.value = ''; input.focus(); }
+    }
+    return;
+  }
+  // Password correct — delete
+  var modal = document.getElementById('licit-del-pwd-modal');
+  if (modal) modal.style.display = 'none';
+  if (_licitPendingDeleteKey) {
+    await licitStorageDel(_licitPendingDeleteKey);
+    _licitPendingDeleteKey = null;
+    await licitLoadSavedReports();
+    await licitOpenSavedPanel(); // refresh panel if open
+  }
+}
+
+// Allow Enter key on password input
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && _licitPendingDeleteKey) licitConfirmDelete();
+  if (e.key === 'Escape' && _licitPendingDeleteKey) licitCancelDelete();
+});
+
+// ── Build a saved report card (used in both compact list and full panel) ──
+function licitBuildSavedCard(snap, key, mode) {
+  var qLabels = {T1:'T1 · Ene–Mar',T2:'T2 · Abr–Jun',T3:'T3 · Jul–Sep',T4:'T4 · Oct–Dic'};
+  var d = new Date(snap.generado);
+  var dateStr = d.getDate() + '/' + (d.getMonth()+1) + '/' + d.getFullYear() + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+  var isPanel = mode === 'panel';
+
+  var card = document.createElement('div');
+  card.className = 'licit-saved-card';
+  card.setAttribute('data-key', key);
+
+  if (isPanel) {
+    card.style.cssText = 'background:white;border:1.5px solid #E2E8F0;border-radius:12px;padding:16px 18px;box-shadow:0 1px 6px rgba(0,46,93,0.06)';
+    card.innerHTML =
+      '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">' +
+        '<div style="display:flex;align-items:center;gap:12px">' +
+          '<div style="background:#1E3A5F;color:white;border-radius:10px;padding:10px 14px;text-align:center;min-width:72px">' +
+            '<div style="font-size:18px;font-weight:800;line-height:1">' + snap.year + '</div>' +
+            '<div style="font-size:10px;font-weight:600;opacity:0.75;margin-top:2px">' + snap.quarter + '</div>' +
+          '</div>' +
+          '<div>' +
+            '<div style="font-size:14px;font-weight:800;color:#1E293B">Informe ' + (qLabels[snap.quarter]||snap.quarter) + ' ' + snap.year + '</div>' +
+            '<div style="font-size:11px;color:#64748B;margin-top:2px">Guardado: ' + dateStr + '</div>' +
+            '<div style="font-size:11px;color:#64748B">Responsable: <strong>' + ((snap.evaluador&&snap.evaluador.nombre)||'Sin especificar') + '</strong>' +
+              ((snap.evaluador&&snap.evaluador.cargo) ? ' · ' + snap.evaluador.cargo : '') + '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
+          '<div style="display:flex;gap:12px;font-size:11px;padding:6px 12px;background:#F8FAFC;border-radius:8px;border:1px solid #E2E8F0">' +
+            '<span>🏆 <strong>' + snap.kpis.pctPujas + '%</strong> Pujas</span>' +
+            '<span>📑 <strong>' + snap.kpis.pctProp + '%</strong> Props</span>' +
+            '<span>💰 <strong>' + snap.kpis.rentabilidad + '</strong> Rent</span>' +
+          '</div>' +
+          '<button class="licit-saved-prev-btn" data-key="'+key+'" style="padding:7px 14px;border-radius:7px;background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer">👁 Ver</button>' +
+          '<button class="licit-saved-pdf-btn"  data-key="'+key+'" style="padding:7px 14px;border-radius:7px;background:#1E3A5F;color:white;border:none;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer">⬇ PDF</button>' +
+        '</div>' +
+      '</div>';
+  } else {
+    // Compact card for the small list
+    card.style.cssText = 'background:white;border:1.5px solid #E2E8F0;border-radius:9px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap';
+    card.innerHTML =
+      '<div style="display:flex;align-items:center;gap:10px">' +
+        '<span style="background:#1E3A5F;color:white;font-size:10px;font-weight:700;padding:3px 10px;border-radius:6px">' + snap.year + ' · ' + (qLabels[snap.quarter]||snap.quarter) + '</span>' +
+        '<div>' +
+          '<div style="font-size:12px;font-weight:700;color:#1E293B">Informe ' + snap.quarter + ' ' + snap.year + '</div>' +
+          '<div style="font-size:10px;color:#94A3B8">Guardado: ' + dateStr + ' · ' + ((snap.evaluador&&snap.evaluador.nombre)||'Sin especificar') + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="display:flex;gap:6px;align-items:center">' +
+        '<span style="font-size:11px;color:#64748B;margin-right:4px">🏆 ' + snap.kpis.pctPujas + '% &nbsp;📑 ' + snap.kpis.pctProp + '%</span>' +
+        '<button class="licit-saved-prev-btn" data-key="'+key+'" style="padding:4px 10px;border-radius:6px;background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;font-family:inherit;font-size:10px;font-weight:700;cursor:pointer">👁</button>' +
+        '<button class="licit-saved-pdf-btn"  data-key="'+key+'" style="padding:4px 10px;border-radius:6px;background:#1E3A5F;color:white;border:none;font-family:inherit;font-size:10px;font-weight:700;cursor:pointer">⬇</button>' +
+        '<button class="licit-saved-del-btn"  data-key="'+key+'" style="padding:4px 8px;border-radius:6px;background:#FEE2E2;color:#DC2626;border:none;font-family:inherit;font-size:10px;font-weight:700;cursor:pointer">🗑</button>' +
+      '</div>';
+  }
+  return card;
+}
+
+// ── Open full saved panel ─────────────────────────────────
+async function licitOpenSavedPanel() {
+  var modal = document.getElementById('licit-saved-panel-modal');
+  var list  = document.getElementById('licit-sp-list');
+  var empty = document.getElementById('licit-sp-empty');
+  var count = document.getElementById('licit-sp-count');
+  if (!modal) return;
+
+  var keys = await licitStorageList('licit-report:');
+  keys.sort().reverse();
+
+  if (count) count.textContent = keys.length + ' informe' + (keys.length !== 1 ? 's' : '') + ' guardado' + (keys.length !== 1 ? 's' : '');
+
+  Array.from(list.querySelectorAll('.licit-saved-card')).forEach(function(c){ c.remove(); });
+
+  if (!keys.length) {
+    if (empty) empty.style.display = '';
+    modal.style.display = 'block';
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+
+  for (var i = 0; i < keys.length; i++) {
+    var snap = await licitStorageGet(keys[i]);
+    if (!snap) continue;
+    var card = licitBuildSavedCard(snap, keys[i], 'panel');
+    list.appendChild(card);
+  }
+  modal.style.display = 'block';
+  modal.scrollTop = 0;
+}
+
+async function licitDeleteSavedReport(key) {
+  // Now uses password protection
+  licitRequestDelete(key);
+}
+
+// ── Preview a saved report inline ─────────────────────────
+async function licitPreviewSavedReport(key) {
+  var snap = await licitStorageGet(key);
+  if (!snap) { alert('No se encontró el informe.'); return; }
+  var content = licitBuildPDF(snap);
+  var modal   = document.getElementById('licit-preview-modal');
+  var preview = document.getElementById('licit-preview-content');
+  var label   = document.getElementById('licit-preview-label');
+  var qLabels = {T1:'T1 · Ene–Mar',T2:'T2 · Abr–Jun',T3:'T3 · Jul–Sep',T4:'T4 · Oct–Dic'};
+  if (label) label.textContent = (qLabels[snap.quarter]||snap.quarter) + ' ' + snap.year + ' · Guardado';
+  var bodyMatch = content.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+  var bodyHTML  = bodyMatch ? bodyMatch[1] : content;
+  bodyHTML = bodyHTML.replace(/width:780px;/g, 'width:100%;');
+  if (preview) preview.innerHTML = bodyHTML;
+  if (modal)   { modal.style.display = 'block'; modal.scrollTop = 0; }
+}
+
+// Event delegation for saved report buttons
+document.addEventListener('click', function(e) {
+  var prevBtn = e.target.closest ? e.target.closest('.licit-saved-prev-btn') : null;
+  if (prevBtn) { licitPreviewSavedReport(prevBtn.getAttribute('data-key')); return; }
+  var pdfBtn = e.target.closest ? e.target.closest('.licit-saved-pdf-btn') : null;
+  if (pdfBtn) { licitExportSavedPDF(pdfBtn.getAttribute('data-key')); return; }
+  var delBtn = e.target.closest ? e.target.closest('.licit-saved-del-btn') : null;
+  if (delBtn) { licitRequestDelete(delBtn.getAttribute('data-key')); return; }
+});
+
+// ── Build PDF year selector dynamically ──────────────────
+function licitBuildPdfYearSelector() {
+  // Year selector removed — period synced from Indicadores Gerenciales filter
+}
+
+
+window.addEventListener('DOMContentLoaded', function() {
+  setTimeout(licitInit, 350);
+});
+</script>
+
+
   <div class="footer" style="border-top:2px solid var(--gray4)"><span style="color:var(--navy);font-weight:700">Auditoria Ambiental</span> · Dashboard de Seguimiento y Desarrollo de Proyectos de Consultoria · 2026</div>
 </div>
 
@@ -2694,7 +4975,7 @@ window._staffDataGlobal = staffData;
 let projectsData = [...PROJECTS_DATA];
 let charts = {};
 
-const PASSWORDS = { socio: '2025', seg: '2026', ats: null }; // ATS usa CC como clave
+const PASSWORDS = { socio: '2025', seg: '2026', ats: null, licit: 'Comercial' }; // ATS usa CC como clave
 const SESSION_DURATION = 20 * 60 * 1000; // 20 min
 var atsOnlyMode = false; // true when entered via ATS login
 
@@ -2714,9 +4995,10 @@ function setLockModule(m) {
     if(lbl) lbl.textContent = '';
   }
   document.getElementById('lock-hint').textContent =
-    m === 'socio' ? 'M\u00f3dulo: Perfil Sociodemogr\u00e1fico \u00b7 Clave temporal \u00b7 20 min'
-    : m === 'seg' ? 'M\u00f3dulo: Seguimiento de Proyectos \u00b7 Clave temporal \u00b7 20 min'
-                  : 'M\u00f3dulo: ATS \u00b7 Ingresa tu n\u00famero de c\u00e9dula';
+    m === 'socio' ? 'Módulo: Perfil Sociodemográfico · Clave temporal · 20 min'
+    : m === 'seg' ? 'Módulo: Seguimiento de Proyectos · Clave temporal · 20 min'
+    : m === 'licit' ? ''
+                  : 'Módulo: ATS · Ingresa tu número de cédula';
 }
 
 function tryUnlock() {
@@ -2756,6 +5038,7 @@ function tryUnlock() {
     activateSession(lockModule);
     try { initApp(); } catch(e) { console.error('initApp error:', e); }
     if (lockModule === 'seg') try { showSection('seguimiento'); } catch(e) {}
+    if (lockModule === 'licit') try { showSection('licit'); } catch(e) {}
   } else {
     lockErr('Clave incorrecta. ' + (pin === '' ? 'El campo está vacío.' : 'Verifica e intenta de nuevo.'));
     if (inputEl) inputEl.value = '';
@@ -6757,6 +9040,45 @@ function showFichaIndicadores(projId) {
 // ===== ADD / DELETE RECORDS =====
 function gv(id) { var el = document.getElementById(id); return el ? el.value.trim() : ''; }
 
+// ── EPS select with "Otras" custom option ──────────────────
+function epsSelectChange(selId, customId) {
+  var sel    = document.getElementById(selId);
+  var custom = document.getElementById(customId);
+  if (!sel || !custom) return;
+  if (sel.value === 'OTRAS') {
+    custom.style.display = '';
+    custom.focus();
+  } else {
+    custom.style.display = 'none';
+    custom.value = '';
+  }
+}
+
+function epsGetValue(selId, customId) {
+  var sel    = document.getElementById(selId);
+  var custom = document.getElementById(customId);
+  if (!sel) return '';
+  if (sel.value === 'OTRAS') return (custom ? custom.value.trim() : '') || 'Otras';
+  return sel.value.trim();
+}
+
+function epsSetValue(selId, customId, val) {
+  var sel    = document.getElementById(selId);
+  var custom = document.getElementById(customId);
+  if (!sel || !val) return;
+  // Try to match existing option
+  var opts = Array.from(sel.options);
+  var found = opts.find(function(o){ return o.value === val || o.text === val; });
+  if (found) {
+    sel.value = found.value;
+    if (custom) custom.style.display = 'none';
+  } else {
+    // Custom value
+    sel.value = 'OTRAS';
+    if (custom) { custom.style.display = ''; custom.value = val; }
+  }
+}
+
 function addContactoRow(prefix) {
   var wrap = document.getElementById(prefix + '-contactos-wrap');
   if (!wrap) return;
@@ -6827,7 +9149,7 @@ function buildRecordFromForm(prefix) {
   return {
     no: Date.now().toString(),
     cc: fg('cc'), nombres: fg('nombres').toUpperCase(), apellidos: fg('apellidos').toUpperCase(),
-    estado: fg('estado'), eps: fg('eps'), sangre: fg('sangre'), cargo: fg('cargo').toUpperCase(),
+    estado: fg('estado'), eps: epsGetValue(prefix+'-eps', prefix+'-eps-custom'), sangre: fg('sangre'), cargo: fg('cargo').toUpperCase(),
     area: fg('area'), vinculacion: fg('vinculacion'), turno: fg('turno'),
     fecha_nacimiento: fn, edad: edad, sexo: fg('sexo'), civil: fg('civil'),
     personas_cargo: parseInt(fg('pcargo'))||0, escolaridad: fg('escolaridad'),
@@ -7093,7 +9415,7 @@ function openEditModal(no) {
         });
       }
     }
-  }, 50); sv('e-turno', r.turno); sv('e-eps', r.eps);
+  }, 50); sv('e-turno', r.turno); epsSetValue('e-eps','e-eps-custom', r.eps);
   sv('e-sexo', r.sexo); sv('e-fnacimiento', r.fecha_nacimiento); sv('e-edad', r.edad);
   sv('e-civil', r.civil); sv('e-sangre', r.sangre); sv('e-pcargo', r.personas_cargo);
   sv('e-escolaridad', r.escolaridad); sv('e-alergia', r.alergia);
@@ -7125,7 +9447,7 @@ function saveEdit() {
   staffData[idx] = Object.assign({}, existing, {
     no: editingNo,
     cc: gev('e-cc'), nombres: gev('e-nombres').toUpperCase(), apellidos: gev('e-apellidos').toUpperCase(),
-    estado: gev('e-estado'), eps: gev('e-eps'), sangre: gev('e-sangre'), cargo: gev('e-cargo').toUpperCase(),
+    estado: gev('e-estado'), eps: epsGetValue('e-eps','e-eps-custom'), sangre: gev('e-sangre'), cargo: gev('e-cargo').toUpperCase(),
     area: gev('e-area'), vinculacion: gev('e-vinculacion'), turno: gev('e-turno'),
     fecha_nacimiento: gev('e-fnacimiento'), edad: parseFloat(gev('e-edad'))||0,
     sexo: gev('e-sexo'), civil: gev('e-civil'),
@@ -7301,7 +9623,23 @@ window.addEventListener('DOMContentLoaded', function() {
         <select class="form-input" id="e-estado" style="display:none"><option>ACTIVO</option><option>INACTIVO</option></select>
       </div>
       <div class="form-group"><label class="form-label">Turno</label><select class="form-input" id="e-turno"><option>DIURNO</option><option>NOCTURNO</option><option>ROTATIVO</option></select></div>
-      <div class="form-group"><label class="form-label">EPS</label><input class="form-input" id="e-eps"></div>
+      <div class="form-group"><label class="form-label">EPS</label>
+  <select class="form-input" id="e-eps" onchange="epsSelectChange('e-eps','e-eps-custom')">
+    <option value="">Seleccionar EPS...</option>
+<option>Nueva EPS</option>
+<option>Coosalud</option>
+<option>Mutual Ser</option>
+<option>Salud Total</option>
+<option>EPS Sanitas</option>
+<option>EPS Sura</option>
+<option>Famisanar</option>
+<option>Compensar</option>
+<option>Cajacopi</option>
+<option>SOS</option>
+<option value="OTRAS">Otras...</option>
+  </select>
+  <input class="form-input" id="e-eps-custom" placeholder="Especificar EPS..." style="display:none;margin-top:5px">
+</div>
     </div>
     <div class="form-section">Datos personales</div>
     <div class="form-row-3">
