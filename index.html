@@ -1031,18 +1031,50 @@ tr:hover td { background: #F0F7FF; }
               <div class="form-row-3">
                 <div class="form-group"><label class="form-label">N Proyecto</label><input class="form-input" id="p-id" placeholder="ej. 798"></div>
                 <div class="form-group"><label class="form-label">Cliente</label><input class="form-input" id="p-cliente" placeholder="Nombre del cliente"></div>
-                <div class="form-group"><label class="form-label">Duracion (dias)</label><input class="form-input" id="p-duracion" type="number" placeholder="90" oninput="calcFinAuto()"></div>
-              </div>
-              <div class="form-row-3">
                 <div class="form-group"><label class="form-label">Fecha de inicio</label><input class="form-input" id="p-inicio" type="date" onchange="calcFinAuto()"></div>
-                <div id="p-fins-wrap">
-                  <div class="form-section" style="margin-top:0">Fechas de terminacion</div>
-                  <div class="p-fin-row" style="display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:6px">
-                    <input class="form-input" name="p-fin[]" type="date" id="p-fin-1" onchange="calcFinAuto()">
-                    <button type="button" onclick="addFinRow()" style="padding:0 14px;border-radius:8px;background:var(--c3);color:#fff;border:none;font-size:18px;cursor:pointer;font-weight:700">+</button>
+              </div>
+
+              <!-- Cálculo bidireccional de duración -->
+              <div style="background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:10px;padding:12px 16px;margin-bottom:12px">
+                <div style="font-size:10px;font-weight:700;color:#1D4ED8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;display:flex;align-items:center;gap:6px">
+                  📅 Duración del contrato
+                  <span style="font-size:9px;font-weight:500;color:#3B82F6;background:#DBEAFE;padding:2px 8px;border-radius:10px">Completa duración en días O fecha de terminación — se calcula automáticamente</span>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 28px 1fr;gap:8px;align-items:center;margin-bottom:10px">
+                  <!-- Duración en días -->
+                  <div>
+                    <div style="font-size:9px;font-weight:700;color:#64748B;text-transform:uppercase;margin-bottom:4px">Duración (días)</div>
+                    <input class="form-input" id="p-duracion" type="number" placeholder="ej. 90" min="1"
+                      oninput="calcFinAuto('dur')"
+                      style="text-align:center;font-size:15px;font-weight:700;color:#1E3A5F">
+                  </div>
+                  <!-- Separador -->
+                  <div style="text-align:center;font-size:16px;color:#94A3B8;font-weight:700">↔</div>
+                  <!-- Fecha terminación principal -->
+                  <div>
+                    <div style="font-size:9px;font-weight:700;color:#64748B;text-transform:uppercase;margin-bottom:4px">Fecha de Terminación</div>
+                    <input class="form-input" name="p-fin[]" type="date" id="p-fin-1"
+                      onchange="calcFinAuto('fin')"
+                      style="font-size:13px">
                   </div>
                 </div>
-                <div class="form-group"><label class="form-label">Otrosi / Prorroga</label><input class="form-input" id="p-otrosi" placeholder="Descripcion de adicion"></div>
+
+                <!-- Ampliaciones adicionales (siempre visibles) -->
+                <div style="border-top:1px solid #BFDBFE;padding-top:10px">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                    <div style="font-size:9px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.5px">Ampliaciones / Prórrogas</div>
+                    <button type="button" onclick="addFinRow()" style="padding:4px 12px;border-radius:6px;background:#1E3A5F;color:white;border:none;font-family:inherit;font-size:10px;font-weight:700;cursor:pointer">+ Agregar fecha</button>
+                  </div>
+                  <div id="p-fins-wrap" style="display:flex;flex-direction:column;gap:6px">
+                    <!-- Extra fin rows added here dynamically -->
+                  </div>
+                  <div id="p-fins-empty" style="font-size:11px;color:#94A3B8;font-style:italic;padding:2px 0">Sin ampliaciones adicionales</div>
+                </div>
+              </div>
+
+              <div class="form-row-2" style="margin-bottom:10px">
+                <div class="form-group"><label class="form-label">Otrosi / Prorroga</label><input class="form-input" id="p-otrosi" placeholder="Descripcion de adicion o prorroga"></div>
+                <div></div>
               </div>
               <div class="form-row-2">
                 <div class="form-group">
@@ -2337,6 +2369,23 @@ tr:hover td { background: #F0F7FF; }
   </div>
 </div>
 
+
+<!-- DELETE SAVED PDF PASSWORD MODAL -->
+<div id="licit-del-pdf-modal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.65);align-items:center;justify-content:center">
+  <div style="background:white;border-radius:14px;padding:28px 32px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.35);text-align:center">
+    <div style="font-size:32px;margin-bottom:10px">🔒</div>
+    <div style="font-size:15px;font-weight:800;color:#1E3A5F;margin-bottom:6px">Eliminar Informe</div>
+    <div style="font-size:12px;color:#64748B;margin-bottom:20px">Ingresa la clave de administrador para eliminar este informe trimestral.</div>
+    <input id="licit-del-pdf-pwd" type="password" placeholder="Clave de administrador"
+      style="width:100%;padding:11px 14px;border:1.5px solid #E2E8F0;border-radius:8px;font-family:inherit;font-size:14px;outline:none;box-sizing:border-box;text-align:center;letter-spacing:4px;margin-bottom:8px"
+      onkeydown="if(event.key==='Enter')_confirmDeletePDF();if(event.key==='Escape')_cancelDeletePDF()">
+    <div id="licit-del-pdf-err" style="font-size:11px;color:#DC2626;margin-bottom:12px;min-height:16px"></div>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button onclick="_cancelDeletePDF()" style="padding:10px 22px;border-radius:8px;border:1.5px solid #E2E8F0;background:white;color:#374151;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">Cancelar</button>
+      <button onclick="_confirmDeletePDF()" style="padding:10px 22px;border-radius:8px;background:#DC2626;color:white;border:none;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">🗑 Eliminar</button>
+    </div>
+  </div>
+</div>
 
 <!-- ADD/EDIT LICIT MODAL -->
 <div id="licit-add-modal" style="display:none;position:fixed;inset:0;z-index:800;background:rgba(0,0,0,0.6);overflow-y:auto;padding:20px 16px;align-items:flex-start;justify-content:center">
@@ -3882,7 +3931,7 @@ async function licitConfirmDelete() {
   var input = document.getElementById('licit-del-pwd-input');
   var err   = document.getElementById('licit-del-pwd-error');
   var pwd   = input ? input.value.trim() : '';
-  if (pwd !== '2025') {
+  if (pwd !== '2026') {
     if (err) {
       err.textContent = '❌ Clave incorrecta. Intenta de nuevo.';
       if (input) { input.value = ''; input.focus(); }
@@ -4060,11 +4109,18 @@ window.addEventListener('DOMContentLoaded', function() {
 <!-- DELETE CONFIRM MODAL -->
 <div class="modal-overlay" id="delete-modal">
   <div class="modal-box">
-    <h3>🗑 Confirmar eliminación</h3>
-    <p>¿Estás seguro de que deseas eliminar este registro? Esta acción no se puede deshacer.</p>
+    <h3>🔒 Confirmar eliminación</h3>
+    <p id="delete-modal-msg">¿Estás seguro? Esta acción no se puede deshacer.</p>
+    <div style="margin:14px 0">
+      <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px">Clave de administrador</label>
+      <input id="delete-modal-pwd" type="password" placeholder="Ingresa la clave" maxlength="10" autocomplete="off"
+        style="width:100%;padding:10px 14px;border:1.5px solid #E2E8F0;border-radius:8px;font-family:inherit;font-size:14px;letter-spacing:4px;text-align:center;outline:none;box-sizing:border-box"
+        onkeydown="if(event.key==='Enter')confirmDelete();if(event.key==='Escape')closeDeleteModal()">
+      <div id="delete-modal-err" style="font-size:11px;color:#DC2626;margin-top:5px;min-height:16px"></div>
+    </div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeDeleteModal()">Cancelar</button>
-      <button class="btn-main" style="background:var(--danger)" onclick="confirmDelete()">Eliminar</button>
+      <button class="btn-main" style="background:var(--danger)" onclick="confirmDelete()">🗑 Eliminar</button>
     </div>
   </div>
 </div>
@@ -7375,6 +7431,42 @@ function _atsKpiBox(icon, label, value, sub, color, bg) {
 }
 
 
+// ── Password-protected delete for saved PDFs ─────────────
+var _pendingDeletePDFIdx = null;
+
+function _deleteSavedPDF(idx) {
+  _pendingDeletePDFIdx = idx;
+  var modal = document.getElementById('licit-del-pdf-modal');
+  var input = document.getElementById('licit-del-pdf-pwd');
+  var err   = document.getElementById('licit-del-pdf-err');
+  if (modal) modal.style.display = 'flex';
+  if (input) { input.value = ''; input.focus(); }
+  if (err)   err.textContent = '';
+}
+
+function _cancelDeletePDF() {
+  _pendingDeletePDFIdx = null;
+  var modal = document.getElementById('licit-del-pdf-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+function _confirmDeletePDF() {
+  var input = document.getElementById('licit-del-pdf-pwd');
+  var err   = document.getElementById('licit-del-pdf-err');
+  var val   = input ? input.value.trim() : '';
+  if (val !== '2026') {
+    if (err) err.textContent = '❌ Clave incorrecta.';
+    if (input) { input.value = ''; input.focus(); }
+    return;
+  }
+  // Delete
+  if (_pendingDeletePDFIdx !== null) {
+    savedPDFsList.splice(_pendingDeletePDFIdx, 1);
+    _refreshSavedList();
+  }
+  _cancelDeletePDF();
+}
+
 function _refreshSavedList() {
   var list = document.getElementById('saved-pdfs-list');
   if(!list) return;
@@ -7394,7 +7486,7 @@ function _refreshSavedList() {
       '</div>'+
       '<div style="display:flex;gap:7px;flex-shrink:0">'+
         '<a href="'+p.blobUrl+'" download="'+p.name+'" style="padding:7px 14px;border-radius:7px;background:var(--navy);color:white;text-decoration:none;font-size:12px;font-weight:600;white-space:nowrap">Descargar</a>'+
-        '<button onclick="savedPDFsList.splice('+idx+',1);_refreshSavedList()" style="padding:7px 10px;border-radius:7px;background:rgba(220,38,38,0.07);color:var(--danger);border:1px solid rgba(220,38,38,0.15);font-size:11px;cursor:pointer;font-family:inherit">Eliminar</button>'+
+        '<button onclick="_deleteSavedPDF('+idx+')" style="padding:7px 10px;border-radius:7px;background:rgba(220,38,38,0.07);color:var(--danger);border:1px solid rgba(220,38,38,0.15);font-size:11px;cursor:pointer;font-family:inherit">Eliminar</button>'+
       '</div>'+
     '</div>';
   }).join('');
@@ -7514,30 +7606,72 @@ function addFinRow() {
     '<button type="button" onclick="this.closest(\'.p-fin-row\').remove()" style="padding:0 14px;border-radius:8px;background:#E53935;color:#fff;border:none;font-size:18px;cursor:pointer;font-weight:700">-</button>';
   wrap.appendChild(row);
 }
-// Calcula fin = inicio + duracion, o duracion = fin - inicio (bidireccional)
-function calcFinAuto() {
-  var fi  = document.getElementById('p-inicio');
-  var dur = document.getElementById('p-duracion');
-  var fn1 = document.querySelector('input[name="p-fin[]"]');
-  if(!fi || !dur || !fn1) return;
+// ── Bidirectional date/duration calculator ───────────────────
+function calcFinAuto(trigger) {
+  var inicio = (document.getElementById('p-inicio') || {}).value;
+  var durEl  = document.getElementById('p-duracion');
+  var finEl  = document.getElementById('p-fin-1');
+  if (!inicio || !durEl || !finEl) return;
 
-  var inicioVal = fi.value;
-  var durVal    = dur.value;
-  var finVal    = fn1.value;
+  var durVal = durEl.value;
+  var finVal = finEl.value;
 
-  // Prioridad 1: hay inicio + duracion → calcular fin
-  if(inicioVal && durVal && parseInt(durVal) > 0) {
-    var d = new Date(inicioVal + 'T12:00:00');
+  if (trigger === 'dur' && inicio && parseInt(durVal) > 0) {
+    // Duración ingresada → calcular fecha de terminación
+    var d = new Date(inicio + 'T12:00:00');
     d.setDate(d.getDate() + parseInt(durVal));
-    fn1.value = d.toISOString().slice(0,10);
-    return;
-  }
-  // Prioridad 2: hay inicio + fin → calcular duracion
-  if(inicioVal && finVal && !durVal) {
-    var d1 = new Date(inicioVal + 'T12:00:00');
-    var d2 = new Date(finVal    + 'T12:00:00');
+    finEl.value = d.toISOString().slice(0,10);
+    finEl.style.background = '#F0FDF4';
+    finEl.style.borderColor = '#86EFAC';
+    durEl.style.background = '#F0FDF4';
+    durEl.style.borderColor = '#86EFAC';
+  } else if (trigger === 'fin' && inicio && finVal) {
+    // Fecha ingresada → calcular duración en días
+    var d1 = new Date(inicio + 'T12:00:00');
+    var d2 = new Date(finVal  + 'T12:00:00');
     var diff = Math.round((d2 - d1) / (1000*60*60*24));
-    if(diff > 0) dur.value = diff;
+    if (diff > 0) {
+      durEl.value = diff;
+      durEl.style.background = '#F0FDF4';
+      durEl.style.borderColor = '#86EFAC';
+      finEl.style.background = '#F0FDF4';
+      finEl.style.borderColor = '#86EFAC';
+    }
+  }
+}
+
+function addFinRow() {
+  var wrap = document.getElementById('p-fins-wrap');
+  var emptyMsg = document.getElementById('p-fins-empty');
+  if (!wrap) return;
+  if (emptyMsg) emptyMsg.style.display = 'none';
+
+  var idx = wrap.querySelectorAll('.extra-fin-row').length + 1;
+  var row = document.createElement('div');
+  row.className = 'extra-fin-row';
+  row.style.cssText = 'display:grid;grid-template-columns:auto 1fr 1fr auto;gap:8px;align-items:center;background:white;border:1px solid #E2E8F0;border-radius:7px;padding:7px 10px';
+  row.innerHTML =
+    '<span style="font-size:10px;font-weight:700;color:#64748B;white-space:nowrap">Amp. ' + idx + '</span>' +
+    '<input class="form-input" name="p-fin[]" type="date" style="font-size:12px" placeholder="Fecha fin">' +
+    '<input class="form-input" placeholder="Descripción (opcional)" style="font-size:12px">' +
+    '<button type="button" onclick="removeFinRow(this)" style="padding:3px 9px;border-radius:5px;background:#FEE2E2;color:#DC2626;border:none;cursor:pointer;font-size:12px;font-weight:700">✕</button>';
+  wrap.appendChild(row);
+}
+
+function removeFinRow(btn) {
+  var row = btn.closest('.extra-fin-row');
+  if (row) row.remove();
+  var wrap = document.getElementById('p-fins-wrap');
+  var emptyMsg = document.getElementById('p-fins-empty');
+  if (emptyMsg && wrap && wrap.querySelectorAll('.extra-fin-row').length === 0) {
+    emptyMsg.style.display = '';
+  }
+  // Renumber
+  if (wrap) {
+    wrap.querySelectorAll('.extra-fin-row').forEach(function(r, i) {
+      var lbl = r.querySelector('span');
+      if (lbl) lbl.textContent = 'Amp. ' + (i + 1);
+    });
   }
 }
 
@@ -7707,6 +7841,15 @@ function openEditProyecto(id) {
   document.getElementById('p-cliente').value = r.cliente;
   document.getElementById('p-objeto').value = r.objeto;
   document.getElementById('p-duracion').value = r.duracion;
+  // Restore extra fin dates (ampliaciones)
+  var finsWrap = document.getElementById('p-fins-wrap');
+  if (finsWrap) {
+    finsWrap.querySelectorAll('.extra-fin-row').forEach(function(r){ r.remove(); });
+    var emptyMsg2 = document.getElementById('p-fins-empty');
+    if (emptyMsg2) emptyMsg2.style.display = '';
+    var extras = (r.fins_extra && r.fins_extra.length > 0) ? r.fins_extra : [];
+    extras.forEach(function(f) { addFinRow(); var rows = finsWrap.querySelectorAll('.extra-fin-row'); if(rows.length > 0) { var last = rows[rows.length-1]; var inp = last.querySelector('input[type=date]'); if(inp) inp.value = f; } });
+  }
   document.getElementById('p-inicio').value = r.inicio;
   var pf1 = document.querySelector('input[name="p-fin[]"]'); if(pf1) pf1.value = r.fin;
   document.getElementById('p-otrosi').value = r.otrosi || '';
@@ -9201,14 +9344,42 @@ let pendingDeleteType, pendingDeleteId;
 function deleteRecord(type, id) {
   pendingDeleteType = type;
   pendingDeleteId = id;
+  // Set message and required password per module
+  var msg = document.getElementById('delete-modal-msg');
+  var pwd = document.getElementById('delete-modal-pwd');
+  var err = document.getElementById('delete-modal-err');
+  if (msg) {
+    if (type === 'socio') msg.textContent = 'Para eliminar un registro del personal, ingresa la clave de Hoja 1.';
+    else msg.textContent = 'Para eliminar un proyecto, ingresa la clave de Hoja 2.';
+  }
+  if (pwd) { pwd.value = ''; }
+  if (err) { err.textContent = ''; }
   document.getElementById('delete-modal').classList.add('open');
+  setTimeout(function(){ if(pwd) pwd.focus(); }, 120);
 }
-function closeDeleteModal() { document.getElementById('delete-modal').classList.remove('open'); }
+function closeDeleteModal() {
+  document.getElementById('delete-modal').classList.remove('open');
+  var pwd = document.getElementById('delete-modal-pwd');
+  if (pwd) pwd.value = '';
+  var err = document.getElementById('delete-modal-err');
+  if (err) err.textContent = '';
+}
 function confirmDelete() {
+  var pwd = document.getElementById('delete-modal-pwd');
+  var err = document.getElementById('delete-modal-err');
+  var val = pwd ? pwd.value.trim() : '';
+  // Password: Hoja1 (socio) = 2025, Hoja2 (projects) = 2026
+  var required = (pendingDeleteType === 'socio') ? '2025' : '2026';
+  if (val !== required) {
+    if (err) { err.textContent = '❌ Clave incorrecta. Intenta de nuevo.'; }
+    if (pwd) { pwd.value = ''; pwd.focus(); }
+    return;
+  }
+  // Correct password — proceed with deletion
   if (pendingDeleteType === 'socio') {
     if(supaEnabled) supaDelete('staff', 'no', pendingDeleteId);
     staffData = staffData.filter(s => s.no !== pendingDeleteId);
-    renderTableSocio(); renderChartsSocio(); 
+    renderTableSocio(); renderChartsSocio();
   } else {
     if(supaEnabled) supaDelete('projects', 'id', pendingDeleteId);
     projectsData = projectsData.filter(p => p.id !== pendingDeleteId);
