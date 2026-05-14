@@ -6382,16 +6382,45 @@ var ATS_BIBLIOTECA = [
   }
 ];
 
-// Clave localStorage para persistir la biblioteca
-var ATS_BIB_KEY = 'ats_biblioteca_v1';
+// ═══════════════════════════════════════════════════════════
+// BIBLIOTECA PRC — persistencia en Supabase (tabla: biblioteca_prc)
+// Fallback a localStorage si Supabase no está disponible
+// ═══════════════════════════════════════════════════════════
+var ATS_BIB_KEY = 'ats_biblioteca_v1'; // fallback local
 
-function atsBibliotecaLoad() {
+// ── CARGAR desde Supabase ──────────────────────────────────
+async function atsBibliotecaLoad() {
+  try {
+    // Intentar cargar desde Supabase
+    var client = (typeof supa !== 'undefined' && supa) ? supa :
+                 (SUPABASE_URL && SUPABASE_KEY ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null);
+
+    if (client) {
+      var res = await client.from('biblioteca_prc').select('*').order('id', { ascending: true });
+      if (!res.error && res.data && res.data.length) {
+        ATS_BIBLIOTECA.length = 0;
+        res.data.forEach(function(row) {
+          ATS_BIBLIOTECA.push({
+            _id:       row.id,          // guardar id de Supabase para upsert/delete
+            actividad: row.actividad || '',
+            peligro:   row.peligro   || '',
+            riesgo:    row.riesgo    || '',
+            controles: row.controles || ''
+          });
+        });
+        console.log('[BibPRC] Cargados ' + ATS_BIBLIOTECA.length + ' registros desde Supabase');
+        return; // éxito — no usar localStorage
+      }
+    }
+  } catch(e) {
+    console.warn('[BibPRC] Supabase no disponible al cargar, usando localStorage:', e);
+  }
+
+  // Fallback: localStorage
   try {
     var raw = localStorage.getItem(ATS_BIB_KEY);
     if (raw) {
       var parsed = JSON.parse(raw);
-      // ✅ FIX: Si hay datos guardados, reemplazar completamente el array base
-      // Esto asegura que ediciones a entradas existentes también se persistan
       if (Array.isArray(parsed) && parsed.length) {
         ATS_BIBLIOTECA.length = 0;
         parsed.forEach(function(item) { ATS_BIBLIOTECA.push(item); });
@@ -6400,26 +6429,91 @@ function atsBibliotecaLoad() {
   } catch(e) {}
 }
 
-function atsBibliotecaSave() {
-  // ✅ FIX: Guardar siempre el array completo (entradas base + nuevas + editadas)
-  try {
-    localStorage.setItem(ATS_BIB_KEY, JSON.stringify(ATS_BIBLIOTECA));
-    // Feedback visual en el modal si está abierto
-    var badge = document.getElementById('bib-save-badge');
+// ── GUARDAR en Supabase (upsert completo) ─────────────────
+async function atsBibliotecaSave() {
+  var badge = document.getElementById('bib-save-badge');
+
+  function showBadge(msg, color) {
     if (badge) {
-      badge.textContent = '✔ Guardado';
-      badge.style.color = '#6EE7B7';
+      badge.textContent = msg;
+      badge.style.color = color;
       badge.style.opacity = '1';
-      setTimeout(function() { badge.style.opacity = '0'; }, 2500);
+      setTimeout(function() { badge.style.opacity = '0'; }, 3000);
+    }
+  }
+
+  try {
+    var client = (typeof supa !== 'undefined' && supa) ? supa :
+                 (SUPABASE_URL && SUPABASE_KEY ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null);
+
+    if (client) {
+      // Separar registros nuevos (sin _id) de existentes (con _id)
+      var existentes = ATS_BIBLIOTECA.filter(function(b) { return b._id; });
+      var nuevos     = ATS_BIBLIOTECA.filter(function(b) { return !b._id; });
+
+      // 1. Upsert de existentes
+      if (existentes.length) {
+        var upsertData = existentes.map(function(b) {
+          return { id: b._id, actividad: b.actividad, peligro: b.peligro, riesgo: b.riesgo, controles: b.controles };
+        });
+        var r1 = await client.from('biblioteca_prc').upsert(upsertData, { onConflict: 'id' });
+        if (r1.error) throw r1.error;
+      }
+
+      // 2. Insert de nuevos
+      if (nuevos.length) {
+        var insertData = nuevos.map(function(b) {
+          return { actividad: b.actividad, peligro: b.peligro, riesgo: b.riesgo, controles: b.controles };
+        });
+        var r2 = await client.from('biblioteca_prc').insert(insertData).select();
+        if (r2.error) throw r2.error;
+        // Asignar _id a los nuevos para futuros upserts
+        if (r2.data) {
+          var ni = 0;
+          ATS_BIBLIOTECA.forEach(function(b) {
+            if (!b._id && r2.data[ni]) { b._id = r2.data[ni].id; ni++; }
+          });
+        }
+      }
+
+      // 3. Guardar también en localStorage como respaldo
+      localStorage.setItem(ATS_BIB_KEY, JSON.stringify(ATS_BIBLIOTECA));
+      showBadge('✔ Guardado en Supabase', '#6EE7B7');
+      console.log('[BibPRC] Guardado en Supabase OK');
+      return;
     }
   } catch(e) {
-    var badge = document.getElementById('bib-save-badge');
-    if (badge) { badge.textContent = '❌ Error al guardar'; badge.style.color = '#FCA5A5'; badge.style.opacity = '1'; }
+    console.error('[BibPRC] Error guardando en Supabase:', e);
+    showBadge('⚠ Error Supabase — guardado local', '#FCD34D');
+  }
+
+  // Fallback: solo localStorage
+  try {
+    localStorage.setItem(ATS_BIB_KEY, JSON.stringify(ATS_BIBLIOTECA));
+    showBadge('✔ Guardado (local)', '#6EE7B7');
+  } catch(e) {
+    showBadge('❌ Error al guardar', '#FCA5A5');
   }
 }
 
-// Inicializar al cargar
-document.addEventListener('DOMContentLoaded', atsBibliotecaLoad);
+// ── ELIMINAR registro de Supabase ─────────────────────────
+async function atsBibEliminarSupabase(id) {
+  try {
+    var client = (typeof supa !== 'undefined' && supa) ? supa :
+                 (SUPABASE_URL && SUPABASE_KEY ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null);
+    if (client && id) {
+      await client.from('biblioteca_prc').delete().eq('id', id);
+    }
+  } catch(e) {
+    console.warn('[BibPRC] No se pudo eliminar de Supabase:', e);
+  }
+}
+
+// ── Inicializar al cargar (esperar a que Supabase esté listo) ─
+document.addEventListener('DOMContentLoaded', function() {
+  // Pequeño delay para asegurar que el cliente supa esté inicializado
+  setTimeout(atsBibliotecaLoad, 800);
+});
 
 // ─── Modal: Biblioteca de Referencia ──────────────────────
 function atsAbrirBiblioteca(actividadFiltro) {
@@ -6534,14 +6628,19 @@ function atsAbrirBiblioteca(actividadFiltro) {
         '<textarea id="bib-e-control" rows="4" style="width:100%;margin:4px 0 14px;padding:8px 10px;border-radius:7px;border:1px solid #1E3A5F;background:#F0FDF4;color:#333;font-family:inherit;font-size:11px;resize:vertical;outline:none;box-sizing:border-box">'+b.controles+'</textarea>'+
         '<div style="display:flex;gap:8px;justify-content:flex-end">'+
           '<button onclick="this.closest(\'div[style*=fixed]\').remove()" style="padding:9px 20px;background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.7);border:1px solid rgba(255,255,255,0.12);border-radius:8px;cursor:pointer;font-family:inherit;font-size:12px">Cancelar</button>'+
-          '<button onclick="(function(){var p=document.getElementById(\'bib-e-peligro\'),r=document.getElementById(\'bib-e-riesgo\'),c=document.getElementById(\'bib-e-control\'),a=document.getElementById(\'bib-e-act\');if(!p||!r||!c||!a)return;ATS_BIBLIOTECA['+idx+']={actividad:a.value.trim(),peligro:p.value.trim(),riesgo:r.value.trim(),controles:c.value.trim()};atsBibliotecaSave();document.getElementById(\'bib-inner\')._render&&document.getElementById(\'bib-inner\').parentNode._render&&document.getElementById(\'ats-bib-modal\')._render();document.getElementById(\'ats-bib-modal\')._render();this.closest(\'div[style*=fixed]\').remove();})()" style="padding:9px 20px;background:#2DA67A;color:white;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">💾 Guardar</button>'+
+          '<button onclick="(function(){var p=document.getElementById(\'bib-e-peligro\'),r=document.getElementById(\'bib-e-riesgo\'),c=document.getElementById(\'bib-e-control\'),a=document.getElementById(\'bib-e-act\');if(!p||!r||!c||!a)return;var prevId=ATS_BIBLIOTECA['+idx+']&&ATS_BIBLIOTECA['+idx+']._id;ATS_BIBLIOTECA['+idx+']={_id:prevId,actividad:a.value.trim(),peligro:p.value.trim(),riesgo:r.value.trim(),controles:c.value.trim()};atsBibliotecaSave();var bm=document.getElementById(\'ats-bib-modal\');if(bm&&bm._render)bm._render();this.closest(\'div[style*=fixed]\').remove();})()" style="padding:9px 20px;background:#2DA67A;color:white;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">💾 Guardar</button>'+
         '</div>'+
       '</div>';
     document.body.appendChild(panel);
   };
 
-  window.atsBibEliminar = function(idx) {
+  window.atsBibEliminar = async function(idx) {
     if(!confirm('¿Eliminar esta entrada de la biblioteca?')) return;
+    var item = ATS_BIBLIOTECA[idx];
+    // Eliminar de Supabase si tiene _id
+    if (item && item._id) {
+      await atsBibEliminarSupabase(item._id);
+    }
     ATS_BIBLIOTECA.splice(idx, 1);
     atsBibliotecaSave();
     render();
@@ -6563,7 +6662,7 @@ function atsAbrirBiblioteca(actividadFiltro) {
         '<textarea id="bib-n-control" rows="4" placeholder="Medidas de control..." style="width:100%;margin:4px 0 14px;padding:8px 10px;border-radius:7px;border:1px solid #1E3A5F;background:#F0FDF4;color:#333;font-family:inherit;font-size:11px;resize:vertical;outline:none;box-sizing:border-box"></textarea>'+
         '<div style="display:flex;gap:8px;justify-content:flex-end">'+
           '<button onclick="this.closest(\'div[style*=fixed]\').remove()" style="padding:9px 20px;background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.7);border:1px solid rgba(255,255,255,0.12);border-radius:8px;cursor:pointer;font-family:inherit;font-size:12px">Cancelar</button>'+
-          '<button onclick="(function(){var a=document.getElementById(\'bib-n-act\'),p=document.getElementById(\'bib-n-peligro\'),r=document.getElementById(\'bib-n-riesgo\'),c=document.getElementById(\'bib-n-control\');if(!a.value.trim()||!p.value.trim()){alert(\'Completa Actividad y Peligro\');return;}ATS_BIBLIOTECA.push({actividad:a.value.trim(),peligro:p.value.trim(),riesgo:r.value.trim(),controles:c.value.trim()});atsBibliotecaSave();document.getElementById(\'ats-bib-modal\')._render();this.closest(\'div[style*=fixed]\').remove();})()" style="padding:9px 20px;background:#2DA67A;color:white;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">💾 Guardar en biblioteca</button>'+
+          '<button onclick="(function(){var a=document.getElementById(\'bib-n-act\'),p=document.getElementById(\'bib-n-peligro\'),r=document.getElementById(\'bib-n-riesgo\'),c=document.getElementById(\'bib-n-control\');if(!a.value.trim()||!p.value.trim()){alert(\'Completa Actividad y Peligro\');return;}ATS_BIBLIOTECA.push({actividad:a.value.trim(),peligro:p.value.trim(),riesgo:r.value.trim(),controles:c.value.trim()});atsBibliotecaSave();var bm=document.getElementById(\'ats-bib-modal\');if(bm&&bm._render)bm._render();this.closest(\'div[style*=fixed]\').remove();})()" style="padding:9px 20px;background:#2DA67A;color:white;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">💾 Guardar en biblioteca</button>'+
         '</div>'+
       '</div>';
     document.body.appendChild(panel);
