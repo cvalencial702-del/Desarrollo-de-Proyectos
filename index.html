@@ -4084,6 +4084,28 @@ function licitBuildPdfYearSelector() {
 
 
 window.addEventListener('DOMContentLoaded', function() {
+  // ✅ Enrich BASE_DATA indicadores with canonical text from IND_DEFS (for pre-2025 fichas)
+  (BASE_DATA || []).forEach(function(b) {
+    if (!Array.isArray(b.indicadores)) return;
+    b.indicadores = b.indicadores.map(function(ind) {
+      var nombre = ind.nombre || '';
+      // "Real" text is only present when it differs from the nombre shorthand
+      var hasRealEst3 = ind.estrategia && ind.estrategia.trim() && ind.estrategia.trim() !== nombre.trim();
+      var hasRealInd3 = ind.indicador  && ind.indicador.trim()  && ind.indicador.trim()  !== nombre.trim();
+      if (hasRealEst3 && hasRealInd3) return ind; // already complete
+      var canonical = IND_DEFS.find(function(d) {
+        return d.nombre === nombre ||
+          (nombre && d.nombre && d.nombre.toLowerCase().trim() === nombre.toLowerCase().trim());
+      });
+      if (!canonical) return ind;
+      return Object.assign({}, ind, {
+        estrategia: hasRealEst3 ? ind.estrategia : canonical.estrategia,
+        indicador:  hasRealInd3 ? ind.indicador  : canonical.indicador,
+        frecuencia: ind.frecuencia || canonical.frecuencia,
+        esCurrency: (ind.esCurrency !== undefined) ? ind.esCurrency : canonical.esCurrency
+      });
+    });
+  });
   setTimeout(licitInit, 350);
 });
 </script>
@@ -7943,7 +7965,31 @@ function _loadFichaAndOpen(id, r, focusIndicadores) {
           cargo:       f.cargo      || '',
           fecha:       f.fecha      || '',
           analisis:    f.analisis   || '',
-          indicadores: Array.isArray(f.indicadores) ? f.indicadores : [],
+          indicadores: (function() {
+            var rawInds = Array.isArray(f.indicadores) ? f.indicadores : [];
+            // Enrich each indicator: if estrategia/indicador text is missing,
+            // fill from IND_DEFS matched by nombre
+            return rawInds.map(function(ind) {
+              if (ind.estrategia && ind.estrategia.trim() && ind.indicador && ind.indicador.trim()) {
+                return ind; // already has text, no need to enrich
+              }
+              var nombre = ind.nombre || '';
+              var canonical = IND_DEFS.find(function(d) {
+                return d.nombre === nombre ||
+                  (nombre && d.nombre && d.nombre.toLowerCase().trim() === nombre.toLowerCase().trim());
+              });
+              if (!canonical) return ind;
+              var nb = ind.nombre || '';
+              var hasRealEst = ind.estrategia && ind.estrategia.trim() && ind.estrategia.trim() !== nb.trim();
+              var hasRealInd = ind.indicador  && ind.indicador.trim()  && ind.indicador.trim()  !== nb.trim();
+              return Object.assign({}, ind, {
+                estrategia: hasRealEst ? ind.estrategia : canonical.estrategia,
+                indicador:  hasRealInd ? ind.indicador  : canonical.indicador,
+                frecuencia: ind.frecuencia || canonical.frecuencia,
+                esCurrency: (ind.esCurrency !== undefined) ? ind.esCurrency : canonical.esCurrency
+              });
+            });
+          })(),
           plan:        Array.isArray(f.plan)        ? f.plan        : []
         };
         _supaLog('✅ Ficha cargada desde Supabase [' + id + '] — updated: ' + (f.updated_at||'?'));
@@ -8054,16 +8100,29 @@ function _buildIndicadorRows(id, saved, baseRec) {
   // ✅ FIX CRÍTICO: sincronizar fichaIndDefs con lo que hay en Supabase
   // Si saved.indicadores tiene datos, reconstruir defs en base a ellos
   if (saved && Array.isArray(saved.indicadores) && saved.indicadores.length > 0) {
-    // ✅ FIX: always use the TEXT stored in saved.indicadores (not IND_DEFS[i])
-    // This prevents cross-over after splice/reorder
+    // ✅ FIX: use saved text when present AND it is the FULL text (not just the nombre shorthand)
+    // Handles: old fichas (no text), fichas where estrategia === nombre (incomplete), splice cases
     var newDefs = saved.indicadores.map(function(ind, i) {
+      var nombre = ind.nombre || '';
+      // Find canonical IND_DEF by nombre
+      var canonical = IND_DEFS.find(function(d) {
+        return d.nombre === nombre ||
+               (nombre && d.nombre && d.nombre.toLowerCase().trim() === nombre.toLowerCase().trim());
+      });
+      // estrategia is "real" only when it differs from nombre AND is not empty
+      var savedEst = (ind.estrategia && ind.estrategia.trim() && ind.estrategia.trim() !== nombre.trim())
+                     ? ind.estrategia.trim() : null;
+      var savedInd = (ind.indicador  && ind.indicador.trim()  && ind.indicador.trim()  !== nombre.trim())
+                     ? ind.indicador.trim()  : null;
       return {
-        nombre:     ind.nombre     || ind.estrategia || 'Indicador ' + (i+1),
-        estrategia: ind.estrategia || ind.nombre     || '',
-        indicador:  ind.indicador  || '',
-        meta:       (ind.meta !== undefined && ind.meta !== null) ? ind.meta : 1.0,
-        frecuencia: ind.frecuencia || 'Final del Proyecto',
-        esCurrency: ind.esCurrency || false
+        nombre:     nombre || (canonical ? canonical.nombre : 'Indicador ' + (i+1)),
+        estrategia: savedEst || (canonical ? canonical.estrategia : nombre || ''),
+        indicador:  savedInd || (canonical ? canonical.indicador  : ''),
+        meta:       (ind.meta !== undefined && ind.meta !== null) ? ind.meta
+                    : (canonical ? canonical.meta : 1.0),
+        frecuencia: ind.frecuencia || (canonical ? canonical.frecuencia : 'Final del Proyecto'),
+        esCurrency: (ind.esCurrency !== undefined) ? ind.esCurrency
+                    : (canonical ? canonical.esCurrency : false)
       };
     });
     fichaIndDefs[id] = newDefs;
