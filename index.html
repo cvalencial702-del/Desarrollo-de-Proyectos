@@ -6382,45 +6382,16 @@ var ATS_BIBLIOTECA = [
   }
 ];
 
-// ═══════════════════════════════════════════════════════════
-// BIBLIOTECA PRC — persistencia en Supabase (tabla: biblioteca_prc)
-// Fallback a localStorage si Supabase no está disponible
-// ═══════════════════════════════════════════════════════════
-var ATS_BIB_KEY = 'ats_biblioteca_v1'; // fallback local
+// Clave localStorage para persistir la biblioteca
+var ATS_BIB_KEY = 'ats_biblioteca_v1';
 
-// ── CARGAR desde Supabase ──────────────────────────────────
-async function atsBibliotecaLoad() {
-  try {
-    // Intentar cargar desde Supabase
-    var client = (typeof supa !== 'undefined' && supa) ? supa :
-                 (SUPABASE_URL && SUPABASE_KEY ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null);
-
-    if (client) {
-      var res = await client.from('biblioteca_prc').select('*').order('id', { ascending: true });
-      if (!res.error && res.data && res.data.length) {
-        ATS_BIBLIOTECA.length = 0;
-        res.data.forEach(function(row) {
-          ATS_BIBLIOTECA.push({
-            _id:       row.id,          // guardar id de Supabase para upsert/delete
-            actividad: row.actividad || '',
-            peligro:   row.peligro   || '',
-            riesgo:    row.riesgo    || '',
-            controles: row.controles || ''
-          });
-        });
-        console.log('[BibPRC] Cargados ' + ATS_BIBLIOTECA.length + ' registros desde Supabase');
-        return; // éxito — no usar localStorage
-      }
-    }
-  } catch(e) {
-    console.warn('[BibPRC] Supabase no disponible al cargar, usando localStorage:', e);
-  }
-
-  // Fallback: localStorage
+function atsBibliotecaLoad() {
   try {
     var raw = localStorage.getItem(ATS_BIB_KEY);
     if (raw) {
       var parsed = JSON.parse(raw);
+      // ✅ FIX: Si hay datos guardados, reemplazar completamente el array base
+      // Esto asegura que ediciones a entradas existentes también se persistan
       if (Array.isArray(parsed) && parsed.length) {
         ATS_BIBLIOTECA.length = 0;
         parsed.forEach(function(item) { ATS_BIBLIOTECA.push(item); });
@@ -6429,91 +6400,26 @@ async function atsBibliotecaLoad() {
   } catch(e) {}
 }
 
-// ── GUARDAR en Supabase (upsert completo) ─────────────────
-async function atsBibliotecaSave() {
-  var badge = document.getElementById('bib-save-badge');
-
-  function showBadge(msg, color) {
-    if (badge) {
-      badge.textContent = msg;
-      badge.style.color = color;
-      badge.style.opacity = '1';
-      setTimeout(function() { badge.style.opacity = '0'; }, 3000);
-    }
-  }
-
-  try {
-    var client = (typeof supa !== 'undefined' && supa) ? supa :
-                 (SUPABASE_URL && SUPABASE_KEY ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null);
-
-    if (client) {
-      // Separar registros nuevos (sin _id) de existentes (con _id)
-      var existentes = ATS_BIBLIOTECA.filter(function(b) { return b._id; });
-      var nuevos     = ATS_BIBLIOTECA.filter(function(b) { return !b._id; });
-
-      // 1. Upsert de existentes
-      if (existentes.length) {
-        var upsertData = existentes.map(function(b) {
-          return { id: b._id, actividad: b.actividad, peligro: b.peligro, riesgo: b.riesgo, controles: b.controles };
-        });
-        var r1 = await client.from('biblioteca_prc').upsert(upsertData, { onConflict: 'id' });
-        if (r1.error) throw r1.error;
-      }
-
-      // 2. Insert de nuevos
-      if (nuevos.length) {
-        var insertData = nuevos.map(function(b) {
-          return { actividad: b.actividad, peligro: b.peligro, riesgo: b.riesgo, controles: b.controles };
-        });
-        var r2 = await client.from('biblioteca_prc').insert(insertData).select();
-        if (r2.error) throw r2.error;
-        // Asignar _id a los nuevos para futuros upserts
-        if (r2.data) {
-          var ni = 0;
-          ATS_BIBLIOTECA.forEach(function(b) {
-            if (!b._id && r2.data[ni]) { b._id = r2.data[ni].id; ni++; }
-          });
-        }
-      }
-
-      // 3. Guardar también en localStorage como respaldo
-      localStorage.setItem(ATS_BIB_KEY, JSON.stringify(ATS_BIBLIOTECA));
-      showBadge('✔ Guardado en Supabase', '#6EE7B7');
-      console.log('[BibPRC] Guardado en Supabase OK');
-      return;
-    }
-  } catch(e) {
-    console.error('[BibPRC] Error guardando en Supabase:', e);
-    showBadge('⚠ Error Supabase — guardado local', '#FCD34D');
-  }
-
-  // Fallback: solo localStorage
+function atsBibliotecaSave() {
+  // ✅ FIX: Guardar siempre el array completo (entradas base + nuevas + editadas)
   try {
     localStorage.setItem(ATS_BIB_KEY, JSON.stringify(ATS_BIBLIOTECA));
-    showBadge('✔ Guardado (local)', '#6EE7B7');
-  } catch(e) {
-    showBadge('❌ Error al guardar', '#FCA5A5');
-  }
-}
-
-// ── ELIMINAR registro de Supabase ─────────────────────────
-async function atsBibEliminarSupabase(id) {
-  try {
-    var client = (typeof supa !== 'undefined' && supa) ? supa :
-                 (SUPABASE_URL && SUPABASE_KEY ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null);
-    if (client && id) {
-      await client.from('biblioteca_prc').delete().eq('id', id);
+    // Feedback visual en el modal si está abierto
+    var badge = document.getElementById('bib-save-badge');
+    if (badge) {
+      badge.textContent = '✔ Guardado';
+      badge.style.color = '#6EE7B7';
+      badge.style.opacity = '1';
+      setTimeout(function() { badge.style.opacity = '0'; }, 2500);
     }
   } catch(e) {
-    console.warn('[BibPRC] No se pudo eliminar de Supabase:', e);
+    var badge = document.getElementById('bib-save-badge');
+    if (badge) { badge.textContent = '❌ Error al guardar'; badge.style.color = '#FCA5A5'; badge.style.opacity = '1'; }
   }
 }
 
-// ── Inicializar al cargar (esperar a que Supabase esté listo) ─
-document.addEventListener('DOMContentLoaded', function() {
-  // Pequeño delay para asegurar que el cliente supa esté inicializado
-  setTimeout(atsBibliotecaLoad, 800);
-});
+// Inicializar al cargar
+document.addEventListener('DOMContentLoaded', atsBibliotecaLoad);
 
 // ─── Modal: Biblioteca de Referencia ──────────────────────
 function atsAbrirBiblioteca(actividadFiltro) {
@@ -6628,19 +6534,14 @@ function atsAbrirBiblioteca(actividadFiltro) {
         '<textarea id="bib-e-control" rows="4" style="width:100%;margin:4px 0 14px;padding:8px 10px;border-radius:7px;border:1px solid #1E3A5F;background:#F0FDF4;color:#333;font-family:inherit;font-size:11px;resize:vertical;outline:none;box-sizing:border-box">'+b.controles+'</textarea>'+
         '<div style="display:flex;gap:8px;justify-content:flex-end">'+
           '<button onclick="this.closest(\'div[style*=fixed]\').remove()" style="padding:9px 20px;background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.7);border:1px solid rgba(255,255,255,0.12);border-radius:8px;cursor:pointer;font-family:inherit;font-size:12px">Cancelar</button>'+
-          '<button onclick="(function(){var p=document.getElementById(\'bib-e-peligro\'),r=document.getElementById(\'bib-e-riesgo\'),c=document.getElementById(\'bib-e-control\'),a=document.getElementById(\'bib-e-act\');if(!p||!r||!c||!a)return;var prevId=ATS_BIBLIOTECA['+idx+']&&ATS_BIBLIOTECA['+idx+']._id;ATS_BIBLIOTECA['+idx+']={_id:prevId,actividad:a.value.trim(),peligro:p.value.trim(),riesgo:r.value.trim(),controles:c.value.trim()};atsBibliotecaSave();var bm=document.getElementById(\'ats-bib-modal\');if(bm&&bm._render)bm._render();this.closest(\'div[style*=fixed]\').remove();})()" style="padding:9px 20px;background:#2DA67A;color:white;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">💾 Guardar</button>'+
+          '<button onclick="(function(){var p=document.getElementById(\'bib-e-peligro\'),r=document.getElementById(\'bib-e-riesgo\'),c=document.getElementById(\'bib-e-control\'),a=document.getElementById(\'bib-e-act\');if(!p||!r||!c||!a)return;ATS_BIBLIOTECA['+idx+']={actividad:a.value.trim(),peligro:p.value.trim(),riesgo:r.value.trim(),controles:c.value.trim()};atsBibliotecaSave();document.getElementById(\'bib-inner\')._render&&document.getElementById(\'bib-inner\').parentNode._render&&document.getElementById(\'ats-bib-modal\')._render();document.getElementById(\'ats-bib-modal\')._render();this.closest(\'div[style*=fixed]\').remove();})()" style="padding:9px 20px;background:#2DA67A;color:white;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">💾 Guardar</button>'+
         '</div>'+
       '</div>';
     document.body.appendChild(panel);
   };
 
-  window.atsBibEliminar = async function(idx) {
+  window.atsBibEliminar = function(idx) {
     if(!confirm('¿Eliminar esta entrada de la biblioteca?')) return;
-    var item = ATS_BIBLIOTECA[idx];
-    // Eliminar de Supabase si tiene _id
-    if (item && item._id) {
-      await atsBibEliminarSupabase(item._id);
-    }
     ATS_BIBLIOTECA.splice(idx, 1);
     atsBibliotecaSave();
     render();
@@ -6662,7 +6563,7 @@ function atsAbrirBiblioteca(actividadFiltro) {
         '<textarea id="bib-n-control" rows="4" placeholder="Medidas de control..." style="width:100%;margin:4px 0 14px;padding:8px 10px;border-radius:7px;border:1px solid #1E3A5F;background:#F0FDF4;color:#333;font-family:inherit;font-size:11px;resize:vertical;outline:none;box-sizing:border-box"></textarea>'+
         '<div style="display:flex;gap:8px;justify-content:flex-end">'+
           '<button onclick="this.closest(\'div[style*=fixed]\').remove()" style="padding:9px 20px;background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.7);border:1px solid rgba(255,255,255,0.12);border-radius:8px;cursor:pointer;font-family:inherit;font-size:12px">Cancelar</button>'+
-          '<button onclick="(function(){var a=document.getElementById(\'bib-n-act\'),p=document.getElementById(\'bib-n-peligro\'),r=document.getElementById(\'bib-n-riesgo\'),c=document.getElementById(\'bib-n-control\');if(!a.value.trim()||!p.value.trim()){alert(\'Completa Actividad y Peligro\');return;}ATS_BIBLIOTECA.push({actividad:a.value.trim(),peligro:p.value.trim(),riesgo:r.value.trim(),controles:c.value.trim()});atsBibliotecaSave();var bm=document.getElementById(\'ats-bib-modal\');if(bm&&bm._render)bm._render();this.closest(\'div[style*=fixed]\').remove();})()" style="padding:9px 20px;background:#2DA67A;color:white;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">💾 Guardar en biblioteca</button>'+
+          '<button onclick="(function(){var a=document.getElementById(\'bib-n-act\'),p=document.getElementById(\'bib-n-peligro\'),r=document.getElementById(\'bib-n-riesgo\'),c=document.getElementById(\'bib-n-control\');if(!a.value.trim()||!p.value.trim()){alert(\'Completa Actividad y Peligro\');return;}ATS_BIBLIOTECA.push({actividad:a.value.trim(),peligro:p.value.trim(),riesgo:r.value.trim(),controles:c.value.trim()});atsBibliotecaSave();document.getElementById(\'ats-bib-modal\')._render();this.closest(\'div[style*=fixed]\').remove();})()" style="padding:9px 20px;background:#2DA67A;color:white;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">💾 Guardar en biblioteca</button>'+
         '</div>'+
       '</div>';
     document.body.appendChild(panel);
@@ -8153,17 +8054,16 @@ function _buildIndicadorRows(id, saved, baseRec) {
   // ✅ FIX CRÍTICO: sincronizar fichaIndDefs con lo que hay en Supabase
   // Si saved.indicadores tiene datos, reconstruir defs en base a ellos
   if (saved && Array.isArray(saved.indicadores) && saved.indicadores.length > 0) {
-    // Asegurar que fichaIndDefs tenga exactamente el mismo número de entradas
-    var baseDefs = JSON.parse(JSON.stringify(IND_DEFS));
+    // ✅ FIX: always use the TEXT stored in saved.indicadores (not IND_DEFS[i])
+    // This prevents cross-over after splice/reorder
     var newDefs = saved.indicadores.map(function(ind, i) {
-      var base = baseDefs[i] || baseDefs[0];
       return {
-        nombre:     ind.nombre     || base.nombre     || 'Indicador ' + (i+1),
-        estrategia: ind.estrategia || base.estrategia || base.nombre || '',
-        indicador:  ind.indicador  || base.indicador  || '',
-        meta:       (ind.meta !== undefined && ind.meta !== null) ? ind.meta : base.meta,
-        frecuencia: ind.frecuencia || base.frecuencia || 'Final del Proyecto',
-        esCurrency: ind.esCurrency || base.esCurrency || false
+        nombre:     ind.nombre     || ind.estrategia || 'Indicador ' + (i+1),
+        estrategia: ind.estrategia || ind.nombre     || '',
+        indicador:  ind.indicador  || '',
+        meta:       (ind.meta !== undefined && ind.meta !== null) ? ind.meta : 1.0,
+        frecuencia: ind.frecuencia || 'Final del Proyecto',
+        esCurrency: ind.esCurrency || false
       };
     });
     fichaIndDefs[id] = newDefs;
@@ -8272,36 +8172,36 @@ function saveIndText(i) {
 
 function removeIndRow(i) {
   if (!currentFichaProjId) return;
-  var vA = document.getElementById('ind-varA-' + i);
-  var vB = document.getElementById('ind-varB-' + i);
-  var tieneValores = (vA && vA.value.trim() !== '') || (vB && vB.value.trim() !== '');
-  if (tieneValores) {
-    alert('⚠ Este indicador tiene valores registrados y no puede eliminarse.\nSolo se pueden eliminar indicadores sin evaluar.');
-    return;
-  }
+
   var pin = prompt('🔐 Clave para eliminar este indicador:');
   if (pin === null) return;
   if (pin.trim() !== '2026') { alert('❌ Clave incorrecta.'); return; }
 
-  // Capturar TODO el DOM antes de tocar nada
+  // ✅ FIX: capture FULL state from DOM FIRST (text + values) before any DOM mutation
   var defs = fichaIndDefs[currentFichaProjId];
   if (!defs) return;
+
+  // Sync text fields into defs before capturing (in case user edited them)
+  defs.forEach(function(def, j) {
+    var estEl = document.getElementById('ind-est-' + j);
+    var indEl = document.getElementById('ind-ind-' + j);
+    if (estEl) def.estrategia = estEl.textContent.trim();
+    if (indEl) def.indicador  = indEl.textContent.trim();
+  });
+
   var snapshot = _capturarIndicadoresDOM(defs);
 
-  // Eliminar el índice
+  // Splice both arrays at the same index
   defs.splice(i, 1);
   snapshot.splice(i, 1);
   fichaIndDefs[currentFichaProjId] = defs;
 
-  // Guardar snapshot en memoria
   if (!fichaEditData[currentFichaProjId]) fichaEditData[currentFichaProjId] = {};
   fichaEditData[currentFichaProjId].indicadores = snapshot;
 
-  // Re-renderizar con datos ya limpios
-  var baseRec = _getBaseRec(currentFichaProjId);
-  _buildIndicadorRows(currentFichaProjId, fichaEditData[currentFichaProjId], baseRec);
+  // Re-render using the clean snapshot (text comes from snapshot, not IND_DEFS)
+  _buildIndicadorRows(currentFichaProjId, fichaEditData[currentFichaProjId], null);
 
-  // Guardar a Supabase con los datos ya correctos en memoria
   _guardarFichaAhora('Indicador eliminado');
 }
 
@@ -8356,20 +8256,27 @@ function removeIndNoEvaluados() {
 // Captura todos los valores actuales del DOM para los indicadores
 function _capturarIndicadoresDOM(defs) {
   return defs.map(function(def, i) {
-    var vA    = document.getElementById('ind-varA-' + i);
-    var vB    = document.getElementById('ind-varB-' + i);
+    var vA     = document.getElementById('ind-varA-' + i);
+    var vB     = document.getElementById('ind-varB-' + i);
     var metaEl = document.getElementById('ind-meta-' + i);
+    var estEl  = document.getElementById('ind-est-' + i);
+    var indEl  = document.getElementById('ind-ind-' + i);
     var vaVal  = vA    ? parseFloat(vA.value)    : NaN;
     var vbVal  = vB    ? parseFloat(vB.value)    : NaN;
     var meta   = metaEl ? parseFloat(metaEl.value)/100 : def.meta;
     var res    = (!isNaN(vaVal) && !isNaN(vbVal) && vbVal !== 0) ? vaVal/vbVal : null;
+    // ✅ FIX: capture text so splice/reorder never crosses rows
     return {
-      nombre:    def.nombre || def.estrategia || '',
-      meta:      isNaN(meta) ? def.meta : meta,
-      varA:      isNaN(vaVal)  ? null : vaVal,
-      varB:      isNaN(vbVal)  ? null : vbVal,
-      resultado: res,
-      cumple:    res !== null ? (meta === 1.0 ? res <= 1.0 : res >= meta) : null
+      nombre:     def.nombre     || def.estrategia || '',
+      estrategia: estEl ? estEl.textContent.trim() : (def.estrategia || ''),
+      indicador:  indEl ? indEl.textContent.trim()  : (def.indicador  || ''),
+      frecuencia: def.frecuencia || 'Final del Proyecto',
+      esCurrency: def.esCurrency || false,
+      meta:       isNaN(meta) ? def.meta : meta,
+      varA:       isNaN(vaVal)  ? null : vaVal,
+      varB:       isNaN(vbVal)  ? null : vbVal,
+      resultado:  res,
+      cumple:     res !== null ? (meta === 1.0 ? res <= 1.0 : res >= meta) : null
     };
   });
 }
@@ -8425,15 +8332,28 @@ function _guardarFichaAhora(motivo) {
 function addIndicadorRow() {
   if (!currentFichaProjId) return;
   var defs = _getIndDefs(currentFichaProjId);
-  defs.push({nombre:'Nuevo indicador', estrategia:'Descripcion de la estrategia', indicador:'Formula del indicador', meta:1.0, frecuencia:'Final del Proyecto', esCurrency:false});
-  fichaIndDefs[currentFichaProjId] = defs;
-  var saved = fichaEditData[currentFichaProjId];
-  var baseRec = BASE_DATA.find(function(b){
-    var bid = b.proyecto.split('/')[0].trim();
-    var qid = currentFichaProjId.split('/')[0].trim();
-    return b.proyecto === currentFichaProjId || bid === qid;
+
+  // ✅ FIX: sync current DOM text into defs + snapshot before adding new row
+  defs.forEach(function(def, j) {
+    var estEl = document.getElementById('ind-est-' + j);
+    var indEl = document.getElementById('ind-ind-' + j);
+    if (estEl) def.estrategia = estEl.textContent.trim();
+    if (indEl) def.indicador  = indEl.textContent.trim();
   });
-  _buildIndicadorRows(currentFichaProjId, saved, baseRec);
+  var snapshot = _capturarIndicadoresDOM(defs);
+
+  // Add new empty indicator to both arrays
+  var newDef = {nombre:'Nuevo indicador', estrategia:'Descripcion de la estrategia', indicador:'Formula del indicador', meta:1.0, frecuencia:'Final del Proyecto', esCurrency:false};
+  var newInd = {nombre:'Nuevo indicador', estrategia:'Descripcion de la estrategia', indicador:'Formula del indicador', meta:1.0, frecuencia:'Final del Proyecto', esCurrency:false, varA:null, varB:null, resultado:null, cumple:null};
+  defs.push(newDef);
+  snapshot.push(newInd);
+  fichaIndDefs[currentFichaProjId] = defs;
+
+  if (!fichaEditData[currentFichaProjId]) fichaEditData[currentFichaProjId] = {};
+  fichaEditData[currentFichaProjId].indicadores = snapshot;
+
+  // Render from snapshot — text is preserved from snapshot, not IND_DEFS[i]
+  _buildIndicadorRows(currentFichaProjId, fichaEditData[currentFichaProjId], null);
 }
 
 // ✅ FIX: Guardado automático con debounce — se dispara 800ms después del último cambio
@@ -8565,7 +8485,7 @@ function saveFichaState() {
     var inp = tr.querySelectorAll('input');
     if(inp.length >= 4) planRows.push({act:inp[0].value, resp:inp[1].value, fecha:inp[2].value, obs:inp[3].value});
   });
-  fichaEditData[currentFichaProjId] = {
+  var newData = {
     lider:     (document.getElementById('fp-lider')||{}).textContent  || '',
     proceso:   (document.getElementById('fp-proceso')||{}).textContent || '',
     evaluador:  document.getElementById('fp-evaluador') ? document.getElementById('fp-evaluador').value : '',
@@ -8575,6 +8495,21 @@ function saveFichaState() {
     indicadores: inds,
     plan: planRows
   };
+  fichaEditData[currentFichaProjId] = newData;
+
+  // Also update BASE_DATA in-memory so renderIndTable always reflects latest data
+  var baseIdx = BASE_DATA.findIndex(function(b) {
+    var bid = (b.proyecto||'').split('/')[0].trim();
+    var qid = (currentFichaProjId||'').split('/')[0].trim();
+    return b.proyecto === currentFichaProjId || bid === qid;
+  });
+  if (baseIdx >= 0) {
+    if (newData.indicadores && newData.indicadores.length) BASE_DATA[baseIdx].indicadores = newData.indicadores;
+    if (newData.evaluador) BASE_DATA[baseIdx].evaluador = newData.evaluador;
+    if (newData.cargo)     BASE_DATA[baseIdx].cargo     = newData.cargo;
+    if (newData.fecha)     BASE_DATA[baseIdx].fecha     = newData.fecha;
+    if (newData.analisis)  BASE_DATA[baseIdx].analisis  = newData.analisis;
+  }
 }
 
 function resetIndicadores() {
@@ -8822,6 +8757,17 @@ function _filteredAGT(searchFilter) {
 function renderAGT() {
   var q = (document.getElementById('search-ind') || {}).value || '';
   var data = _filteredAGT(q);
+  // Merge live fichaEditData into data for accurate KPIs
+  data = data.map(function(b) {
+    var liveEdit = (typeof fichaEditData !== 'undefined') ? fichaEditData[b.proyecto] : null;
+    if (liveEdit && liveEdit.indicadores && liveEdit.indicadores.length) {
+      return Object.assign({}, b, {
+        indicadores: liveEdit.indicadores,
+        evaluador: liveEdit.evaluador || b.evaluador
+      });
+    }
+    return b;
+  });
   _renderAGTKpis(data);
   _renderAGTCharts(data);
   _renderAGTIndCards(data);
@@ -9040,8 +8986,12 @@ function renderIndTable(searchFilter) {
 
   tbody.innerHTML = data.map(function(b) {
     var r = projectsData.find(function(p){ return p.id === b.proyecto || b.proyecto.indexOf(p.id.split('/')[0].trim()) >= 0; });
-    var total = (b.indicadores||[]).length;
-    var ok = (b.indicadores||[]).filter(function(i){ return i.cumple; }).length;
+    // Merge: prefer fichaEditData (live edits) over BASE_DATA for indicators and evaluador
+    var liveEdit = (typeof fichaEditData !== 'undefined') ? fichaEditData[b.proyecto] : null;
+    var indicadores = (liveEdit && liveEdit.indicadores && liveEdit.indicadores.length) ? liveEdit.indicadores : (b.indicadores||[]);
+    var evaluadorDisplay = (liveEdit && liveEdit.evaluador) ? liveEdit.evaluador : (b.evaluador || '');
+    var total = indicadores.length;
+    var ok = indicadores.filter(function(i){ return i.cumple; }).length;
     var pct = total ? Math.round(ok/total*100) : 0;
     var color = pct>=80 ? 'var(--success)' : pct>=60 ? 'var(--warn)' : 'var(--danger)';
     var sid = b.proyecto.replace(/'/g,'');
@@ -9060,7 +9010,7 @@ function renderIndTable(searchFilter) {
     }
     // Fila con tinte azul suave si es pendiente
     var rowStyle = b._pendiente ? ' style="background:rgba(59,130,246,0.04)"' : '';
-    var evaluadorTxt = b._pendiente ? '<span style="color:#2563EB;font-style:italic;font-size:10px">Sin asignar</span>' : (b.evaluador||'-').split(' ').slice(0,3).join(' ');
+    var evaluadorTxt = b._pendiente ? '<span style="color:#2563EB;font-style:italic;font-size:10px">Sin asignar</span>' : (evaluadorDisplay||'-').split(' ').slice(0,3).join(' ');
     return '<tr'+rowStyle+'>' +
       '<td style="font-family:monospace;font-size:11px">' + b.proyecto.slice(0,28) + '</td>' +
       '<td style="font-size:11px">' + (r ? r.cliente.slice(0,22) : (b.cliente||'-').slice(0,22)) + '</td>' +
