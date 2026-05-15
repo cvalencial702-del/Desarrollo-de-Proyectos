@@ -7863,41 +7863,14 @@ function addProjectRecord() {
   var modoEdicionLabel = modoEdicion;
 
   async function _doSave() {
-    if (btn) {
-      btn.textContent = '⏳ Guardando...';
-      btn.disabled = true;
-    }
-
-    if (typeof supaEnabled !== 'undefined' && supaEnabled) {
-      var res = await supaUpsert('projects', _cleanProjectForSupa(_rSupa), 'id');  // ✅ FIX DEFINITIVO
-      if (res && res.error) {
-        // ❌ Error real de Supabase — mostrar al usuario
-        alert('❌ Error al guardar en Supabase:\n' + res.error +
-              '\n\nEl proyecto se guardó localmente pero NO en la base de datos.\nVerifica la conexión o los permisos RLS.');
-        if (btn) {
-          btn.textContent = '⚠ Error al guardar';
-          btn.style.background = '#E53935';
-          btn.style.color = 'white';
-          btn.disabled = false;
-          setTimeout(function(){ btn.textContent = '+ Agregar proyecto'; btn.style.background=''; btn.style.color=''; }, 3000);
-        }
-        // Aun así re-renderizar localmente
-        renderTableSeg(); renderChartsSeg();
-        if(typeof renderClienteBars === 'function') renderClienteBars();
-        if(typeof _buildYearFilterButtons === 'function') _buildYearFilterButtons();
-        if(typeof _buildAgtYearButtons === 'function') _buildAgtYearButtons();
-        if(typeof renderAGT === 'function') { try { renderAGT(); } catch(e){} }
-        return;
-      }
-    }
-
-    // ✅ Guardado exitoso (o sin Supabase) — re-render y feedback
+    // ── Optimistic update: render immediately, save to Supabase in background ──
+    // 1. Render UI instantly
+    _projDateIdx = null; // reset date index so new project appears in AGT
     renderTableSeg(); renderChartsSeg();
     if(typeof renderClienteBars === 'function') renderClienteBars();
-    if(typeof _buildYearFilterButtons === 'function') _buildYearFilterButtons();
-    if(typeof _buildAgtYearButtons === 'function') _buildAgtYearButtons();
     if(typeof renderAGT === 'function') { try { renderAGT(); } catch(e){} }
 
+    // 2. Show success immediately
     if (btn) {
       btn.textContent = modoEdicionLabel ? '✓ Proyecto actualizado' : '✓ Proyecto guardado';
       btn.style.background = '#059669';
@@ -7907,7 +7880,18 @@ function addProjectRecord() {
         btn.textContent = '+ Agregar proyecto';
         btn.style.background = '';
         btn.style.color = '';
-      }, 2500);
+      }, 2000);
+    }
+
+    // 3. Save to Supabase in background (non-blocking)
+    if (typeof supaEnabled !== 'undefined' && supaEnabled) {
+      supaUpsert('projects', _cleanProjectForSupa(_rSupa), 'id').then(function(res) {
+        if (res && res.error) {
+          _showSupaStatus('⚠ Error Supabase: ' + res.error);
+        } else {
+          _showSupaStatus('✅ Guardado en Supabase');
+        }
+      }).catch(function(e){ _showSupaStatus('⚠ Error conexión Supabase'); });
     }
 
     // Quitar banner de edición si existía
