@@ -7857,6 +7857,17 @@ function addProjectRecord() {
     }
   }
 
+  // Also add/update in PROJECTS_DATA so date index finds it for AGT filtering
+  (function() {
+    var pidx = PROJECTS_DATA.findIndex(function(p){ return p.id === r.id; });
+    var pEntry = {id:r.id, cliente:r.cliente, objeto:r.objeto,
+                  duracion:r.duracion, inicio:r.inicio, fin:r.fin,
+                  otrosi:r.otrosi||'', obs:r.obs||''};
+    if (pidx >= 0) PROJECTS_DATA[pidx] = pEntry;
+    else PROJECTS_DATA.push(pEntry);
+    _projDateIdx = null; // force rebuild of date index
+  })();
+
   // ✅ FIX CRÍTICO: guardar en Supabase con await para capturar errores reales
   // El botón muestra "Guardando..." y solo confirma cuando Supabase responde OK
   var btn = document.querySelector('button.btn-main[onclick*="addProjectRecord"]');
