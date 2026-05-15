@@ -9483,27 +9483,7 @@ function generarReportePDF() {
 }
 
 
-function showFichaIndicadores(projId) {
-  var b = BASE_DATA.find(function(b){ return b.proyecto === projId || b.proyecto.indexOf(projId) >= 0; });
-  var r = projectsData.find(function(p){ return p.id === projId || projId.indexOf(p.id) >= 0; });
-  if (!b) return;
-  currentFichaProjId = projId;
-  var today = new Date().toLocaleDateString('es-CO',{year:'numeric',month:'long',day:'numeric'});
-  var html = '<div id="ficha-proj-content">' +
-    '<div class="ficha-header" style="background:#0D3B2E">' +
-      '<div style="width:56px;height:56px;border-radius:10px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">?</div>' +
-      '<div class="ficha-header-info">' +
-        '<h2>Ficha Tecnica de Indicadores</h2>' +
-        '<p style="font-size:13px">' + b.proyecto + '</p>' +
-        '<p style="font-size:11px;opacity:0.6;margin-top:4px">' + (r ? r.cliente : '') + '</p>' +
-      '</div>' +
-    '</div>' +
-    '<div class="ficha-body">' + buildIndicadoresHTML(b) + '</div>' +
-    '<div class="ficha-footer"><span>Auditoria Ambiental - Ficha tecnica de indicadores</span><span>Generado: ' + today + '</span></div>' +
-    '</div>';
-  document.getElementById('ficha-proj-print').innerHTML = html;
-  document.getElementById('ficha-proj-modal').style.display = 'block';
-}
+// showFichaIndicadores: duplicate removed — using the full version at line 8088
 
 // ===== SEGUIMIENTO CHARTS =====
 // ===== ADD / DELETE RECORDS =====
