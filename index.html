@@ -618,6 +618,7 @@ tr:hover td { background: #F0F7FF; }
       <button class="lock-tab" onclick="setLockModule('seg')" id="tab-seg">Seguimiento</button>
       <button class="lock-tab" onclick="setLockModule('ats')" id="tab-ats" style="border-color:rgba(255,199,44,0.4);color:rgba(255,199,44,0.7)">ATS</button>
       <button class="lock-tab" onclick="setLockModule('licit')" id="tab-licit" style="border-color:rgba(0,163,224,0.4);color:rgba(0,163,224,0.8)">Licitación/Propuestas</button>
+      <button class="lock-tab" onclick="setLockModule('docs')" id="tab-docs" style="border-color:rgba(99,102,241,0.4);color:rgba(99,102,241,0.8)">Documentos</button>
     </div>
     <input type="password" class="lock-input" id="lock-input" placeholder="••••" maxlength="10" autocomplete="off" onkeydown="if(event.key==='Enter')tryUnlock()" oninput="(function(el){var e=document.getElementById('lock-err');if(e)e.textContent='';})(this)">
     <button class="lock-btn" onclick="tryUnlock()">Ingresar →</button>
@@ -642,6 +643,7 @@ tr:hover td { background: #F0F7FF; }
       <button class="nav-tab" onclick="showSection('seguimiento')" id="navbtn-seguimiento">Seguimiento de Proyectos</button>
       <button class="nav-tab" onclick="showSection('ats')" id="navbtn-ats" style="background:rgba(255,199,44,0.12);color:var(--gold);border-color:rgba(255,199,44,0.25)">ATS</button>
       <button class="nav-tab" onclick="showSection('licit')" id="navbtn-licit" style="background:rgba(0,163,224,0.12);color:#00A3E0;border-color:rgba(0,163,224,0.25)">📊 Licitación/Propuestas</button>
+      <button class="nav-tab" onclick="showSection('docs')" id="navbtn-docs" style="background:rgba(99,102,241,0.12);color:#6366F1;border-color:rgba(99,102,241,0.25)">📁 Documentos HSEQ</button>
     </div>
     <div class="topbar-actions">
       <span class="session-badge" id="session-timer">--:--</span>
@@ -2322,6 +2324,187 @@ tr:hover td { background: #F0F7FF; }
     <!-- Preview content -->
     <div style="padding:0;background:#E8ECF0;min-height:400px">
       <div id="licit-preview-content" style="max-width:760px;margin:24px auto;background:white;box-shadow:0 2px 20px rgba(0,0,0,0.12);padding:32px 36px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5;color:#1E293B"></div>
+    </div>
+  </div>
+</div>
+
+
+
+<!-- ===== DOCUMENTOS MODULE ===== -->
+<div id="section-docs" class="section" style="padding:0">
+
+<!-- DOCS HEADER -->
+<div style="background:linear-gradient(135deg,#1E1B4B,#3730A3);padding:18px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+  <div>
+    <div style="color:white;font-size:17px;font-weight:800;letter-spacing:-0.3px">📁 Listado Maestro de Documentos</div>
+    <div style="color:rgba(255,255,255,0.5);font-size:11px;margin-top:2px">Sistema de Gestión HSEQ · Auditoria Ambiental S.A.S.</div>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button onclick="docsOpenUpload()" style="padding:8px 16px;border-radius:8px;background:rgba(255,255,255,0.12);color:white;border:1.5px solid rgba(255,255,255,0.25);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer">⬆ Subir Archivo</button>
+    <button onclick="docsAddDoc()" style="padding:8px 16px;border-radius:8px;background:#6366F1;color:white;border:none;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer">+ Nuevo Documento</button>
+    <button onclick="docsExportCSV()" style="padding:8px 16px;border-radius:8px;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.7);border:1.5px solid rgba(255,255,255,0.15);font-family:inherit;font-size:11px;font-weight:600;cursor:pointer">⬇ CSV</button>
+  </div>
+</div>
+
+<div style="padding:20px 28px">
+
+<!-- STATS -->
+<div id="docs-stats" style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:18px"></div>
+
+<!-- FILTER BAR -->
+<div style="background:white;border:1.5px solid #E2E8F0;border-radius:10px;padding:12px 16px;margin-bottom:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+  <div style="flex:1;min-width:220px;display:flex;align-items:center;gap:8px;background:#F8FAFC;border:1.5px solid #E2E8F0;border-radius:8px;padding:8px 12px">
+    <span style="color:#94A3B8;font-size:13px">🔍</span>
+    <input id="docs-search" type="text" placeholder="Buscar por nombre, código..."
+      style="border:none;background:transparent;font-family:inherit;font-size:13px;outline:none;width:100%;color:#1E293B"
+      oninput="docsRender()">
+  </div>
+  <select id="docs-filter-area" onchange="docsRender()"
+    style="padding:8px 12px;border:1.5px solid #E2E8F0;border-radius:8px;font-family:inherit;font-size:12px;outline:none;background:white;cursor:pointer;color:#374151">
+    <option value="">Todas las áreas</option>
+    <option>HSEQ</option><option>Técnico</option><option>Gerencia</option><option>SO/AC</option>
+  </select>
+  <select id="docs-filter-tipo" onchange="docsRender()"
+    style="padding:8px 12px;border:1.5px solid #E2E8F0;border-radius:8px;font-family:inherit;font-size:12px;outline:none;background:white;cursor:pointer;color:#374151">
+    <option value="">Todos los tipos</option>
+    <option>Formato</option>
+    <option>PROCEDIMIENTO</option>
+    <option>MANUAL</option>
+    <option>PROGRAMA</option>
+    <option>INSTRUCTIVO</option>
+    <option>Instructivo</option>
+    <option>PLAN</option>
+    <option>Proceso</option>
+    <option>Anexo</option>
+  </select>
+  <select id="docs-filter-archivo" onchange="docsRender()"
+    style="padding:8px 12px;border:1.5px solid #E2E8F0;border-radius:8px;font-family:inherit;font-size:12px;outline:none;background:white;cursor:pointer;color:#374151">
+    <option value="">Todos</option>
+    <option value="1">Con archivo</option>
+    <option value="0">Sin archivo</option>
+  </select>
+  <span id="docs-count" style="font-size:11px;color:#94A3B8;white-space:nowrap;margin-left:auto"></span>
+</div>
+
+<!-- TABLE -->
+<div style="background:white;border:1.5px solid #E2E8F0;border-radius:10px;overflow:hidden">
+  <div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse">
+      <thead>
+        <tr style="background:#1E3A5F">
+          <th style="padding:11px 14px;text-align:left;font-size:10px;font-weight:700;color:rgba(255,255,255,0.75);text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap">Área</th>
+          <th style="padding:11px 14px;text-align:left;font-size:10px;font-weight:700;color:rgba(255,255,255,0.75);text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap">Código</th>
+          <th style="padding:11px 14px;text-align:left;font-size:10px;font-weight:700;color:rgba(255,255,255,0.75);text-transform:uppercase;letter-spacing:0.5px">Tipo</th>
+          <th style="padding:11px 14px;text-align:left;font-size:10px;font-weight:700;color:rgba(255,255,255,0.75);text-transform:uppercase;letter-spacing:0.5px;min-width:260px">Nombre del Documento</th>
+          <th style="padding:11px 14px;text-align:center;font-size:10px;font-weight:700;color:rgba(255,255,255,0.75);text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap">Ver.</th>
+          <th style="padding:11px 14px;text-align:center;font-size:10px;font-weight:700;color:rgba(255,255,255,0.75);text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap">Fecha</th>
+          <th style="padding:11px 14px;text-align:center;font-size:10px;font-weight:700;color:rgba(255,255,255,0.75);text-transform:uppercase;letter-spacing:0.5px">Archivo</th>
+          <th style="padding:11px 14px;text-align:center;font-size:10px;font-weight:700;color:rgba(255,255,255,0.75);text-transform:uppercase;letter-spacing:0.5px">Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="docs-tbody"></tbody>
+    </table>
+    <div id="docs-empty" style="display:none;text-align:center;padding:48px;color:#94A3B8">
+      <div style="font-size:40px;margin-bottom:8px">📂</div>
+      <div style="font-size:13px">No se encontraron documentos</div>
+    </div>
+  </div>
+</div>
+
+</div><!-- end padding -->
+</div><!-- end section-docs -->
+
+<!-- ── MODAL: SUBIR ARCHIVO ── -->
+<div id="docs-upload-modal" style="display:none;position:fixed;inset:0;z-index:900;background:rgba(0,0,0,0.65);align-items:center;justify-content:center">
+  <div style="background:white;border-radius:14px;padding:28px 32px;max-width:480px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
+    <div style="font-size:15px;font-weight:800;color:#1E3A5F;margin-bottom:18px">⬆ Adjuntar Archivo a Documento</div>
+    <div style="margin-bottom:14px">
+      <label style="font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px">Seleccionar Documento</label>
+      <select id="docs-upload-select" style="width:100%;padding:10px 13px;border:1.5px solid #E2E8F0;border-radius:8px;font-family:inherit;font-size:12px;outline:none;background:white;box-sizing:border-box"></select>
+    </div>
+    <div style="margin-bottom:14px">
+      <label style="font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px">Archivo (PDF, Word, Excel, PPT)</label>
+      <input type="file" id="docs-file-input" accept=".pdf,.doc,.docx,.xls,.xlsx,.xlsb,.ppt,.pptx"
+        style="width:100%;padding:10px;border:2px dashed #E2E8F0;border-radius:8px;font-family:inherit;font-size:12px;cursor:pointer;box-sizing:border-box;background:#F8FAFC">
+    </div>
+    <div id="docs-upload-status" style="font-size:11px;min-height:16px;margin-bottom:12px"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button onclick="docsCloseUpload()" style="padding:10px 20px;border-radius:8px;border:1.5px solid #E2E8F0;background:white;color:#374151;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">Cancelar</button>
+      <button onclick="docsConfirmUpload()" style="padding:10px 20px;border-radius:8px;background:#059669;color:white;border:none;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">✓ Adjuntar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL: NUEVO / EDITAR DOCUMENTO ── -->
+<div id="docs-add-modal" style="display:none;position:fixed;inset:0;z-index:900;background:rgba(0,0,0,0.65);overflow-y:auto;padding:20px">
+  <div style="background:white;border-radius:14px;padding:28px 32px;max-width:560px;margin:0 auto;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
+    <div style="font-size:15px;font-weight:800;color:#1E3A5F;margin-bottom:18px" id="docs-add-title">+ Nuevo Documento</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+      <div>
+        <label style="font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px">Área *</label>
+        <select id="docs-add-area" style="width:100%;padding:10px;border:1.5px solid #E2E8F0;border-radius:8px;font-family:inherit;font-size:13px;outline:none;background:white;box-sizing:border-box">
+          <option>HSEQ</option><option>Técnico</option><option>Gerencia</option><option>SO/AC</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px">Tipo *</label>
+        <select id="docs-add-tipo" style="width:100%;padding:10px;border:1.5px solid #E2E8F0;border-radius:8px;font-family:inherit;font-size:13px;outline:none;background:white;box-sizing:border-box">
+          <option>Formato</option><option>PROCEDIMIENTO</option><option>MANUAL</option>
+          <option>PROGRAMA</option><option>INSTRUCTIVO</option><option>Instructivo</option>
+          <option>PLAN</option><option>Proceso</option><option>Otro</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px">Código</label>
+        <input id="docs-add-codigo" placeholder="ej. P-PA-01/F-01" style="width:100%;padding:10px;border:1.5px solid #E2E8F0;border-radius:8px;font-family:inherit;font-size:13px;outline:none;box-sizing:border-box">
+      </div>
+      <div>
+        <label style="font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px">Versión</label>
+        <input id="docs-add-version" type="number" min="1" placeholder="1" style="width:100%;padding:10px;border:1.5px solid #E2E8F0;border-radius:8px;font-family:inherit;font-size:13px;outline:none;box-sizing:border-box">
+      </div>
+    </div>
+    <div style="margin-bottom:14px">
+      <label style="font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px">Nombre del Documento *</label>
+      <input id="docs-add-nombre" placeholder="Nombre completo del documento" style="width:100%;padding:10px;border:1.5px solid #E2E8F0;border-radius:8px;font-family:inherit;font-size:13px;outline:none;box-sizing:border-box">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+      <div>
+        <label style="font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px">Fecha</label>
+        <input id="docs-add-fecha" type="date" style="width:100%;padding:10px;border:1.5px solid #E2E8F0;border-radius:8px;font-family:inherit;font-size:13px;outline:none;box-sizing:border-box">
+      </div>
+      <div>
+        <label style="font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px">Ubicación</label>
+        <input id="docs-add-ubicacion" placeholder="Carpeta / Red interna" style="width:100%;padding:10px;border:1.5px solid #E2E8F0;border-radius:8px;font-family:inherit;font-size:13px;outline:none;box-sizing:border-box">
+      </div>
+    </div>
+    <div style="margin-bottom:14px">
+      <label style="font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px">Adjuntar Archivo (opcional)</label>
+      <input type="file" id="docs-add-file" accept=".pdf,.doc,.docx,.xls,.xlsx,.xlsb,.ppt,.pptx"
+        style="width:100%;padding:10px;border:2px dashed #E2E8F0;border-radius:8px;font-family:inherit;font-size:12px;cursor:pointer;box-sizing:border-box;background:#F8FAFC">
+    </div>
+    <div id="docs-add-err" style="font-size:11px;color:#DC2626;min-height:16px;margin-bottom:10px"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button onclick="docsCloseAdd()" style="padding:10px 20px;border-radius:8px;border:1.5px solid #E2E8F0;background:white;color:#374151;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">Cancelar</button>
+      <button onclick="docsConfirmAdd()" style="padding:10px 20px;border-radius:8px;background:#6366F1;color:white;border:none;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">✓ Guardar</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ── MODAL: ELIMINAR DOCUMENTO ── -->
+<div id="docs-delete-modal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.65);align-items:center;justify-content:center">
+  <div style="background:white;border-radius:14px;padding:28px 32px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.35);text-align:center">
+    <div style="font-size:36px;margin-bottom:10px">🔒</div>
+    <div style="font-size:15px;font-weight:800;color:#1E3A5F;margin-bottom:6px">Eliminar Documento</div>
+    <div id="docs-delete-name" style="font-size:12px;color:#64748B;margin-bottom:16px;padding:8px 12px;background:#F8FAFC;border-radius:8px;line-height:1.4"></div>
+    <div style="font-size:11px;color:#64748B;margin-bottom:12px">Esta acción no se puede deshacer.</div>
+    <input id="docs-delete-pwd" type="password" placeholder="Clave de administrador"
+      style="width:100%;padding:11px 14px;border:1.5px solid #E2E8F0;border-radius:8px;font-family:inherit;font-size:14px;outline:none;text-align:center;letter-spacing:4px;box-sizing:border-box;margin-bottom:8px"
+      onkeydown="if(event.key==='Enter')docsConfirmDelete();if(event.key==='Escape')docsCloseDelete()">
+    <div id="docs-delete-err" style="font-size:11px;color:#DC2626;min-height:16px;margin-bottom:12px"></div>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button onclick="docsCloseDelete()" style="padding:10px 24px;border-radius:8px;border:1.5px solid #E2E8F0;background:white;color:#374151;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">Cancelar</button>
+      <button onclick="docsConfirmDelete()" style="padding:10px 24px;border-radius:8px;background:#DC2626;color:white;border:none;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">🗑 Eliminar</button>
     </div>
   </div>
 </div>
@@ -4084,6 +4267,508 @@ function licitBuildPdfYearSelector() {
 }
 
 
+
+// ===== DOCUMENTOS MODULE =====
+// 222 documentos del Listado Maestro Excel (fallback si Supabase no disponible)
+var DOCS_DATA = [{"area": "HSEQ", "codigo": "M-PA-01", "tipo": "MANUAL", "nombre": "MANUAL DE RECURSOS HUMANOS", "version": "18", "fecha": "2018-07-26", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia SOAC / En físico en carpetas en la biblioteca de la Gerencia HSEQ"}, {"area": "HSEQ", "codigo": "M-PA-01/F-01", "tipo": "Formato", "nombre": "Selección de Personal", "version": "4", "fecha": "2015-04-28", "ubicacion": ""}, {"area": "HSEQ", "codigo": "M-PA-01/F-02", "tipo": "Formato", "nombre": "Registro de Capacitación y Entrenamiento", "version": "5", "fecha": "2023-10-10", "ubicacion": ""}, {"area": "HSEQ", "codigo": "M-PA-01/F-03", "tipo": "Formato", "nombre": "Evaluación de la Efectividad en el Entrenamiento", "version": "4", "fecha": "2024-08-13", "ubicacion": ""}, {"area": "HSEQ", "codigo": "M-PA-01/F-04", "tipo": "Formato", "nombre": "Programación Anual de Actividades", "version": "6", "fecha": "2023-03-10", "ubicacion": ""}, {"area": "HSEQ", "codigo": "M-PA-01/F-05", "tipo": "Formato", "nombre": "Evaluación del Desempeño por Competencias", "version": "8", "fecha": "2018-06-19", "ubicacion": ""}, {"area": "HSEQ", "codigo": "M-PA-01/F-06", "tipo": "Formato", "nombre": "Descripción del Cargo", "version": "3", "fecha": "2025-05-19", "ubicacion": ""}, {"area": "HSEQ", "codigo": "M-PA-01/F-07", "tipo": "Formato", "nombre": "Asistencia a la Inducción", "version": "2", "fecha": "2015-05-04", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "Anexo 1", "nombre": "Formatos de Descripción por Cargo", "version": "3", "fecha": "2025-05-19", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "-", "nombre": "Gerente General  / Representate de la alta dirección", "version": "3", "fecha": "2025-05-19", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "-", "nombre": "Gerente Técnico", "version": "3", "fecha": "2025-05-19", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "-", "nombre": "Gerente HSEQ", "version": "3", "fecha": "2025-05-19", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "-", "nombre": "Contador", "version": "1", "fecha": "2018-06-07", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "-", "nombre": "Interventor", "version": "3", "fecha": "2025-05-19", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "-", "nombre": "Profesional e Ingeniero Consultor", "version": "3", "fecha": "2025-05-19", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "-", "nombre": "Auditor Interno", "version": "3", "fecha": "2025-05-19", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "-", "nombre": "Auxiliar de Ingeniería", "version": "3", "fecha": "2025-05-19", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "-", "nombre": "Profesional SIG", "version": "3", "fecha": "2025-05-19", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "-", "nombre": "Editor", "version": "1", "fecha": "2018-06-15", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "-", "nombre": "Asistentes de Gerencias General y HSEQ", "version": "3", "fecha": "2025-05-19", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "-", "nombre": "Brigadista", "version": "3", "fecha": "2025-05-19", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "-", "nombre": "Miembro del COPASST", "version": "1", "fecha": "2018-09-07", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "-", "nombre": "Miembro Comité de Convivencia Laboral - CCL", "version": "1", "fecha": "2018-09-07", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "-", "nombre": "Auxiliar Contable", "version": "1", "fecha": "2018-06-15", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "-", "nombre": "Auxiliar Técnico", "version": "1", "fecha": "2018-06-19", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "-", "nombre": "Recepcionista", "version": "3", "fecha": "2025-05-19", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "-", "nombre": "Mensajero", "version": "1", "fecha": "2018-06-19", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "-", "nombre": "Conductor", "version": "1", "fecha": "2018-06-19", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "-", "nombre": "Servicios Generales", "version": "3", "fecha": "2025-05-19", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "Anexo 2", "nombre": "Formatos de Evaluación del Desempeño por Competencias", "version": "8", "fecha": "2018-06-19", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "Anexo 3", "nombre": "Tabla de Sueldos", "version": "10", "fecha": "2018-01-19", "ubicacion": ""}, {"area": "HSEQ", "codigo": "M-PA-02", "tipo": "MANUAL", "nombre": "MANUAL DE GESTIÓN", "version": "14", "fecha": "2024-05-31", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia SOAC / En físico en carpetas en la biblioteca de la Gerencia SOAC"}, {"area": "HSEQ", "codigo": "M-PA-02/F-01", "tipo": "Formato", "nombre": "Despliegue de Objetivos", "version": "4", "fecha": "2016-07-25", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "Anexo 1", "nombre": "Política Integral", "version": "14", "fecha": "2024-12-23", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "Anexo 2", "nombre": "Objetivos", "version": "8", "fecha": "2024-07-26", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "Anexo 3", "nombre": "Visión y Misión", "version": "6", "fecha": "2015-02-27", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "Anexo 4", "nombre": "Organigrama", "version": "9", "fecha": "2025-03-20", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "Anexo 5", "nombre": "Estructura de la Documentación del Sistema de Gestión", "version": "5", "fecha": "2015-02-27", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "Anexo 6", "nombre": "Mapa de Procesos", "version": "8", "fecha": "2015-11-27", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "Anexo 7", "nombre": "Caracterización de los Procesos  \n(Proceso Gerencial, Proceso Técnico, Proceso Apoyo)", "version": "17", "fecha": "2025-01-15", "ubicacion": ""}, {"area": "HSEQ", "codigo": "M-PA-03", "tipo": "MANUAL", "nombre": "MANUAL DE CONVIVENCIA", "version": "1", "fecha": "2015-03-03", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia SOAC / En físico en carpetas en la biblioteca de la Gerencia SOAC"}, {"area": "HSEQ", "codigo": "M-PA-03/F-01", "tipo": "Formato", "nombre": "Atención de Situaciones de Conflicto", "version": "1", "fecha": "2015-03-03", "ubicacion": ""}, {"area": "HSEQ", "codigo": "M-PA-03/F-02", "tipo": "Formato", "nombre": "Seguimiento de Quejas relacionadas con Situaciones de Conflicto.", "version": "1", "fecha": "2015-03-03", "ubicacion": ""}, {"area": "HSEQ", "codigo": "M-PA-03/F-03", "tipo": "Formato", "nombre": "Registro al Diálogos en Situaciones de Conflicto", "version": "1", "fecha": "2015-03-03", "ubicacion": ""}, {"area": "HSEQ", "codigo": "M-PA-03/F-04", "tipo": "Formato", "nombre": "Actas de Compromiso", "version": "1", "fecha": "2015-03-03", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "Anexo 1", "nombre": "Organigrama", "version": "-", "fecha": "2018-07-17", "ubicacion": ""}, {"area": "Técnico", "codigo": "M-PT-01", "tipo": "MANUAL", "nombre": "MANUAL TÉCNICO", "version": "7", "fecha": "2019-09-30", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia SOAC / En físico en carpetas en la biblioteca de la Gerencia SOAC"}, {"area": "Técnico", "codigo": "M-PT-01/F-01", "tipo": "Formato", "nombre": "Descripción Perfil del Suelo", "version": "3", "fecha": "2018-06-20", "ubicacion": ""}, {"area": "Técnico", "codigo": "M-PT-01/F-02", "tipo": "Formato", "nombre": "Aforo y Cálculo de Caudal", "version": "3", "fecha": "2018-06-20", "ubicacion": ""}, {"area": "Técnico", "codigo": "M-PT-01/F-03", "tipo": "Formato", "nombre": "Inventario Detallado de Usos y Usuarios del Agua", "version": "5", "fecha": "2018-06-20", "ubicacion": ""}, {"area": "Técnico", "codigo": "M-PT-01/F-04", "tipo": "Formato", "nombre": "Datos de Campo para Fauna Acuática", "version": "3", "fecha": "2018-06-20", "ubicacion": ""}, {"area": "Técnico", "codigo": "M-PT-01/F-05", "tipo": "Formato", "nombre": "Levantamiento de Información de Fustales", "version": "6", "fecha": "2018-06-20", "ubicacion": ""}, {"area": "Técnico", "codigo": "M-PT-01/F-06", "tipo": "Formato", "nombre": "Inventario de Información Producto de Sensores Remotos", "version": "3", "fecha": "2018-06-20", "ubicacion": ""}, {"area": "Técnico", "codigo": "M-PT-01/F-07", "tipo": "Formato", "nombre": "Inventario Usos del Agua", "version": "2", "fecha": "2018-06-20", "ubicacion": ""}, {"area": "Técnico", "codigo": "M-PT-01/F-08", "tipo": "Formato", "nombre": "Monitoreo de Ruido", "version": "2", "fecha": "2018-06-20", "ubicacion": ""}, {"area": "Técnico", "codigo": "M-PT-01/F-09", "tipo": "Formato", "nombre": "Levantamiento de Información de Latizales y Brizales", "version": "1", "fecha": "2015-01-26", "ubicacion": ""}, {"area": "Técnico", "codigo": "M-PT-01/F-10", "tipo": "Formato", "nombre": "Levantamiento de Información de Perfiles de Vegetación", "version": "1", "fecha": "2015-01-26", "ubicacion": ""}, {"area": "Técnico", "codigo": "M-PT-01/F-11", "tipo": "Formato", "nombre": "Levantamiento de Información de Epífitas", "version": "1", "fecha": "2015-01-26", "ubicacion": ""}, {"area": "Técnico", "codigo": "M-PT-01/F-12", "tipo": "Formato", "nombre": "Selección de Áreas.", "version": "1", "fecha": "2015-01-26", "ubicacion": ""}, {"area": "Técnico", "codigo": "M-PT-01/F-13", "tipo": "Formato", "nombre": "Medición de Áreas", "version": "1", "fecha": "2015-01-26", "ubicacion": ""}, {"area": "Técnico", "codigo": "M-PT-01/F-14", "tipo": "Formato", "nombre": "Levantamiento de Información de Plantaciones", "version": "1", "fecha": "2015-01-26", "ubicacion": ""}, {"area": "HSEQ", "codigo": "P-PA-01", "tipo": "PROCEDIMIENTO", "nombre": "CONTROL DE LOS DOCUMENTOS Y REGISTROS", "version": "12", "fecha": "2021-05-23", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia SOAC / En físico en carpetas en la biblioteca de la Gerencia SOAC"}, {"area": "HSEQ", "codigo": "P-PA-01/F-01", "tipo": "Formato", "nombre": "Listado Maestro de Documentos", "version": "7", "fecha": "2021-05-23", "ubicacion": ""}, {"area": "HSEQ", "codigo": "P-PA-01/F-02", "tipo": "Formato", "nombre": "Listado Maestros de Registros Internos y Externos", "version": "8", "fecha": "2021-05-23", "ubicacion": ""}, {"area": "HSEQ", "codigo": "P-PA-01/F-03", "tipo": "Formato", "nombre": "Listado de Estudios Realizados por la Compañía", "version": "4", "fecha": "2021-05-23", "ubicacion": ""}, {"area": "HSEQ", "codigo": "P-PA-02", "tipo": "PROCEDIMIENTO", "nombre": "COMPRAS", "version": "13", "fecha": "2019-04-05", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia SOAC / En físico en carpetas en la biblioteca de la Gerencia SOAC"}, {"area": "HSEQ", "codigo": "P-PA-02/F-01", "tipo": "Formato", "nombre": "Formulario de Creación, Evaluación y Selección de Proveedores", "version": "9", "fecha": "2022-09-26", "ubicacion": ""}, {"area": "HSEQ", "codigo": "P-PA-02/F-02", "tipo": "Formato", "nombre": "Listado de Proveedores", "version": "6", "fecha": "2022-09-26", "ubicacion": ""}, {"area": "HSEQ", "codigo": "P-PA-02/F-03", "tipo": "Formato", "nombre": "Evaluación a Proveedores", "version": "9", "fecha": "2016-05-26", "ubicacion": ""}, {"area": "HSEQ", "codigo": "P-PA-02/F-04", "tipo": "Formato", "nombre": "Orden de Compra", "version": "4", "fecha": "2015-04-14", "ubicacion": ""}, {"area": "HSEQ", "codigo": "P-PA-02/F-05", "tipo": "Formato", "nombre": "Orden de Compra de Servicios – Gerencia General", "version": "3", "fecha": "2015-04-14", "ubicacion": ""}, {"area": "HSEQ", "codigo": "P-PA-02/F-06", "tipo": "Formato", "nombre": "Matriz de Requisitos de Selección y Evaluación de Proveedores", "version": "3", "fecha": "2025-04-10", "ubicacion": ""}, {"area": "HSEQ", "codigo": "P-PA-03", "tipo": "PROCEDIMIENTO", "nombre": "ACCIONES DE MEJORA", "version": "11", "fecha": "2018-06-01", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia SOAC / En físico en carpetas en la biblioteca de la Gerencia SOAC"}, {"area": "HSEQ", "codigo": "P-PA-03/F-01", "tipo": "Formato", "nombre": "Seguimiento No Conformidades y Acciones Tomadas", "version": "6", "fecha": "2015-04-14", "ubicacion": ""}, {"area": "HSEQ", "codigo": "P-PA-03/F-02", "tipo": "Formato", "nombre": "Acciones de Mejora", "version": "3", "fecha": "2018-06-01", "ubicacion": ""}, {"area": "HSEQ", "codigo": "P-PA-05", "tipo": "PROCEDIMIENTO", "nombre": "AUDITORÍAS INTERNAS", "version": "11", "fecha": "2018-07-23", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia SOAC / En físico en carpetas en la biblioteca de la Gerencia SOAC"}, {"area": "HSEQ", "codigo": "P-PA-05/F-01", "tipo": "Formato", "nombre": "Programación de Auditorías Internas", "version": "5", "fecha": "2015-01-09", "ubicacion": ""}, {"area": "HSEQ", "codigo": "P-PA-05/F-02", "tipo": "Formato", "nombre": "Lista de Chequeo", "version": "6", "fecha": "2024-03-24", "ubicacion": ""}, {"area": "HSEQ", "codigo": "P-PA-05/F-03", "tipo": "Formato", "nombre": "Asistencia a la Auditoría", "version": "4", "fecha": "2015-03-24", "ubicacion": ""}, {"area": "HSEQ", "codigo": "P-PA-05/F-04", "tipo": "Formato", "nombre": "Reporte de No Conformidades", "version": "5", "fecha": "2015-03-24", "ubicacion": ""}, {"area": "HSEQ", "codigo": "P-PA-05/F-05", "tipo": "Formato", "nombre": "Reporte de Observaciones", "version": "3", "fecha": "2021-02-12", "ubicacion": ""}, {"area": "HSEQ", "codigo": "P-PA-05/F-06", "tipo": "Formato", "nombre": "Plan de Auditoría", "version": "1", "fecha": "2018-07-23", "ubicacion": ""}, {"area": "HSEQ", "codigo": "P-PA-06", "tipo": "PROCEDIMIENTO", "nombre": "PROCEDIMIENTO IDENTIFICACIÓN DE PELIGROS Y EVALUACIÓN DE RIESGOS", "version": "7", "fecha": "2014-10-16", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia SOAC / En físico en carpetas en la biblioteca de la Gerencia SOAC"}, {"area": "HSEQ", "codigo": "NA", "tipo": "Anexo", "nombre": "Plan de Seguridad Vial", "version": "2", "fecha": "2014-11-12", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "Anexo", "nombre": "Matriz de Identificación de Peligros, Calificación y Control de Riesgos", "version": "-", "fecha": "", "ubicacion": ""}, {"area": "HSEQ", "codigo": "P-PA-07", "tipo": "PROCEDIMIENTO", "nombre": "PROCEDIMIENTO GENERAL DE CONTABILIDAD", "version": "5", "fecha": "2015-11-20", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia SOAC / En físico en carpetas en la biblioteca de la Gerencia SOAC"}, {"area": "HSEQ", "codigo": "P-PA-08", "tipo": "PROCEDIMIENTO", "nombre": "PROCEDIMIENTO COMITÉ PARITARIO DE SEGURIDAD Y SALUD EN EL TRABAJO - COPASST", "version": "2", "fecha": "2015-03-16", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia SOAC / En físico en carpetas en la biblioteca de la Gerencia SOAC"}, {"area": "HSEQ", "codigo": "NA", "tipo": "-", "nombre": "Organigrama", "version": "-", "fecha": "", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "-", "nombre": "Constancia de Visita (ARL)", "version": "-", "fecha": "2018-07-17", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "-", "nombre": "Formatos para Constitución del Comité: \n- Registro de Candidatos\n- Convocatoria a Votación\n- Acta de Asistencia, Escrutinio y Cierre\n- Nombramiento de representantes por la Gerencia\n- Acta Constitución del Comité", "version": "1", "fecha": "2015-03-06", "ubicacion": ""}, {"area": "HSEQ", "codigo": "P-PA-09", "tipo": "PROCEDIMIENTO", "nombre": "PROCEDIMIENTO INVESTIGACIÓN DE ACCIDENTES E INCIDENTES DE TRABAJO, AMBIENTALES Y ENFERMEDADES LABORALES", "version": "10", "fecha": "2019-09-13", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia SOAC / En físico en carpetas en la biblioteca de la Gerencia SOAC"}, {"area": "HSEQ", "codigo": "P-PA-09/F-01", "tipo": "Formato", "nombre": "Registro de Incidentes", "version": "3", "fecha": "2015-03-02", "ubicacion": ""}, {"area": "HSEQ", "codigo": "P-PA-09/F-02", "tipo": "Formato", "nombre": "Registro de Ausentismo y Enfermedad Común o Laboral", "version": "9", "fecha": "2019-03-20", "ubicacion": ""}, {"area": "HSEQ", "codigo": "P-PA-09/F-03", "tipo": "Formato", "nombre": "Registro de Botiquín", "version": "1", "fecha": "", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "Formato", "nombre": "Investigación de Accidentes e Incidentes", "version": "4", "fecha": "2015-03-02", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "Formato", "nombre": "Investigación de Enfermedad Laboral", "version": "3", "fecha": "2018-07-10", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "Formato", "nombre": "Tarjeta de Reporte de  Actos y Condiciones inseguras. (APPSHHET).", "version": "1", "fecha": "2023-06-26", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "Formato", "nombre": "Informe de Accidente de Trabajo del Empleador o Contratante (ARL)", "version": "1", "fecha": "2018-06-21", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "Formato", "nombre": "Reporte de Indicadores Estadísticos de Accidentalidad (CCS)", "version": "1", "fecha": "1905-06-28", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "-", "nombre": "Accidente Ofídico (Instituto Nacional de Salud)", "version": "8", "fecha": "2019-02-01", "ubicacion": ""}, {"area": "HSEQ", "codigo": "INS:100", "tipo": "Instructivo", "nombre": "Reubicación Laboral", "version": "1", "fecha": "2014-11-07", "ubicacion": ""}, {"area": "HSEQ", "codigo": "P-PA-10", "tipo": "PROCEDIMIENTO", "nombre": "PROCEDIMIENTO PARA REALIZAR LOS EXÁMENES MÉDICOS OCUPACIONALES", "version": "9", "fecha": "1905-07-17", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia SOAC / En físico en carpetas en la biblioteca de la Gerencia SOAC"}, {"area": "HSEQ", "codigo": "NA", "tipo": "Anexo No.1", "nombre": "Perfil Biomédico", "version": "1", "fecha": "", "ubicacion": ""}, {"area": "HSEQ", "codigo": "P-PA-11", "tipo": "PROCEDIMIENTO", "nombre": "PROCEDIMIENTO PARA EMERGENCIAS MÉDICAS", "version": "4", "fecha": "2015-11-05", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia SOAC / En físico en carpetas en la biblioteca de la Gerencia SOAC"}, {"area": "HSEQ", "codigo": "P-PA-12", "tipo": "PROCEDIMIENTO", "nombre": "PROCEDIMIENTO  ELEMENTOS DE PROTECCIÓN PERSONAL", "version": "6", "fecha": "2021-03-04", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia SOAC / En físico en carpetas en la biblioteca de la Gerencia SOAC"}, {"area": "HSEQ", "codigo": "P-PA-12/F-01", "tipo": "Formato", "nombre": "Entrega de Elementos de Protección Personal", "version": "5", "fecha": "2019-10-30", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "Anexo 1", "nombre": "Matriz de Uso de E.P.P. por cargo", "version": "1", "fecha": "", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "-", "nombre": "Guía, Uso y Cuidados de E.P.P.", "version": "-", "fecha": "", "ubicacion": ""}, {"area": "HSEQ", "codigo": "P-PA-13", "tipo": "PROCEDIMIENTO", "nombre": "PROCEDIMIENTO ACCESO E IDENTIFICACIÓN DE REQUISITOS LEGALES Y DE OTRA ÍNDOLE", "version": "4", "fecha": "2025-05-28", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia SOAC / En físico en carpetas en la biblioteca de la Gerencia SOAC"}, {"area": "HSEQ", "codigo": "P-PA-13/F-01", "tipo": "Formato", "nombre": "Matriz de Requisitos Legales y de otra Índole", "version": "4", "fecha": "2018-08-02", "ubicacion": ""}, {"area": "HSEQ", "codigo": "P-PA-14", "tipo": "PROCEDIMIENTO", "nombre": "PROCEDIMIENTO  PARA ACTIVIDADES CRÍTICAS EN CAMPO Y DE MANTENIMIENTO EN OFICINA", "version": "1", "fecha": "2015-11-18", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia SOAC / En físico en carpetas en la biblioteca de la Gerencia SOAC"}, {"area": "HSEQ", "codigo": "P-PA-14/F-01", "tipo": "Formato", "nombre": "Programa de Comisión", "version": "2", "fecha": "2015-11-19", "ubicacion": ""}, {"area": "HSEQ", "codigo": "P-PA-14/F-02", "tipo": "Formato", "nombre": "Lista de Chequeo Salida de Campo", "version": "6", "fecha": "2019-04-05", "ubicacion": ""}, {"area": "HSEQ", "codigo": "P-PA-14/F-03", "tipo": "Formato", "nombre": "Inspección Informal de Seguridad en Campo", "version": "3", "fecha": "2015-11-19", "ubicacion": ""}, {"area": "HSEQ", "codigo": "P-PA-14/F-04", "tipo": "Formato", "nombre": "Revisión de Vehículos", "version": "9", "fecha": "2020-03-27", "ubicacion": ""}, {"area": "HSEQ", "codigo": "P-PA-14/F-05", "tipo": "Formato", "nombre": "Verificación para Transporte en Botes", "version": "2", "fecha": "2015-11-19", "ubicacion": ""}, {"area": "HSEQ", "codigo": "P-PA-14/F-06", "tipo": "Formato", "nombre": "Chequeo para Trabajo con Corriente Eléctrica", "version": "3", "fecha": "2015-11-19", "ubicacion": ""}, {"area": "HSEQ", "codigo": "P-PA-14/F-07", "tipo": "Formato", "nombre": "Verificación de Elementos de Seguridad para Trabajo en Alturas", "version": "4", "fecha": "2015-11-19", "ubicacion": ""}, {"area": "HSEQ", "codigo": "N.A.", "tipo": "-", "nombre": "Normas de Seguridad Industrial:", "version": "1", "fecha": "", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "Anexo 1", "nombre": "Anexo 1: Circuitos Eléctricos", "version": "3", "fecha": "2015-11-19", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "Anexo 2", "nombre": "Anexo 2: Trabajo en Alturas", "version": "3", "fecha": "2015-11-19", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "Anexo 3", "nombre": "Anexo 3: Manejo de la Fotocopiadora", "version": "2", "fecha": "2015-11-19", "ubicacion": ""}, {"area": "HSEQ", "codigo": "NA", "tipo": "Anexo 4", "nombre": "Anexo 4: Uso de Celulares", "version": "1", "fecha": "2015-11-19", "ubicacion": ""}, {"area": "HSEQ", "codigo": "I-PA-01", "tipo": "INSTRUCTIVO", "nombre": "CONTROL DE CORRESPONDENCIA", "version": "5", "fecha": "2015-11-19", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia SOAC / En físico en carpetas en la biblioteca de la Gerencia SOAC"}, {"area": "HSEQ", "codigo": "I-PA-01/F-01", "tipo": "Formato", "nombre": "Control  de Correspondencia Enviada", "version": "4", "fecha": "2015-11-19", "ubicacion": ""}, {"area": "HSEQ", "codigo": "I-PA-01/F-02", "tipo": "Formato", "nombre": "Control  de Correspondencia Recibida", "version": "5", "fecha": "2015-11-19", "ubicacion": ""}, {"area": "HSEQ", "codigo": "I-PA-01/F-03", "tipo": "Formato", "nombre": "Control  de Correspondencia Recibida Archivada", "version": "3", "fecha": "2015-11-19", "ubicacion": ""}, {"area": "HSEQ", "codigo": "I-PA-01/F-04", "tipo": "Formato", "nombre": "Control de Ingreso de Cuentas por Pagar", "version": "1", "fecha": "2015-11-19", "ubicacion": ""}, {"area": "SO/AC", "codigo": "I-PA-02", "tipo": "INSTRUCTIVO", "nombre": "ELABORACIÓN DE ANÁLISIS DE SEGURIDAD EN EL TRABAJO – AST", "version": "1", "fecha": "2025-05-20", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia SOAC / En físico en carpetas en la biblioteca de la Gerencia SOAC"}, {"area": "SO/AC", "codigo": "I-PA-02/F-01", "tipo": "Formato", "nombre": "Análisis de Seguridad en el Trabajo (AST)", "version": "4", "fecha": "2025-05-20", "ubicacion": ""}, {"area": "Gerencia", "codigo": "P-PG-01", "tipo": "PROCEDIMIENTO", "nombre": "REVISIÓN DEL CONTRATO", "version": "11", "fecha": "2018-09-07", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia SOAC / En físico en carpetas en la biblioteca de la Gerencia HSEQ"}, {"area": "Gerencia", "codigo": "P-PG-01/F-01", "tipo": "Formato", "nombre": "Lista de Chequeo Preparación de la Oferta", "version": "8", "fecha": "2018-08-23", "ubicacion": ""}, {"area": "Gerencia", "codigo": "P-PG-01/F-02", "tipo": "Formato", "nombre": "Listado de Ofertas", "version": "6", "fecha": "2018-09-03", "ubicacion": ""}, {"area": "Gerencia", "codigo": "P-PG-01/F-03", "tipo": "Formato", "nombre": "Listado de Contratos", "version": "6", "fecha": "2015-11-20", "ubicacion": ""}, {"area": "Gerencia", "codigo": "P-PG-01/F-04", "tipo": "Formato", "nombre": "Evaluación del Servicio", "version": "7", "fecha": "2015-11-20", "ubicacion": ""}, {"area": "Gerencia", "codigo": "P-PG-01/F-05", "tipo": "Formato", "nombre": "Información Nuevo Contrato", "version": "6", "fecha": "2015-11-20", "ubicacion": ""}, {"area": "Gerencia", "codigo": "P-PG-01/F-06", "tipo": "Formato", "nombre": "Cotización", "version": "1", "fecha": "2018-09-19", "ubicacion": ""}, {"area": "Gerencia", "codigo": "P-PG-02", "tipo": "PROCEDIMIENTO", "nombre": "SEGUIMIENTO GERENCIAL AL SISTEMA DE GESTIÓN", "version": "1", "fecha": "2023-02-15", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia HSEQ / En físico en carpetas en la biblioteca de la Gerencia HSEQ"}, {"area": "Gerencia", "codigo": "P-PG-02/F-01", "tipo": "Formato", "nombre": "Informe de Revisión Gerencial", "version": "3", "fecha": "2018-06-01", "ubicacion": ""}, {"area": "Gerencia", "codigo": "P-PG-02/F-02", "tipo": "Formato", "nombre": "Agenda Gerencial", "version": "2", "fecha": "", "ubicacion": ""}, {"area": "Gerencia", "codigo": "P-PG-02/F-03", "tipo": "Formato", "nombre": "Acta del Sistema de Gestión", "version": "7", "fecha": "2015-04-13", "ubicacion": ""}, {"area": "Gerencia", "codigo": "P-PG-02/F-04", "tipo": "Formato", "nombre": "Presupuesto Anual", "version": "3", "fecha": "2023-02-10", "ubicacion": ""}, {"area": "HSEQ", "codigo": "P-PG-03", "tipo": "PROCEDIMIENTO", "nombre": "CONTROL DEL CAMBIO", "version": "4", "fecha": "2021-03-03", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia SOAC / En físico en carpetas en la biblioteca de la Gerencia SOAC"}, {"area": "HSEQ", "codigo": "P-PG-03/F-01", "tipo": "Formato", "nombre": "Matriz de Control del Cambio", "version": "4", "fecha": "2024-05-15", "ubicacion": ""}, {"area": "Gerencia", "codigo": "P-PG-04", "tipo": "PROCEDIMIENTO", "nombre": "CONTEXTO ESTRATÉGICO", "version": "1", "fecha": "2024-05-31", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia HSEQ / En físico en carpetas en la biblioteca de la Gerencia HSEQ"}, {"area": "Gerencia", "codigo": "P-PG-04/F-01\nParte A", "tipo": "Formato", "nombre": "Contexto de la Organización Parte A (DOFA)", "version": "1", "fecha": "2018-05-08", "ubicacion": ""}, {"area": "Gerencia", "codigo": "P-PG-04/F-01\nParte B", "tipo": "Formato", "nombre": "Contexto de la Organización Parte B", "version": "1", "fecha": "2018-05-08", "ubicacion": ""}, {"area": "Gerencia", "codigo": "P-PG-04/F-02", "tipo": "Formato", "nombre": "Partes Interesadas", "version": "1", "fecha": "2018-05-08", "ubicacion": ""}, {"area": "Gerencia", "codigo": "P-PG-04/F-03", "tipo": "Formato", "nombre": "Matriz de Gestión de Conocimiento Organizacional", "version": "1", "fecha": "2018-05-21", "ubicacion": ""}, {"area": "Gerencia", "codigo": "P-PG-04/F-04", "tipo": "Formato", "nombre": "Matriz  de  comunicación participación y consulta", "version": "1", "fecha": "2024-06-23", "ubicacion": ""}, {"area": "HSEQ", "codigo": "P-PG-05", "tipo": "PROCEDIMIENTO", "nombre": "GESTIÓN DE RIESGO Y OPRTUNIDADES", "version": "2", "fecha": "2024-06-04", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia HSEQ / En físico en carpetas en la biblioteca de la Gerencia SOAC"}, {"area": "HSEQ", "codigo": "P-PG-05/F-01", "tipo": "Formato", "nombre": "Matriz de Gestión del Riesgo", "version": "2", "fecha": "2024-06-04", "ubicacion": ""}, {"area": "Técnico", "codigo": "P-PT-01", "tipo": "PROCEDIMIENTO", "nombre": "CONTROL DE EQUIPOS DE INSPECCIÓN, MEDICIÓN Y ENSAYO", "version": "6", "fecha": "2018-06-20", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia SOAC / En físico en carpetas en la biblioteca de la Gerencia SOAC"}, {"area": "Técnico", "codigo": "P-PT-01/F-01", "tipo": "Formato", "nombre": "Hoja de Control de Equipos", "version": "5", "fecha": "2018-06-20", "ubicacion": ""}, {"area": "Técnico", "codigo": "P-PT-01/F-02", "tipo": "Formato", "nombre": "Listado de Equipos", "version": "5", "fecha": "2018-06-20", "ubicacion": ""}, {"area": "Técnico", "codigo": "P-PT-01/F-03", "tipo": "Formato", "nombre": "Suministro de Equipos", "version": "4", "fecha": "2018-06-20", "ubicacion": ""}, {"area": "Técnico", "codigo": "P-PT-01/F-04", "tipo": "Formato", "nombre": "Informe de Calibración Interna", "version": "1", "fecha": "2018-06-20", "ubicacion": ""}, {"area": "Técnico", "codigo": "P-PT-02", "tipo": "PROCEDIMIENTO", "nombre": "CONTROL DEL PRODUCTO O SERVICIO NO CONFORME", "version": "6", "fecha": "2018-06-21", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia SOAC / En físico en carpetas en la biblioteca de la Gerencia SOAC"}, {"area": "Técnico", "codigo": "P-PT-02/F-01", "tipo": "Formato", "nombre": "Seguimiento al Desarrollo del Proyecto", "version": "6", "fecha": "2018-06-20", "ubicacion": ""}, {"area": "Técnico", "codigo": "P-PT-03", "tipo": "PROCEDIMIENTO", "nombre": "MANEJO, ALMACENAMIENTO, EMBALAJE, PRESERVACIÓN Y ENTREGA DE DOCUMENTOS", "version": "6", "fecha": "2016-07-25", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia SOAC / En físico en carpetas en la biblioteca de la Gerencia SOAC"}, {"area": "Técnico", "codigo": "P-PT-04", "tipo": "Proceso", "nombre": "SERVICIO TÉCNICO DE  APOYO", "version": "7", "fecha": "2018-06-21", "ubicacion": ""}, {"area": "Técnico", "codigo": "P-PT-04/F-01", "tipo": "Formato", "nombre": "Registro del Servicio Técnico de Apoyo", "version": "4", "fecha": "2016-05-13", "ubicacion": ""}, {"area": "Técnico", "codigo": "P-PT-04/F-02", "tipo": "Formato", "nombre": "Evaluación del Servicio Técnico de Apoyo", "version": "3", "fecha": "2016-05-13", "ubicacion": ""}, {"area": "Técnico", "codigo": "P-PT-05", "tipo": "PROCEDIMIENTO", "nombre": "ESTUDIOS AMBIENTALES", "version": "4", "fecha": "2018-06-21", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia SOAC / En físico en carpetas en la biblioteca de la Gerencia SOAC"}, {"area": "Técnico", "codigo": "P-PT-05/F-01", "tipo": "Formato", "nombre": "Acta de Reunión", "version": "6", "fecha": "2015-04-13", "ubicacion": ""}, {"area": "Técnico", "codigo": "P-PT-06", "tipo": "PROCEDIMIENTO", "nombre": "CONTROL DE DISEÑO", "version": "6", "fecha": "", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia SOAC / En físico en carpetas en la biblioteca de la Gerencia SOAC"}, {"area": "Técnico", "codigo": "P-PT-06/F-01", "tipo": "Formato", "nombre": "Plan de Diseño", "version": "6", "fecha": "2018-06-21", "ubicacion": ""}, {"area": "Técnico", "codigo": "P-PT-06/F-02", "tipo": "Formato", "nombre": "Observaciones Detalladas de Suelos", "version": "3", "fecha": "2018-06-21", "ubicacion": ""}, {"area": "Técnico", "codigo": "P-PT-06/F-03", "tipo": "Formato", "nombre": "Corrientes Naturales", "version": "3", "fecha": "2018-06-21", "ubicacion": ""}, {"area": "Técnico", "codigo": "P-PT-06/F-04", "tipo": "Formato", "nombre": "Apiques", "version": "3", "fecha": "2018-06-21", "ubicacion": ""}, {"area": "Técnico", "codigo": "P-PT-06/F-05", "tipo": "Formato", "nombre": "Exploración del Suelo – Sondeo Manual", "version": "3", "fecha": "2018-06-21", "ubicacion": ""}, {"area": "Técnico", "codigo": "P-PT-06/F-06", "tipo": "Formato", "nombre": "Infraestructura", "version": "3", "fecha": "2018-06-21", "ubicacion": ""}, {"area": "Técnico", "codigo": "P-PT-06/F-07", "tipo": "Formato", "nombre": "Perforaciones", "version": "3", "fecha": "2018-06-21", "ubicacion": ""}, {"area": "Técnico", "codigo": "P-PT-06/F-08", "tipo": "Formato", "nombre": "Elementos Portantes y Dispositivos de Apoyo", "version": "3", "fecha": "2018-06-21", "ubicacion": ""}, {"area": "Técnico", "codigo": "P-PT-06/F-09", "tipo": "Formato", "nombre": "Inspección de Puentes de Concreto", "version": "3", "fecha": "2018-06-21", "ubicacion": ""}, {"area": "Técnico", "codigo": "P-PT-07", "tipo": "PROCEDIMIENTO", "nombre": "INTERVENTORÍAS", "version": "4", "fecha": "2015-03-24", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia SOAC / En físico en carpetas en la biblioteca de la Gerencia SOAC"}, {"area": "Técnico", "codigo": "P-PT-07/F-01", "tipo": "Formato", "nombre": "Informe Diario", "version": "1", "fecha": "2015-03-24", "ubicacion": ""}, {"area": "Técnico", "codigo": "P-PT-07/F-02", "tipo": "Formato", "nombre": "Informe Semanal/Mensual", "version": "1", "fecha": "2015-03-24", "ubicacion": ""}, {"area": "Técnico", "codigo": "P-PT-08", "tipo": "PROCEDIMIENTO", "nombre": "PROPIEDAD DEL CLIENTE", "version": "6", "fecha": "2018-06-21", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia SOAC / En físico en carpetas en la biblioteca de la Gerencia SOAC"}, {"area": "Técnico", "codigo": "P-PT-08/F-01", "tipo": "Formato", "nombre": "Control  del Producto Suministrado por el Cliente", "version": "4", "fecha": "2018-06-21", "ubicacion": ""}, {"area": "Técnico", "codigo": "P-PT-09", "tipo": "PROCEDIMIENTO", "nombre": "DISEÑO DE CARTOGRAFÍA Y PLANOS", "version": "8", "fecha": "2018-07-23", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia SOAC / En físico en carpetas en la biblioteca de la Gerencia SOAC"}, {"area": "Técnico", "codigo": "P-PT-09/F-01", "tipo": "Formato", "nombre": "Diseño y Desarrollo de Cartografía", "version": "1", "fecha": "2016-09-20", "ubicacion": ""}, {"area": "Técnico", "codigo": "P-PT-09/F-02", "tipo": "Formato", "nombre": "Control de Cambios Geomática", "version": "1", "fecha": "2018-07-23", "ubicacion": ""}, {"area": "Técnico", "codigo": "P-PT-10", "tipo": "PROCEDIMIENTO", "nombre": "GESTIÓN AMBIENTAL", "version": "3", "fecha": "2018-06-21", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia SOAC / En físico en carpetas en la biblioteca de la Gerencia SOAC"}, {"area": "Técnico", "codigo": "P-PT-10/F-01", "tipo": "Proceso", "nombre": "Seguimiento a la Implementación del PMA", "version": "3", "fecha": "2018-06-21", "ubicacion": ""}, {"area": "Técnico", "codigo": "P-PT-14", "tipo": "Proceso", "nombre": "Programa de Gestión Integral de Residuos Sólidos", "version": "1", "fecha": "2021-02-10", "ubicacion": ""}, {"area": "Técnico", "codigo": "P-PT-14/F-01", "tipo": "Proceso", "nombre": "Inspección de Residuos de Sustancias Químicos y/o Residuos peligrosos", "version": "1", "fecha": "2021-02-10", "ubicacion": ""}, {"area": "Técnico", "codigo": "P-PT-11", "tipo": "PROCEDIMIENTO", "nombre": "AUDITORIA AMBIENTAL", "version": "3", "fecha": "2018-06-21", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia SOAC / En físico en carpetas en la biblioteca de la Gerencia SOAC"}, {"area": "Técnico", "codigo": "P-PT-12", "tipo": "PROCEDIMIENTO", "nombre": "DISEÑO Y DESARROLLO DE PROYECTOS", "version": "4", "fecha": "2018-06-22", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia SOAC / En físico en carpetas en la biblioteca de la Gerencia SOAC"}, {"area": "Técnico", "codigo": "P-PT-13", "tipo": "PROCEDIMIENTO", "nombre": "PROSPECCIÓN ARQUEOLÓGICA", "version": "2", "fecha": "2018-06-22", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia SOAC / En físico en carpetas en la biblioteca de la Gerencia SOAC"}, {"area": "HSEQ", "codigo": "PR-PA-01", "tipo": "PROGRAMA", "nombre": "PROGRAMA DE GESTIÓN DE LA SEGURIDAD Y SALUD EN EL TRABAJO", "version": "25", "fecha": "2019-10-30", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia SOAC / En físico en carpetas en la biblioteca de la Gerencia SOAC"}, {"area": "HSEQ", "codigo": "PR-PA-01/F-01", "tipo": "Formato", "nombre": "Matriz de Capacitación", "version": "3", "fecha": "2022-05-22", "ubicacion": ""}, {"area": "HSEQ", "codigo": "PR-PA-03", "tipo": "PROGRAMA", "nombre": "GESTIÓN DE CAPACITACIÓN", "version": "6", "fecha": "2025-11-18", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia SOAC / En físico en carpetas en la biblioteca de la Gerencia SOAC"}, {"area": "HSEQ", "codigo": "PR-PA-03/F-01", "tipo": "Formato", "nombre": "Evaluación al Capacitador", "version": "2", "fecha": "2024-09-18", "ubicacion": ""}, {"area": "HSEQ", "codigo": "PR-PA-04", "tipo": "PROGRAMA", "nombre": "PROGRAMA GESTIÓN DE VIGILANCIA EPIDEMIOLÓGICA", "version": "4", "fecha": "2014-11-25", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia SOAC / En físico en carpetas en la biblioteca de la Gerencia SOAC"}, {"area": "HSEQ", "codigo": "PR-PA-04/F-01", "tipo": "Formato", "nombre": "Esquema de Vacunación", "version": "2", "fecha": "2015-02-26", "ubicacion": ""}, {"area": "HSEQ", "codigo": "PR-PA-05", "tipo": "PROGRAMA", "nombre": "PROGRAMA MANTENIMIENTO PREVENTIVO DE INSTALACIONES Y EQUIPOS", "version": "6", "fecha": "2017-04-06", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia SOAC / En físico en carpetas en la biblioteca de la Gerencia SOAC"}, {"area": "HSEQ", "codigo": "PR-PA-06", "tipo": "PROGRAMA", "nombre": "PROGRAMA GESTIÓN AMBIENTAL", "version": "17", "fecha": "2025-09-16", "ubicacion": "Red Interna AA / En medio magnetico en el PC GereciaHSEQ/"}, {"area": "HSEQ", "codigo": "PR-PA-06/F-01", "tipo": "Formato", "nombre": "Inspección de Basuras  (APPSHEET)", "version": "5", "fecha": "2025-01-24", "ubicacion": ""}, {"area": "HSEQ", "codigo": "PR-PA-06/F-02", "tipo": "Formato", "nombre": "Control a Generación de Residuos Peligrosos", "version": "1", "fecha": "2015-02-02", "ubicacion": ""}, {"area": "HSEQ", "codigo": "PR-PA-06/F-02", "tipo": "Formato", "nombre": "Control de residuos organicos, ordinarios, reciclables, RAES y RESPEL", "version": "1", "fecha": "2025-01-24", "ubicacion": ""}, {"area": "HSEQ", "codigo": "PR-PA-07", "tipo": "PROGRAMA", "nombre": "PROGRAMA GESTIÓN DE INSPECCIONES", "version": "5", "fecha": "2016-01-06", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia HSEQ / En físico en carpetas en la biblioteca de la Gerencia HSEQ"}, {"area": "HSEQ", "codigo": "PR-PA-07/F-01", "tipo": "Formato", "nombre": "CRONOGRAMA  DE  INSPECCIONES -AGENDA GERENCIA Y AUDITORIAS", "version": "4", "fecha": "2023-02-21", "ubicacion": ""}, {"area": "HSEQ", "codigo": "PR-PA-07/F-02", "tipo": "Formato", "nombre": "Extintores  (APPSHEET)", "version": "10", "fecha": "2023-06-16", "ubicacion": ""}, {"area": "HSEQ", "codigo": "PR-PA-07/F-03", "tipo": "Formato", "nombre": "Inspección General No Planeada", "version": "4", "fecha": "2015-03-16", "ubicacion": ""}, {"area": "HSEQ", "codigo": "PR-PA-07/F-04", "tipo": "Formato", "nombre": "Condiciones Eléctricas", "version": "7", "fecha": "2016-12-28", "ubicacion": ""}, {"area": "HSEQ", "codigo": "PR-PA-07/F-05", "tipo": "Formato", "nombre": "Luminarias", "version": "8", "fecha": "2016-12-28", "ubicacion": ""}, {"area": "HSEQ", "codigo": "PR-PA-07/F-06", "tipo": "Formato", "nombre": "Chequeo de Inspección de Riesgo Biológico", "version": "4", "fecha": "2016-12-28", "ubicacion": ""}, {"area": "HSEQ", "codigo": "PR-PA-07/F-07", "tipo": "Formato", "nombre": "Lista de Chequeo Botiquín de Oficina", "version": "9", "fecha": "2015-01-08", "ubicacion": ""}, {"area": "HSEQ", "codigo": "PR-PA-07/F-08", "tipo": "Formato", "nombre": "Lista de Chequeo Botiquín de Campo  (APPSHHET)", "version": "10", "fecha": "2022-06-21", "ubicacion": ""}, {"area": "HSEQ", "codigo": "PR-PA-07/F-09", "tipo": "Formato", "nombre": "Lista de Chequeo Botiquín de Manejo de Accidente Ofídico (APPSHHET)", "version": "5", "fecha": "2022-06-21", "ubicacion": ""}, {"area": "HSEQ", "codigo": "PR-PA-07/F-10", "tipo": "Formato", "nombre": "Inspección de Motocicletas", "version": "5", "fecha": "2023-01-03", "ubicacion": ""}, {"area": "HSEQ", "codigo": "PR-PA-07/F-11", "tipo": "Formato", "nombre": "Registro y Estado de Extintores", "version": "5", "fecha": "2015-02-24", "ubicacion": ""}, {"area": "HSEQ", "codigo": "PR-PA-07/F-12", "tipo": "Formato", "nombre": "Análisis de Condiciones Anormales y Repetitivas y sus Causas Básicas.", "version": "1", "fecha": "2016-01-06", "ubicacion": ""}, {"area": "HSEQ", "codigo": "PR-PA-08", "tipo": "PROGRAMA", "nombre": "PROGRAMA GESTIÓN DE SEGURIDAD, ORDEN, LIMPIEZA Y ASEO - SOLA", "version": "6", "fecha": "2014-11-28", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia SOAC / En físico en carpetas en la biblioteca de la Gerencia SOAC"}, {"area": "HSEQ", "codigo": "PR-PA-08/F-01", "tipo": "Formato", "nombre": "Evaluación del Programa SOLA (APPSHHET)", "version": "8", "fecha": "2023-07-21", "ubicacion": ""}, {"area": "HSEQ", "codigo": "PL-PA-01", "tipo": "PLAN", "nombre": "PLAN DE CONTINGENCIA Y EMERGENCIA PARA TRABAJOS DE CAMPO Y OFICINA", "version": "16", "fecha": "2025-05-15", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia SOAC / En físico en carpetas en la biblioteca de la Gerencia SOAC"}, {"area": "HSEQ", "codigo": "PL-PA-01/F-01", "tipo": "Formato", "nombre": "Información General de los Empleados", "version": "1", "fecha": "2015-02-26", "ubicacion": ""}, {"area": "HSEQ", "codigo": "PL-PA-01/F-02", "tipo": "Formato", "nombre": "Reporte y Evaluación de Emergencias", "version": "6", "fecha": "2015-03-02", "ubicacion": ""}, {"area": "HSEQ", "codigo": "PL-PA-01/F-03", "tipo": "Formato", "nombre": "Inspección de Equipos de Emergencia", "version": "1", "fecha": "2016-01-26", "ubicacion": ""}, {"area": "HSEQ", "codigo": "P-PA-15", "tipo": "PROCEDIMIENTO", "nombre": "TELETRABAJO", "version": "1", "fecha": "", "ubicacion": ""}, {"area": "HSEQ", "codigo": "P-PA-15/F-01", "tipo": "Formato", "nombre": "Solictud para incorporarse en la modalidad de teletrabajo.", "version": "1", "fecha": "2023-07-25", "ubicacion": "Red Interna AA / En medio magnetico en el PC Gerecia SOAC / En físico en carpetas en la biblioteca de la Gerencia SOAC"}];
+
+var _docsLoaded = false;
+var docsFiles   = {}; // idx → {name, url, type, db_id}
+var _docsEditIdx = -1;
+
+// ── Area / tipo badge colors ──────────────────────────────
+var _AREA_CLR = {HSEQ:'#1D4ED8',Técnico:'#166534',Gerencia:'#5B21B6','SO/AC':'#92400E'};
+var _AREA_BG  = {HSEQ:'#DBEAFE',Técnico:'#DCFCE7',Gerencia:'#EDE9FE','SO/AC':'#FEF3C7'};
+var _TIPO_CLR = {Formato:'#5B21B6',PROCEDIMIENTO:'#1D4ED8',MANUAL:'#FFFFFF',PROGRAMA:'#166534',
+                 INSTRUCTIVO:'#92400E',Instructivo:'#92400E',PLAN:'#991B1B',Proceso:'#374151'};
+var _TIPO_BG  = {Formato:'#EDE9FE',PROCEDIMIENTO:'#DBEAFE',MANUAL:'#1E3A5F',PROGRAMA:'#DCFCE7',
+                 INSTRUCTIVO:'#FEF3C7',Instructivo:'#FEF3C7',PLAN:'#FEE2E2',Proceso:'#F1F5F9'};
+var _FILE_ICON = {pdf:'📕',doc:'📘',docx:'📘',xls:'📗',xlsx:'📗',xlsb:'📗',ppt:'📙',pptx:'📙'};
+
+function _fileIcon(name) {
+  var ext = (name||'').split('.').pop().toLowerCase();
+  return _FILE_ICON[ext] || '📎';
+}
+
+// ── Init: load from Supabase ─────────────────────────────
+async function docsInit() {
+  if (_docsLoaded) { docsRenderStats(); docsRender(); return; }
+  if (typeof supaEnabled !== 'undefined' && supaEnabled && typeof supa !== 'undefined') {
+    try {
+      var res = await supa.from('docs_listado').select('*').eq('activo',true).order('area').order('codigo');
+      if (res.data && res.data.length > 0) {
+        // Use Supabase data (has IDs for file associations)
+        var supaData = res.data.map(function(r){
+          return {id:r.id, area:r.area||'HSEQ', codigo:r.codigo||'N.A.', tipo:r.tipo||'Formato',
+                  nombre:r.nombre||'', version:r.version||'1',
+                  fecha:r.fecha ? r.fecha.slice(0,10) : '', ubicacion:r.ubicacion||''};
+        });
+        // Merge: enrich Excel data with Supabase IDs by matching codigo+nombre
+        DOCS_DATA = DOCS_DATA.map(function(d) {
+          var match = supaData.find(function(s){
+            return s.codigo === d.codigo && s.nombre === d.nombre;
+          });
+          return match ? Object.assign({}, d, {id: match.id}) : d;
+        });
+        // Add any new docs from Supabase not in Excel data
+        supaData.forEach(function(s){
+          var exists = DOCS_DATA.find(function(d){ return d.id === s.id; });
+          if (!exists) DOCS_DATA.push(s);
+        });
+        var resF = await supa.from('docs_archivos').select('doc_id,id,nombre_archivo,tipo_archivo,url_publica').order('creado_en',{ascending:false});
+        if (resF.data) {
+          resF.data.forEach(function(f){
+            var idx = DOCS_DATA.findIndex(function(d){ return d.id === f.doc_id; });
+            if (idx >= 0 && !docsFiles[idx])
+              docsFiles[idx] = {name:f.nombre_archivo, url:f.url_publica||'', type:f.tipo_archivo||'', db_id:f.id};
+          });
+        }
+      }
+    } catch(e){ console.warn('docs load:', e); }
+  }
+  _docsLoaded = true;
+  _docsPopulateUploadSelect();
+  docsRenderStats();
+  docsRender();
+}
+
+// ── Stats bar ────────────────────────────────────────────
+function docsRenderStats() {
+  var container = document.getElementById('docs-stats');
+  if (!container) return;
+  var total = DOCS_DATA.length;
+  var conArch = Object.keys(docsFiles).length;
+  var tipos = {};
+  DOCS_DATA.forEach(function(d){ tipos[d.tipo]=(tipos[d.tipo]||0)+1; });
+  var areas = {};
+  DOCS_DATA.forEach(function(d){ areas[d.area]=(areas[d.area]||0)+1; });
+  var cards = [
+    {icon:'📄', val:total,                  lbl:'Total Documentos',  clr:'#1E3A5F'},
+    {icon:'📎', val:conArch,                lbl:'Con Archivo',       clr:'#059669'},
+    {icon:'📋', val:tipos['Formato']||0,    lbl:'Formatos',          clr:'#6366F1'},
+    {icon:'📘', val:tipos['PROCEDIMIENTO']||0, lbl:'Procedimientos', clr:'#0EA5E9'},
+    {icon:'📗', val:tipos['MANUAL']||0,     lbl:'Manuales',          clr:'#7C3AED'},
+    {icon:'🏷',  val:Object.keys(areas).length, lbl:'Áreas',         clr:'#F59E0B'}
+  ];
+  container.innerHTML = cards.map(function(c){
+    return '<div style="background:white;border:1.5px solid #E2E8F0;border-radius:10px;padding:13px 16px;box-shadow:0 1px 6px rgba(0,0,0,0.06)">'
+      +'<div style="font-size:20px;margin-bottom:3px">'+c.icon+'</div>'
+      +'<div style="font-size:22px;font-weight:800;color:'+c.clr+';line-height:1">'+c.val+'</div>'
+      +'<div style="font-size:10px;color:#94A3B8;margin-top:2px">'+c.lbl+'</div>'
+      +'</div>';
+  }).join('');
+}
+
+// ── Table render ─────────────────────────────────────────
+function docsRender() {
+  var q  = ((document.getElementById('docs-search')||{}).value||'').toLowerCase().trim();
+  var fa = (document.getElementById('docs-filter-area')||{}).value||'';
+  var ft = (document.getElementById('docs-filter-tipo')||{}).value||'';
+  var ff = (document.getElementById('docs-filter-archivo')||{}).value||'';
+
+  var filtered = DOCS_DATA.map(function(d,i){ return {d:d,i:i}; }).filter(function(x){
+    var d=x.d, i=x.i;
+    if (q && !d.nombre.toLowerCase().includes(q) && !d.codigo.toLowerCase().includes(q)) return false;
+    if (fa && d.area !== fa) return false;
+    if (ft && d.tipo !== ft) return false;
+    if (ff==='1' && !docsFiles[i]) return false;
+    if (ff==='0' && docsFiles[i])  return false;
+    return true;
+  });
+
+  var countEl = document.getElementById('docs-count');
+  if (countEl) countEl.textContent = filtered.length + ' de ' + DOCS_DATA.length + ' documentos';
+
+  var tbody = document.getElementById('docs-tbody');
+  var empty = document.getElementById('docs-empty');
+  if (!tbody) return;
+  if (!filtered.length) {
+    tbody.innerHTML = '';
+    if (empty) empty.style.display = '';
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+
+  tbody.innerHTML = filtered.map(function(x, fi){
+    var d=x.d, i=x.i;
+    var aBg  = _AREA_BG[d.area]  || '#F1F5F9';
+    var aClr = _AREA_CLR[d.area] || '#475569';
+    var tBg  = _TIPO_BG[d.tipo]  || '#F1F5F9';
+    var tClr = _TIPO_CLR[d.tipo] || '#475569';
+    var f = docsFiles[i];
+    var fileCell = f
+      ? '<a href="'+f.url+'" target="_blank" download="'+f.name+'"'
+        +' style="display:inline-flex;align-items:center;gap:4px;color:#6366F1;font-size:11px;font-weight:600;'
+        +'text-decoration:none;padding:3px 8px;background:#EDE9FE;border-radius:6px">'+_fileIcon(f.name)+' Ver</a>'
+      : '<span style="color:#CBD5E1;font-size:11px">—</span>';
+    var fechaDisp = d.fecha ? d.fecha.split('-').reverse().join('/') : '—';
+    var rowBg = fi%2 ? 'background:#FAFBFC' : '';
+    return '<tr style="border-bottom:1px solid #E2E8F0;'+rowBg+'">'
+      // ÁREA badge — azul HSEQ, verde Técnico, morado Gerencia, naranja SO/AC
+      +'<td style="padding:9px 14px"><span style="font-size:10px;font-weight:700;color:'+aClr
+        +';background:'+aBg+';padding:2px 9px;border-radius:10px;white-space:nowrap">'+d.area+'</span></td>'
+      // CÓDIGO monoespaciado gris oscuro
+      +'<td style="padding:9px 14px;font-size:11px;font-family:monospace;font-weight:600;color:#374151;white-space:nowrap">'+d.codigo+'</td>'
+      // TIPO badge coloreado
+      +'<td style="padding:9px 14px"><span style="font-size:10px;font-weight:700;color:'+tClr
+        +';background:'+tBg+';padding:2px 8px;border-radius:7px;white-space:nowrap">'+d.tipo+'</span></td>'
+      // NOMBRE
+      +'<td style="padding:9px 14px;font-size:12px;color:#111827;max-width:300px;line-height:1.4">'+d.nombre+'</td>'
+      // VERSIÓN
+      +'<td style="padding:9px 14px;text-align:center;font-size:12px;font-weight:700;color:#374151">'+d.version+'</td>'
+      // FECHA
+      +'<td style="padding:9px 14px;text-align:center;font-size:11px;color:#6B7280;white-space:nowrap">'+fechaDisp+'</td>'
+      // ARCHIVO
+      +'<td style="padding:9px 14px;text-align:center">'+fileCell+'</td>'
+      // ACCIONES: 👁 azul | ✏ azul | — amarillo (con protección de clave)
+      +'<td style="padding:9px 14px;text-align:center;white-space:nowrap">'
+        +'<button onclick="docsViewDoc('+i+')" title="Ver detalle"'
+          +' style="padding:3px 9px;border-radius:5px;background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;font-size:13px;cursor:pointer;margin-right:3px">👁</button>'
+        +'<button onclick="docsEditDoc('+i+')" title="Editar documento"'
+          +' style="padding:3px 9px;border-radius:5px;background:#1E3A5F;color:white;border:none;font-size:12px;font-weight:700;cursor:pointer;margin-right:3px;min-width:24px">✎</button>'
+        +'<button onclick="docsDeleteDoc('+i+')" title="Eliminar documento"'
+          +' style="padding:3px 9px;border-radius:5px;background:#FEF3C7;color:#92400E;border:1px solid #FDE68A;font-size:13px;font-weight:700;cursor:pointer">—</button>'
+      +'</td>'
+      +'</tr>';
+  }).join('');
+}
+
+// ── Upload modal ─────────────────────────────────────────
+function _docsPopulateUploadSelect() {
+  var sel = document.getElementById('docs-upload-select');
+  if (!sel) return;
+  sel.innerHTML = DOCS_DATA.map(function(d,i){
+    return '<option value="'+i+'">['+d.area+'] '+d.codigo+' — '+d.nombre.slice(0,55)+(d.nombre.length>55?'…':'')+'</option>';
+  }).join('');
+}
+
+function docsOpenUpload() {
+  var m = document.getElementById('docs-upload-modal');
+  if (m) { m.style.display='flex'; m.style.alignItems='center'; m.style.justifyContent='center'; }
+  var inp = document.getElementById('docs-file-input');
+  if (inp) inp.value='';
+  var st = document.getElementById('docs-upload-status');
+  if (st) { st.textContent=''; }
+}
+function docsOpenUploadFor(i) {
+  docsOpenUpload();
+  var sel = document.getElementById('docs-upload-select');
+  if (sel) sel.value = i;
+}
+function docsCloseUpload() {
+  var m = document.getElementById('docs-upload-modal');
+  if (m) m.style.display='none';
+}
+
+async function docsConfirmUpload() {
+  var sel = document.getElementById('docs-upload-select');
+  var inp = document.getElementById('docs-file-input');
+  var st  = document.getElementById('docs-upload-status');
+  if (!inp || !inp.files[0]) {
+    if (st) { st.textContent='⚠ Selecciona un archivo'; st.style.color='#DC2626'; }
+    return;
+  }
+  var idx  = parseInt(sel.value);
+  var file = inp.files[0];
+  var url  = URL.createObjectURL(file);
+  docsFiles[idx] = {name:file.name, url:url, type:file.name.split('.').pop()};
+  // Save to Supabase
+  var doc = DOCS_DATA[idx];
+  if (doc && doc.id && typeof supaEnabled!=='undefined' && supaEnabled) {
+    supa.from('docs_archivos').insert([{doc_id:doc.id, nombre_archivo:file.name,
+      tipo_archivo:file.name.split('.').pop(), url_publica:url}]);
+  }
+  if (st) { st.textContent='✅ Adjuntado: '+file.name; st.style.color='#059669'; }
+  docsRenderStats(); docsRender();
+  setTimeout(docsCloseUpload, 1400);
+}
+
+// ── Add / Edit modal ─────────────────────────────────────
+function docsAddDoc() {
+  _docsEditIdx = -1;
+  var title = document.getElementById('docs-add-title');
+  if (title) title.textContent = '+ Nuevo Documento';
+  ['docs-add-codigo','docs-add-version','docs-add-nombre','docs-add-ubicacion'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.value='';
+  });
+  var f=document.getElementById('docs-add-fecha');
+  if (f) f.value = new Date().toISOString().split('T')[0];
+  var err=document.getElementById('docs-add-err');
+  if (err) err.textContent='';
+  var m=document.getElementById('docs-add-modal');
+  if (m) m.style.display='block';
+}
+
+function docsEditDoc(i) {
+  _docsEditIdx = i;
+  var d = DOCS_DATA[i];
+  if (!d) return;
+
+  // Update modal title to indicate editing
+  var title = document.getElementById('docs-add-title');
+  if (title) title.textContent = '✏ Actualizar Documento';
+
+  // Pre-fill all fields with current values
+  var set = function(id, v) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    if (el.tagName === 'SELECT') {
+      // Try to match option, else keep first
+      for (var j = 0; j < el.options.length; j++) {
+        if (el.options[j].value === v || el.options[j].text === v) {
+          el.selectedIndex = j; break;
+        }
+      }
+    } else {
+      el.value = v || '';
+    }
+  };
+
+  set('docs-add-area',      d.area);
+  set('docs-add-tipo',      d.tipo);
+  set('docs-add-codigo',    d.codigo === 'N.A.' ? '' : d.codigo);
+  set('docs-add-version',   d.version);
+  set('docs-add-nombre',    d.nombre);
+  set('docs-add-fecha',     d.fecha || '');
+  set('docs-add-ubicacion', d.ubicacion || '');
+
+  // Clear file input — show current file name if exists
+  var fileInp = document.getElementById('docs-add-file');
+  if (fileInp) fileInp.value = '';
+  var fileHint = document.getElementById('docs-add-file-hint');
+  if (!fileHint) {
+    fileHint = document.createElement('div');
+    fileHint.id = 'docs-add-file-hint';
+    fileHint.style.cssText = 'font-size:11px;color:#6366F1;margin-top:5px';
+    if (fileInp && fileInp.parentNode) fileInp.parentNode.appendChild(fileHint);
+  }
+  var f = docsFiles[i];
+  if (f) {
+    fileHint.innerHTML = '📎 <span style="color:#6366F1;font-weight:600">' + f.name + '</span>'
+      + ' &nbsp;<button onclick="docsRemoveFile(' + i + ')" '
+      + 'style="padding:2px 8px;border-radius:5px;background:#FEE2E2;color:#DC2626;border:1px solid #FECACA;'
+      + 'font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">✕ Eliminar archivo</button>';
+  } else {
+    fileHint.textContent = '';
+  }
+
+  // Clear error and open modal
+  var err = document.getElementById('docs-add-err');
+  if (err) err.textContent = '';
+  var m = document.getElementById('docs-add-modal');
+  if (m) m.style.display = 'block';
+}
+
+function docsCloseAdd() {
+  var m = document.getElementById('docs-add-modal');
+  if (m) m.style.display = 'none';
+  _docsEditIdx = -1;
+  var hint = document.getElementById('docs-add-file-hint');
+  if (hint) hint.textContent = '';
+  var title = document.getElementById('docs-add-title');
+  if (title) title.textContent = '+ Nuevo Documento';
+}
+
+async function docsConfirmAdd() {
+  var nombre = (document.getElementById('docs-add-nombre')||{}).value.trim();
+  var err = document.getElementById('docs-add-err');
+  if (!nombre) { if(err) err.textContent='El nombre es obligatorio'; return; }
+
+  var area     = (document.getElementById('docs-add-area')||{}).value||'HSEQ';
+  var tipo     = (document.getElementById('docs-add-tipo')||{}).value||'Formato';
+  var codigo   = (document.getElementById('docs-add-codigo')||{}).value.trim()||'N.A.';
+  var version  = (document.getElementById('docs-add-version')||{}).value||'1';
+  var fecha    = (document.getElementById('docs-add-fecha')||{}).value||'';
+  var ubicacion= (document.getElementById('docs-add-ubicacion')||{}).value.trim()||'';
+  var fileInp  = document.getElementById('docs-add-file');
+
+  var obj = {area:area, codigo:codigo, tipo:tipo, nombre:nombre,
+             version:version, fecha:fecha, ubicacion:ubicacion};
+
+  var idx;
+  if (_docsEditIdx >= 0) {
+    // Edit existing
+    idx = _docsEditIdx;
+    DOCS_DATA[idx] = Object.assign(DOCS_DATA[idx], obj);
+    // Save update to Supabase
+    if (typeof supaEnabled!=='undefined' && supaEnabled && DOCS_DATA[idx].id) {
+      supa.from('docs_listado').update({
+        area:area, codigo:codigo, tipo:tipo, nombre:nombre,
+        version:version, fecha:fecha||null, ubicacion:ubicacion,
+        actualizado_en: new Date().toISOString()
+      }).eq('id', DOCS_DATA[idx].id).then(function(res){
+        if (!res.error) _showSupaStatus('✅ Documento actualizado');
+      });
+    }
+  } else {
+    // New document
+    idx = DOCS_DATA.length;
+    if (typeof supaEnabled!=='undefined' && supaEnabled) {
+      var res = await supa.from('docs_listado').insert([{
+        area:area,codigo:codigo,tipo:tipo,nombre:nombre,
+        version:version,fecha:fecha||null,ubicacion:ubicacion,activo:true
+      }]).select().single();
+      if (res && res.data) obj.id = res.data.id;
+    }
+    DOCS_DATA.push(obj);
+    _docsPopulateUploadSelect();
+  }
+
+  // Handle optional file
+  if (fileInp && fileInp.files[0]) {
+    var file = fileInp.files[0];
+    var url  = URL.createObjectURL(file);
+    docsFiles[idx] = {name:file.name, url:url, type:file.name.split('.').pop()};
+    if (obj.id && typeof supaEnabled!=='undefined' && supaEnabled) {
+      supa.from('docs_archivos').insert([{doc_id:obj.id,nombre_archivo:file.name,
+        tipo_archivo:file.name.split('.').pop(),url_publica:url}]);
+    }
+  }
+  docsRenderStats(); docsRender(); docsCloseAdd();
+}
+
+// ── View detail ──────────────────────────────────────────
+function docsViewDoc(i) {
+  var d = DOCS_DATA[i];
+  var f = docsFiles[i];
+  var fechaDisp = d.fecha ? d.fecha.split('-').reverse().join('/') : '—';
+  var content = '<div style="background:linear-gradient(135deg,#1E1B4B,#3730A3);border-radius:10px;padding:18px 20px;margin-bottom:16px;color:white">'
+    +'<div style="font-size:15px;font-weight:800">'+d.nombre+'</div>'
+    +'<div style="font-size:11px;opacity:0.55;margin-top:3px">'+d.area+' · '+d.tipo+'</div>'
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">'
+    +_dtItem('Código',d.codigo)+_dtItem('Versión',d.version)
+    +_dtItem('Fecha de Actualización',fechaDisp)+_dtItem('Área / Proceso',d.area)
+    +(d.ubicacion?'<div style="grid-column:1/-1">'+_dtItem('Ubicación',d.ubicacion)+'</div>':'')
+    +'</div>'
+    +(f ? '<div style="background:#EDE9FE;border-radius:8px;padding:12px 16px;display:flex;align-items:center;gap:10px">'
+        +'<span style="font-size:22px">'+_fileIcon(f.name)+'</span>'
+        +'<div><div style="font-size:12px;font-weight:700;color:#5B21B6">'+f.name+'</div>'
+        +'<a href="'+f.url+'" download="'+f.name+'" style="font-size:10px;color:#7C3AED;text-decoration:none">⬇ Descargar</a></div></div>'
+      : '<div style="background:#F8FAFC;border-radius:8px;padding:12px;text-align:center;color:#94A3B8;font-size:12px">Sin archivo adjunto</div>');
+
+  var modal = document.getElementById('docs-view-modal');
+  var body  = document.getElementById('docs-view-body');
+  if (!modal || !body) {
+    // Create modal on the fly if not present
+    var m = document.createElement('div');
+    m.id='docs-view-modal';
+    m.style.cssText='display:flex;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.65);align-items:center;justify-content:center;padding:20px';
+    m.innerHTML='<div style="background:white;border-radius:14px;padding:28px 32px;max-width:500px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.35);max-height:90vh;overflow-y:auto">'
+      +'<div id="docs-view-body"></div>'
+      +'<div style="display:flex;justify-content:flex-end;margin-top:16px">'
+      +'<button onclick="document.getElementById(\'docs-view-modal\').style.display=\'none\'" '
+      +'style="padding:9px 20px;border-radius:8px;border:1.5px solid #E2E8F0;background:white;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">Cerrar</button>'
+      +'</div></div>';
+    m.addEventListener('click',function(e){ if(e.target===m) m.style.display='none'; });
+    document.body.appendChild(m);
+  }
+  document.getElementById('docs-view-body').innerHTML = content;
+  document.getElementById('docs-view-modal').style.display='flex';
+}
+
+function _dtItem(lbl,val){
+  return '<div><div style="font-size:9px;text-transform:uppercase;letter-spacing:0.5px;color:#94A3B8;margin-bottom:2px">'+lbl+'</div>'
+    +'<div style="font-size:13px;font-weight:600;color:#1E293B">'+val+'</div></div>';
+}
+
+// ── Remove attached file from a document ─────────────────
+async function docsRemoveFile(i) {
+  if (!confirm('¿Eliminar el archivo adjunto de este documento?')) return;
+  // Revoke object URL to free memory
+  if (docsFiles[i] && docsFiles[i].url && docsFiles[i].url.startsWith('blob:')) {
+    URL.revokeObjectURL(docsFiles[i].url);
+  }
+  // Delete from Supabase
+  if (docsFiles[i] && docsFiles[i].db_id && typeof supaEnabled !== 'undefined' && supaEnabled) {
+    await supa.from('docs_archivos').delete().eq('id', docsFiles[i].db_id);
+  }
+  delete docsFiles[i];
+  // Update hint in edit modal if open
+  var hint = document.getElementById('docs-add-file-hint');
+  if (hint) hint.textContent = '';
+  var inp = document.getElementById('docs-add-file');
+  if (inp) inp.value = '';
+  // Refresh table
+  docsRenderStats();
+  docsRender();
+  _showSupaStatus('🗑 Archivo eliminado');
+}
+
+// ── Delete document (password protected) ──────────────────
+var _docsDeleteIdx = null;
+
+function docsDeleteDoc(i) {
+  _docsDeleteIdx = i;
+  var modal = document.getElementById('docs-delete-modal');
+  var inp   = document.getElementById('docs-delete-pwd');
+  var err   = document.getElementById('docs-delete-err');
+  var name  = document.getElementById('docs-delete-name');
+  if (!modal) return;
+  if (name) name.textContent = DOCS_DATA[i] ? DOCS_DATA[i].nombre : '';
+  if (inp)  inp.value = '';
+  if (err)  err.textContent = '';
+  modal.style.display = 'flex';
+  setTimeout(function(){ if(inp) inp.focus(); }, 80);
+}
+
+function docsCloseDelete() {
+  var modal = document.getElementById('docs-delete-modal');
+  if (modal) modal.style.display = 'none';
+  _docsDeleteIdx = null;
+}
+
+async function docsConfirmDelete() {
+  var inp = document.getElementById('docs-delete-pwd');
+  var err = document.getElementById('docs-delete-err');
+  var val = inp ? inp.value.trim() : '';
+  if (val !== '2025') {
+    if (err) err.textContent = '❌ Clave incorrecta';
+    if (inp) { inp.value = ''; inp.focus(); }
+    return;
+  }
+  if (_docsDeleteIdx === null) return;
+  var i   = _docsDeleteIdx;
+  var doc = DOCS_DATA[i];
+
+  // Delete from Supabase
+  if (doc && doc.id && typeof supaEnabled !== 'undefined' && supaEnabled) {
+    await supa.from('docs_listado').update({activo: false}).eq('id', doc.id);
+  }
+
+  // Remove from local array and files
+  DOCS_DATA.splice(i, 1);
+  // Re-index files after deletion
+  var newFiles = {};
+  Object.keys(docsFiles).forEach(function(k) {
+    var ki = parseInt(k);
+    if (ki < i)  newFiles[ki] = docsFiles[k];
+    if (ki > i)  newFiles[ki-1] = docsFiles[k];
+  });
+  docsFiles = newFiles;
+
+  docsRenderStats();
+  docsRender();
+  _docsPopulateUploadSelect();
+  docsCloseDelete();
+}
+
+// ── CSV Export ───────────────────────────────────────────
+function docsExportCSV() {
+  var rows = [['Área','Código','Tipo','Nombre','Versión','Fecha','Ubicación','Tiene Archivo']];
+  DOCS_DATA.forEach(function(d,i){
+    var fecha = d.fecha ? d.fecha.split('-').reverse().join('/') : '';
+    rows.push([d.area,d.codigo,d.tipo,d.nombre,d.version,fecha,d.ubicacion||'',docsFiles[i]?'Sí':'No']);
+  });
+  var csv = rows.map(function(r){
+    return r.map(function(v){ return '"'+String(v).replace(/"/g,'""')+'"'; }).join(',');
+  }).join('\n');
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+  a.download='Listado_Maestro_HSEQ.csv'; a.click();
+}
+
+
 window.addEventListener('DOMContentLoaded', function() {
   // ✅ Enrich BASE_DATA indicadores with canonical text from IND_DEFS (for pre-2025 fichas)
   (BASE_DATA || []).forEach(function(b) {
@@ -5110,7 +5795,7 @@ window._staffDataGlobal = staffData;
 let projectsData = [...PROJECTS_DATA];
 let charts = {};
 
-const PASSWORDS = { socio: '2025', seg: '2026', ats: null, licit: 'Comercial' }; // ATS usa CC como clave
+const PASSWORDS = { socio: '2025', seg: '2026', ats: null, licit: 'Comercial', docs: 'HSEQ' }; // ATS usa CC como clave
 const SESSION_DURATION = 20 * 60 * 1000; // 20 min
 var atsOnlyMode = false; // true when entered via ATS login
 
@@ -5172,8 +5857,9 @@ function tryUnlock() {
     if (app) { app.style.display = 'block'; app.style.visibility = 'visible'; }
     activateSession(lockModule);
     try { initApp(); } catch(e) { console.error('initApp error:', e); }
-    if (lockModule === 'seg') try { showSection('seguimiento'); } catch(e) {}
-    if (lockModule === 'licit') try { showSection('licit'); } catch(e) {}
+    if (lockModule === 'seg')   try { showSection('seguimiento'); } catch(e) {}
+    if (lockModule === 'licit') try { showSection('licit'); }        catch(e) {}
+    if (lockModule === 'docs')  try { showSection('docs'); }         catch(e) {}
   } else {
     lockErr('Clave incorrecta. ' + (pin === '' ? 'El campo está vacío.' : 'Verifica e intenta de nuevo.'));
     if (inputEl) inputEl.value = '';
@@ -5266,14 +5952,27 @@ setInterval(() => {
 
 // ===== NAVIGATION =====
 function showSection(id) {
-  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-  document.getElementById('section-' + id).classList.add('active');
-  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('navbtn-' + id).classList.add('active');
-  document.getElementById('btn-unlock-socio').style.display = id === 'socio' && !isUnlocked('socio') ? '' : 'none';
+  document.querySelectorAll('.section').forEach(function(s){ s.classList.remove('active'); });
+  var sec = document.getElementById('section-' + id);
+  if (sec) sec.classList.add('active');
+  document.querySelectorAll('.nav-tab').forEach(function(t){ t.classList.remove('active'); });
+  var nbtn = document.getElementById('navbtn-' + id);
+  if (nbtn) nbtn.classList.add('active');
+  // Unlock buttons
+  var btnSocio = document.getElementById('btn-unlock-socio');
+  if (btnSocio) btnSocio.style.display = id === 'socio' && !isUnlocked('socio') ? '' : 'none';
   var btnAts = document.getElementById('btn-unlock-ats');
-  if(btnAts) btnAts.style.display = id === 'ats' ? '' : 'none';
-  document.getElementById('btn-unlock-seg').style.display = id === 'seguimiento' && !isUnlocked('seg') ? '' : 'none';
+  if (btnAts) btnAts.style.display = id === 'ats' ? '' : 'none';
+  var btnSeg = document.getElementById('btn-unlock-seg');
+  if (btnSeg) btnSeg.style.display = id === 'seguimiento' && !isUnlocked('seg') ? '' : 'none';
+  // Init docs module on first open
+  if (id === 'docs') {
+    setTimeout(function(){ if(typeof docsInit==='function') docsInit(); }, 80);
+  }
+  // Refresh AGT if on indicadores tab
+  if (id === 'seguimiento' && typeof segActiveTab !== 'undefined' && segActiveTab === 'indicadores') {
+    setTimeout(function(){ if(typeof renderAGT==='function') renderAGT(); }, 50);
+  }
 }
 
 // ===== INIT APP =====
@@ -7506,7 +8205,7 @@ function _renderAtsHistorial() {
             '</div>'+
             '<div style="display:flex;gap:5px;flex-shrink:0">'+
               '<button onclick="_atsRedescargar('+h.id+')" style="padding:5px 10px;border-radius:6px;background:var(--navy);color:white;border:none;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">⬇ Descargar</button>'+
-              '<button onclick="_atsEliminarRegistro('+h.id+')" title="Requiere clave 2025" style="padding:5px 8px;border-radius:6px;background:rgba(220,38,38,0.07);color:var(--danger);border:1px solid rgba(220,38,38,0.15);font-size:11px;cursor:pointer;font-family:inherit">🔐</button>'+
+              '<button onclick="_atsEliminarRegistro('+h.id+')" title="Eliminar registro" style="padding:5px 8px;border-radius:6px;background:rgba(220,38,38,0.07);color:var(--danger);border:1px solid rgba(220,38,38,0.15);font-size:11px;cursor:pointer;font-family:inherit">🔐</button>'+
             '</div>'+
           '</div>';
         }).join('')+
@@ -10292,7 +10991,7 @@ window.addEventListener('DOMContentLoaded', function() {
               <th style="padding:7px 10px;border:1px solid #C8DDD3;text-align:center;font-size:9px;text-transform:uppercase;color:#3D5C4A;width:9%">Estado</th>
               <th style="padding:5px;border:1px solid #C8DDD3;text-align:center;font-size:9px;color:#3D5C4A;width:7%" class="no-print">
                 <button onclick="addIndicadorRow()" title="Agregar indicador" style="padding:2px 8px;border-radius:5px;background:#1A6B50;color:white;border:none;font-size:11px;cursor:pointer;font-weight:700">+</button>
-                <button onclick="removeIndNoEvaluados()" title="Eliminar indicadores sin evaluar — clave 2026" style="padding:2px 8px;border-radius:5px;background:#7C3AED;color:white;border:none;font-size:11px;cursor:pointer;font-weight:700;margin-left:4px">🗑 Sin evaluar</button>
+                <button onclick="removeIndNoEvaluados()" title="Eliminar indicadores sin evaluar" style="padding:2px 8px;border-radius:5px;background:#7C3AED;color:white;border:none;font-size:11px;cursor:pointer;font-weight:700;margin-left:4px">🗑 Sin evaluar</button>
               </th>
             </tr>
           </thead>
