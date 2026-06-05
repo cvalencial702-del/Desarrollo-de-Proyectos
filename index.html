@@ -2950,7 +2950,25 @@ function _licitFromInputDate(val) {
   return '-';
 }
 
-function licitSaveRecord() {
+// Helpers para mapear estados de la UI ↔ DB
+function _licitEstadoToDb(s) {
+  s = (s||'').toUpperCase().trim();
+  if (s === 'ADJUDICADA')      return 'adjudicada';
+  if (s === 'NO ADJUDICADA')   return 'no_adjudicada';
+  if (s === 'POR DEFINIR')     return 'por_definir';
+  if (s === 'SIN RESPUESTA')   return 'sin_respuesta';
+  if (s === 'PENDIENTE')       return 'pendiente';
+  if (s === 'EN PROCESO')      return 'en_proceso';
+  return 'pendiente';
+}
+function _licitDdMmYyyyToIso(s) {
+  if (!s || s === '-') return null;
+  var p = s.split('/');
+  if (p.length !== 3) return null;
+  return p[2] + '-' + p[1].padStart(2,'0') + '-' + p[0].padStart(2,'0');
+}
+
+async function licitSaveRecord() {
   var tipo = licitEditType;
   var cliente = (document.getElementById('lf-cliente')||{}).value || '';
   var objeto = (document.getElementById('lf-objeto')||{}).value || '';
@@ -2963,44 +2981,99 @@ function licitSaveRecord() {
     return;
   }
 
-  if (tipo === 'pujas') {
-    var puja = (document.getElementById('lf-puja')||{}).value || '';
-    var fsol = _licitFromInputDate((document.getElementById('lf-fsol')||{}).value);
-    var fadj = _licitFromInputDate((document.getElementById('lf-fadj')||{}).value);
-    var rec = {
-      CLIENTE: cliente.trim().toUpperCase(),
-      PUJA: puja ? parseInt(puja) : (LICIT_PUJAS.length + 100),
-      'FECHA DE  SOLICITUD': fsol,
-      'FECHA DE  ADJUDICACION': fadj,
-      OBJETO_SHORT: objeto.trim().substring(0, 100),
-      ESTADO: estado,
-      OBSERVACIONES: obs || '-'
-    };
-    if (licitEditIdx !== null) {
-      LICIT_PUJAS[licitEditIdx] = rec;
+  var btn = document.getElementById('licit-save-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
+
+  try {
+    if (tipo === 'pujas') {
+      var puja = (document.getElementById('lf-puja')||{}).value || '';
+      var fsol = _licitFromInputDate((document.getElementById('lf-fsol')||{}).value);
+      var fadj = _licitFromInputDate((document.getElementById('lf-fadj')||{}).value);
+      var rec = {
+        CLIENTE: cliente.trim().toUpperCase(),
+        PUJA: puja ? parseInt(puja) : (LICIT_PUJAS.length + 100),
+        'FECHA DE  SOLICITUD': fsol,
+        'FECHA DE  ADJUDICACION': fadj,
+        OBJETO_SHORT: objeto.trim().substring(0, 100),
+        ESTADO: estado,
+        OBSERVACIONES: obs || '-',
+        _supaId: licitEditIdx !== null ? (LICIT_PUJAS[licitEditIdx] && LICIT_PUJAS[licitEditIdx]._supaId) : null
+      };
+
+      // Persistir en Supabase
+      if (supaEnabled && supa) {
+        var row = {
+          fecha_presentacion: _licitDdMmYyyyToIso(fsol),
+          cliente: rec.CLIENTE,
+          objeto: objeto.trim(),
+          estado: _licitEstadoToDb(estado),
+          observaciones: (obs && obs !== '-') ? obs : null,
+          fecha_adjudicacion: _licitDdMmYyyyToIso(fadj),
+          valor: null
+        };
+        var resp;
+        if (rec._supaId) {
+          resp = await supa.from('licitaciones_pujas').update(row).eq('id', rec._supaId).select().single();
+        } else {
+          resp = await supa.from('licitaciones_pujas').insert(row).select().single();
+        }
+        if (resp.error) { alert('Error al guardar en Supabase: ' + resp.error.message); console.error(resp.error); return; }
+        if (resp.data) rec._supaId = resp.data.id;
+      }
+
+      if (licitEditIdx !== null) {
+        LICIT_PUJAS[licitEditIdx] = rec;
+      } else {
+        LICIT_PUJAS.push(rec);
+      }
     } else {
-      LICIT_PUJAS.push(rec);
+      var fpres = _licitFromInputDate((document.getElementById('lf-fpres')||{}).value);
+      var fadj2 = _licitFromInputDate((document.getElementById('lf-fadj')||{}).value);
+      var rec2 = {
+        'FECHA DE  PRESENTACION': fpres,
+        CLIENTE: cliente.trim().toUpperCase(),
+        OBJETO_SHORT: objeto.trim().substring(0, 100),
+        ESTADO: estado,
+        OBSERVACIONES: obs || '-',
+        'FECHA DE ADJUDICACIÓN': fadj2,
+        _supaId: licitEditIdx !== null ? (LICIT_PROP[licitEditIdx] && LICIT_PROP[licitEditIdx]._supaId) : null
+      };
+
+      // Persistir en Supabase
+      if (supaEnabled && supa) {
+        var row2 = {
+          fecha_presentacion: _licitDdMmYyyyToIso(fpres),
+          cliente: rec2.CLIENTE,
+          objeto: objeto.trim(),
+          estado: _licitEstadoToDb(estado),
+          observaciones: (obs && obs !== '-') ? obs : null,
+          fecha_adjudicacion: _licitDdMmYyyyToIso(fadj2),
+          tipo: 'propuesta'
+        };
+        var resp2;
+        if (rec2._supaId) {
+          resp2 = await supa.from('licitaciones_propuestas').update(row2).eq('id', rec2._supaId).select().single();
+        } else {
+          resp2 = await supa.from('licitaciones_propuestas').insert(row2).select().single();
+        }
+        if (resp2.error) { alert('Error al guardar en Supabase: ' + resp2.error.message); console.error(resp2.error); return; }
+        if (resp2.data) rec2._supaId = resp2.data.id;
+      } else {
+        console.warn('Supabase no está conectado — los datos solo se guardarán en memoria. Configura la clave en el panel de Supabase.');
+      }
+
+      if (licitEditIdx !== null) {
+        LICIT_PROP[licitEditIdx] = rec2;
+      } else {
+        LICIT_PROP.push(rec2);
+      }
     }
-  } else {
-    var fpres = _licitFromInputDate((document.getElementById('lf-fpres')||{}).value);
-    var fadj2 = _licitFromInputDate((document.getElementById('lf-fadj')||{}).value);
-    var rec2 = {
-      'FECHA DE  PRESENTACION': fpres,
-      CLIENTE: cliente.trim().toUpperCase(),
-      OBJETO_SHORT: objeto.trim().substring(0, 100),
-      ESTADO: estado,
-      OBSERVACIONES: obs || '-',
-      'FECHA DE ADJUDICACIÓN': fadj2
-    };
-    if (licitEditIdx !== null) {
-      LICIT_PROP[licitEditIdx] = rec2;
-    } else {
-      LICIT_PROP.push(rec2);
-    }
+    licitCloseModal();
+    licitBuildFilters();
+    licitApplyFilters();
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Guardar'; }
   }
-  licitCloseModal();
-  licitBuildFilters();
-  licitApplyFilters();
 }
 
 // ── AUTO-ANALYSIS ─────────────────────────────────────────
