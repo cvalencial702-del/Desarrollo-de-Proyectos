@@ -10570,7 +10570,22 @@ function confirmDelete() {
   } else {
     if(supaEnabled) supaDelete('projects', 'id', pendingDeleteId);
     projectsData = projectsData.filter(p => p.id !== pendingDeleteId);
+
+    // 🔄 CASCADE DELETE: el CASCADE en BD ya borró ficha_proyectos.
+    // Aquí limpiamos las estructuras en memoria para que la vista AGT también se actualice.
+    if (typeof BASE_DATA !== 'undefined') {
+      var beforeBase = BASE_DATA.length;
+      BASE_DATA = BASE_DATA.filter(function(b){ return b.proyecto !== pendingDeleteId; });
+      if (BASE_DATA.length !== beforeBase) console.log('[CASCADE] Análisis borrado de BASE_DATA:', pendingDeleteId);
+    }
+    if (typeof fichaEditData !== 'undefined' && fichaEditData[pendingDeleteId]) {
+      delete fichaEditData[pendingDeleteId];
+      console.log('[CASCADE] Ficha borrada de fichaEditData:', pendingDeleteId);
+    }
+
     renderTableSeg(); renderChartsSeg(); renderClienteBars();
+    // Refrescar también la vista de Análisis Gerencial Técnico
+    if (typeof renderAGT === 'function') { try { renderAGT(); } catch(e){} }
   }
   closeDeleteModal();
 }
